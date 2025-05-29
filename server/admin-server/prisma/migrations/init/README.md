@@ -1,0 +1,1 @@
+-- This is an empty migration that initializes the database
