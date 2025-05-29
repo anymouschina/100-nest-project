@@ -1,5 +1,4 @@
-# Ignore embedded git repository
-server/application-server/
+
 
 # Logs
 logs
