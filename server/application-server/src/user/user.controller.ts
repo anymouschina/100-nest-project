@@ -10,11 +10,14 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { UserService } from './user.service';
-import { ApiTags, ApiResponse, ApiOperation, ApiHeader } from '@nestjs/swagger';
+import { ApiTags, ApiResponse, ApiOperation, ApiHeader, ApiBearerAuth } from '@nestjs/swagger';
 import { WxLoginDto } from './dto/wx-login.dto';
+import { Public } from '../auth/decorators/public.decorator';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 @ApiTags('Users')
 @Controller('api/user')
+@ApiBearerAuth()
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
@@ -53,6 +56,7 @@ export class UserController {
    * @param wxLoginDto - The WeChat login data containing the code
    * @returns User information and token
    */
+  @Public()
   @Post('wxLogin')
   @ApiOperation({ summary: 'Login with WeChat mini program' })
   @ApiResponse({
@@ -75,6 +79,7 @@ export class UserController {
 // Additional controller for direct endpoint matching
 @ApiTags('WeChat Login')
 @Controller('user')
+@ApiBearerAuth()
 export class WxUserController {
   constructor(private readonly userService: UserService) {}
 
@@ -85,6 +90,7 @@ export class WxUserController {
    * @param wxLoginDto - The WeChat login data containing the code
    * @returns User information and token
    */
+  @Public()
   @Post('wxLogin')
   @ApiOperation({ summary: 'Login with WeChat mini program (direct path)' })
   @ApiResponse({
@@ -114,12 +120,7 @@ export class WxUserController {
   @ApiHeader({
     name: 'Authorization',
     description: 'Bearer token for authentication',
-    required: false,
-  })
-  @ApiHeader({
-    name: 'platform',
-    description: 'Client platform (e.g., mp-weixin)',
-    required: false,
+    required: true,
   })
   @ApiResponse({
     status: 200,
@@ -133,34 +134,7 @@ export class WxUserController {
     status: 404,
     description: 'User not found',
   })
-  async getUserInfo(
-    @Headers() headers: Record<string, string>,
-    @Headers('authorization') authorization?: string,
-  ) {
-    // Try to extract token from different sources
-    let token = authorization;
-    
-    // If no explicit Authorization header, try to find a token in other headers
-    // This is just a demonstration - in a production app, you'd have a proper auth strategy
-    if (!token) {
-      // Check for token in cookies, custom headers, etc.
-      // For demo purposes, we'll check the if-none-match header from the curl example
-      if (headers['if-none-match']) {
-        // Extract a token-like value from ETag
-        // This is just for demonstration purposes
-        token = headers['if-none-match'].replace(/^W\/"([^"]+)"$/, '$1');
-      }
-    }
-    
-    if (!token) {
-      throw new UnauthorizedException('Authentication token is required');
-    }
-    
-    // Extract token from Bearer format if present
-    if (token.startsWith('Bearer ')) {
-      token = token.slice(7);
-    }
-    
-    return this.userService.getUserInfo(token);
+  async getUserInfo(@CurrentUser() user: any) {
+    return this.userService.getUserInfo(user.userId);
   }
 }

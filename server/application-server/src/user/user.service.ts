@@ -3,17 +3,16 @@ import { DatabaseService } from 'src/database/database.service';
 import { OrderService } from 'src/order/order.service';
 import { WxLoginDto } from './dto/wx-login.dto';
 import { AppConfigService } from '../config/config.service';
+import { AuthService } from '../auth/auth.service';
 import axios from 'axios';
 
 @Injectable()
 export class UserService {
-  // Mock token storage - in a real app, use a proper token service/database
-  private tokenUserMap = new Map<string, number>();
-
   constructor(
     private readonly databaseService: DatabaseService,
     private readonly orderService: OrderService,
     private readonly configService: AppConfigService,
+    private readonly authService: AuthService,
   ) {}
 
   /**
@@ -94,18 +93,17 @@ export class UserService {
         });
       }
 
-      // Generate a dummy token - in a real app, use JWT
-      const token = `token_${user.userId}_${Date.now()}`;
-      
-      // Store token mapping
-      this.tokenUserMap.set(token, user.userId);
+      // Generate JWT token with user info
+      const token = await this.authService.generateToken(user.userId, {
+        name: user.name,
+        openId: openid,
+      });
 
       // Return user data (excluding sensitive information)
       return {
         user: {
           userId: user.userId,
           name: user.name,
-          username:user.name,
           // Include WeChat ID as metadata
           wechatMetadata: {
             openId: openid,
@@ -125,19 +123,12 @@ export class UserService {
   }
 
   /**
-   * Get user information by token
+   * Get user information by user ID
    * 
-   * @param token - Authentication token
+   * @param userId - User ID
    * @returns User profile information
    */
-  async getUserInfo(token: string) {
-    // In a real app, verify the token and extract user ID
-    const userId = this.tokenUserMap.get(token);
-    
-    if (!userId) {
-      throw new UnauthorizedException('Invalid or expired token');
-    }
-    
+  async getUserInfo(userId: number) {
     const user = await this.databaseService.user.findUnique({
       where: { userId },
     });

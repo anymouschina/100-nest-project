@@ -13,6 +13,14 @@ async function bootstrap() {
     .setDescription('Order Management System API')
     .setVersion('1.0')
     .addServer('http://localhost:3000', 'Local environment')
+    .addBearerAuth({
+      type: 'http',
+      scheme: 'bearer',
+      bearerFormat: 'JWT',
+      name: 'JWT',
+      description: 'Enter JWT token',
+      in: 'header',
+    }, 'JWT-auth')
     .build();
 
   const document = SwaggerModule.createDocument(app, options);

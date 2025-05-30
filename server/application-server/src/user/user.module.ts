@@ -6,9 +6,10 @@ import { DatabaseService } from 'src/database/database.service';
 import { CartService } from 'src/cart/cart.service';
 import { OrderService } from 'src/order/order.service';
 import { ConfigModule } from '../config/config.module';
+import { AuthModule } from '../auth/auth.module';
 
 @Module({
-  imports: [ConfigModule],
+  imports: [ConfigModule, AuthModule],
   controllers: [UserController, WxUserController],
   providers: [UserService, OrderService, CartService, DatabaseService],
 })
