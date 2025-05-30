@@ -1,0 +1,48 @@
+{
+  "name": "100-nest-project",
+  "version": "1.0.0",
+  "description": "In this project, I will build 100 applications with Nest as the backend, covering mini-programs/apps/web/mobile",
+  "main": "index.js",
+  "scripts": {
+    "prepare": "husky",
+    "commit": "git-cz",
+    "commitlint": "commitlint --edit",
+    "format": "prettier --write ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/anymouschina/100-nest-project.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/anymouschina/100-nest-project/issues"
+  },
+  "homepage": "https://github.com/anymouschina/100-nest-project#readme",
+  "devDependencies": {
+    "@commitlint/cli": "^19.8.1",
+    "@commitlint/config-conventional": "^19.8.1",
+    "commitizen": "^4.3.1",
+    "cz-conventional-changelog": "^3.3.0",
+    "cz-customizable": "^7.4.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.1.0",
+    "prettier": "^3.5.3"
+  },
+  "config": {
+    "commitizen": {
+      "path": "cz-conventional-changelog"
+    }
+  },
+  "lint-staged": {
+    "*": {
+      "{js,jsx,ts,tsx}": [
+        "prettier --write"
+      ],
+      "{md,json}": [
+        "prettier --write"
+      ]
+    }
+  }
+}
