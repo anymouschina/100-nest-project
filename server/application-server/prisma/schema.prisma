@@ -10,11 +10,21 @@ datasource db {
 model User {
   userId    Int      @id @default(autoincrement())
   name      String
-  email     String   @unique
-  password  String
-  address   String
+  email     String?  @unique
+  password  String?
+  address   String?
   createdAt DateTime @default(now())
-
+  
+  // WeChat user fields
+  openId    String?  @unique
+  unionId   String?  @unique
+  avatarUrl String?
+  gender    Int?
+  country   String?
+  province  String?
+  city      String?
+  language  String?
+  
   orders Order[]
 
   cart Cart?

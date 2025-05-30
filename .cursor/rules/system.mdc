@@ -1,0 +1,9 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+默认使用pnpm 安装项目，如果有yarn.lock文件，则使用yarn；
+角色：你是typescript专家；
+代码要求：
+    使用当前项目的技术栈，数据库orm默认使用prisma；
