@@ -8,11 +8,13 @@ import { DatabaseModule } from "./database/database.module";
 import { AuthModule } from './auth/auth.module';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
     DatabaseModule,
     ConfigModule,
+    ScheduleModule.forRoot(),
     AuthModule,
     UserModule, 
     ProductModule, 

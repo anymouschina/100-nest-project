@@ -116,6 +116,14 @@ model CoupunOrderUser {
   @@id([userId, orderId, couponId])
 }
 
+model BlacklistedToken {
+  id          Int      @id @default(autoincrement())
+  token       String   @unique
+  userId      Int
+  blacklistedAt DateTime @default(now())
+  expiresAt   DateTime
+}
+
 enum Status {
   PENDING
   DELIVERED

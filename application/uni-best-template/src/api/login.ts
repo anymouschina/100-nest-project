@@ -38,7 +38,7 @@ export const getUserInfo = () => {
  * 退出登录
  */
 export const logout = () => {
-  return http.get<void>('/user/logout')
+  return http.post<void>('/user/logout')
 }
 
 /**
