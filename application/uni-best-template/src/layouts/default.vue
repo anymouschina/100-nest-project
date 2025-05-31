@@ -1,6 +1,8 @@
 <template>
   <wd-config-provider :themeVars="themeVars">
-    <scroll-view scroll-y style="height: 100vh;">
+    <scroll-view scroll-y style="height: 100vh;"
+     :style="customStyle"
+    >
       <wd-navbar 
         custom-style="background: transparent;" 
         fixed 
@@ -28,10 +30,13 @@ const themeVars: ConfigProviderThemeVars = {
   // buttonPrimaryBgColor: '#07c160',
   // buttonPrimaryColor: '#07c160',
 }
-
+const customStyle = ref('background-color: #f7f8fa;')
 // 是否显示返回箭头
 const showBackArrow = ref(false)
 
+const changeBg = (bgColor) => {
+  customStyle.value = `background: ${bgColor};`
+}
 // 检查当前页面是否为tab页面
 const checkIsTabPage = () => {
   const pages = getCurrentPages()
@@ -51,7 +56,11 @@ const checkIsTabPage = () => {
   
   // 判断当前页面是否为tab页面
   const isTabPage = tabPages.includes(currentPath)
-  
+  if(currentPath === '/pages/index/index'){
+    changeBg('linear-gradient(180deg, #f8fffe 0%, #f0f9f0 50%, #ffffff 100%)')
+  }else{
+    changeBg('#f7f8fa')
+  }
   // 如果不是tab页面，且不是首页，则显示返回箭头
   showBackArrow.value = !isTabPage && pages.length > 1
 }

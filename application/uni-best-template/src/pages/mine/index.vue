@@ -77,10 +77,10 @@
         </wd-cell>
       </view>
 
-      <view class="logout-button-wrapper">
+      <!-- <view class="logout-button-wrapper">
         <wd-button type="error" v-if="hasLogin" block @click="handleLogout">退出登录</wd-button>
         <wd-button type="primary" v-else block @click="handleLogin">登录</wd-button>
-      </view>
+      </view> -->
     </view>
     
     <!-- 自定义tabbar -->
@@ -104,7 +104,7 @@ const hasLogin = ref(false)
 onShow((options) => {
   hasLogin.value = !!uni.getStorageSync('token')
   console.log('个人中心onShow', hasLogin.value, options)
-
+  !hasLogin.value && handleLogin()
   hasLogin.value && useUserStore().getUserInfo()
 })
 // #ifndef MP-WEIXIN

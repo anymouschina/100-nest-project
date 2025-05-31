@@ -1,6 +1,7 @@
 <template>
   <view class="fg-tabbar-container">
-    <wd-tabbar v-model="activeTab" shape="round" @change="handleChange" fixed safe-area-inset-bottom placeholder>
+    
+    <wd-tabbar   v-model="activeTab" shape="round" @change="handleChange" fixed safe-area-inset-bottom placeholder  activeColor="#52c41a">
       <!-- 首页 -->
       <wd-tabbar-item name="home" title="首页" icon="home"></wd-tabbar-item>
       

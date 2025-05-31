@@ -751,4 +751,7 @@ const navigateToService = (type: string) => {
     }
   }
 }
+page{
+  background-color: linear-gradient(180deg, #f8fffe 0%, #f0f9f0 50%, #ffffff 100%);;
+}
 </style>
