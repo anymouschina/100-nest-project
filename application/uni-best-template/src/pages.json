@@ -1,7 +1,7 @@
 {
   "globalStyle": {
     "navigationStyle": "default",
-    "navigationBarTitleText": "unibest",
+    "navigationBarTitleText": "三棵树防水修缮",
     "navigationBarBackgroundColor": "#f8f8f8",
     "navigationBarTextStyle": "black",
     "backgroundColor": "#FFFFFF"
@@ -17,10 +17,10 @@
   "tabBar": {
     "custom": true,
     "color": "#999999",
-    "selectedColor": "#018d71",
-    "backgroundColor": "#F8F8F8",
+    "selectedColor": "#2c722c",
+    "backgroundColor": "#FFFFFF",
     "borderStyle": "black",
-    "height": "50px",
+    "height": "56px",
     "fontSize": "10px",
     "iconWidth": "24px",
     "spacing": "3px",
@@ -32,10 +32,10 @@
         "text": "首页"
       },
       {
-        "iconPath": "static/tabbar/example.png",
-        "selectedIconPath": "static/tabbar/exampleHL.png",
-        "pagePath": "pages/about/about",
-        "text": "关于"
+        "iconPath": "static/tabbar/appointment.png",
+        "selectedIconPath": "static/tabbar/appointmentHL.png",
+        "pagePath": "pages/appointment/index",
+        "text": "一键预约"
       },
       {
         "iconPath": "static/tabbar/personal.png",
@@ -59,6 +59,14 @@
       "type": "page",
       "style": {
         "navigationBarTitleText": "关于",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/appointment/index",
+      "type": "page",
+      "style": {
+        "navigationBarTitleText": "一键预约",
         "navigationStyle": "custom"
       }
     },

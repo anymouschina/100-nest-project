@@ -3,7 +3,7 @@ import { defineUniPages } from '@uni-helper/vite-plugin-uni-pages'
 export default defineUniPages({
   globalStyle: {
     navigationStyle: 'default',
-    navigationBarTitleText: 'unibest',
+    navigationBarTitleText: '三棵树防水修缮',
     navigationBarBackgroundColor: '#f8f8f8',
     navigationBarTextStyle: 'black',
     backgroundColor: '#FFFFFF',
@@ -17,14 +17,14 @@ export default defineUniPages({
         'z-paging/components/z-paging$1/z-paging$1.vue',
     },
   },
-  // 如果不需要tabBar，可以注释掉这个配置，或者直接删除
+  // 使用自定义tabBar
   tabBar: {
     custom: true,
     color: '#999999',
-    selectedColor: '#018d71',
-    backgroundColor: '#F8F8F8',
+    selectedColor: '#2c722c',
+    backgroundColor: '#FFFFFF',
     borderStyle: 'black',
-    height: '50px',
+    height: '56px',
     fontSize: '10px',
     iconWidth: '24px',
     spacing: '3px',
@@ -36,10 +36,10 @@ export default defineUniPages({
         text: '首页',
       },
       {
-        iconPath: 'static/tabbar/example.png',
-        selectedIconPath: 'static/tabbar/exampleHL.png',
-        pagePath: 'pages/about/about',
-        text: '关于',
+        iconPath: 'static/tabbar/appointment.png',
+        selectedIconPath: 'static/tabbar/appointmentHL.png',
+        pagePath: 'pages/appointment/index',
+        text: '一键预约',
       },
       {
         iconPath: 'static/tabbar/personal.png',
