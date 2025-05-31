@@ -1,6 +1,7 @@
 <route lang="json5">
 {
   style: {
+    navigationStyle: 'custom',
     navigationBarTitleText: '我的',
   },
 }
@@ -8,7 +9,6 @@
 
 <template>
   <view class="profile-container">
-    {{ JSON.stringify(userStore.userInfo) }}
     <!-- 用户信息区域 -->
     <view class="user-info-section">
       <!-- #ifdef MP-WEIXIN -->
