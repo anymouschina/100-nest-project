@@ -9,138 +9,216 @@
 </route>
 <template>
   <view class="page-container">
-    <!-- 顶部横幅区域 -->
-    <view class="banner-section">
-      <!-- 品牌标志和名称 -->
+    <!-- 顶部banner轮播图 -->
+    <view class="banner-swiper-section mb-5 h-400rpx">
+      <wd-swiper 
+        class="banner-swiper" 
+        height="400rpx" 
+        :autoplay="true" 
+        :duration="4000"
+        :list="bannerList"
+        indicator-color="rgba(255,255,255,0.4)"
+        indicator-active-color="#2c722c"
+        indicator-position="bottom"
+        @click="handleBannerClick"
+      ></wd-swiper>
+      <!-- 科技感装饰元素 -->
+      <view class="tech-decoration">
+        <view class="tech-dot tech-dot-1"></view>
+        <view class="tech-dot tech-dot-2"></view>
+        <view class="tech-dot tech-dot-3"></view>
+      </view>
+    </view>
+
+    <!-- 品牌标识卡片 -->
+    <view class="brand-card ">
       <view class="brand-header">
         <view class="brand-logo">
-          <view class="logo-icon">
-            <wd-icon name="home" size="24px" color="#2c722c"></wd-icon>
+          <view class="logo-container">
+            <wd-icon name="home" size="50rpx" color="#2c722c"></wd-icon>
+            <view class="logo-glow"></view>
           </view>
-          <text class="brand-name">三棵树防水修缮</text>
-        </view>
-        <view class="brand-subtitle">专业防水 · 品质保障</view>
-      </view>
-      
-      <!-- 大幅品牌宣传图 -->
-      <view class="banner-image-container">
-        <view class="banner-content">
-          <view class="worker-avatar">
-            <wd-icon name="user" size="40px" color="#fff"></wd-icon>
-          </view>
-          <view class="banner-text">
-            <text class="main-title">专业施工人员</text>
-            <text class="sub-title">持证上岗 · 经验丰富</text>
-          </view>
-        </view>
-        <view class="banner-decoration"></view>
-      </view>
-      
-      <!-- 品牌认证标志 -->
-      <view class="certification-badges">
-        <view class="badge">
-          <wd-icon name="check-checked" size="16px" color="#d4a01f"></wd-icon>
-          <text>中国奥委会官方涂料独家供应商</text>
-        </view>
-        <view class="badge">
-          <wd-icon name="shield" size="16px" color="#2c722c"></wd-icon>
-          <text>质量保证 · 售后无忧</text>
-        </view>
-      </view>
-    </view>
-
-    <!-- 服务响应区域 -->
-    <view class="services-section">
-      <view class="section-title">
-        <text class="title-text">专业服务</text>
-        <text class="title-desc">一站式防水修缮解决方案</text>
-      </view>
-      
-      <view class="service-cards">
-        <!-- 防水补漏服务 -->
-        <view class="service-card" @click="navigateToService('repair')">
-          <view class="service-icon repair-icon">
-            <wd-icon name="tools" size="28px" color="#2c722c"></wd-icon>
-          </view>
-          <view class="service-content">
-            <view class="service-title">防水补漏</view>
-            <view class="service-features">
-              <view class="feature-item">
-                <wd-icon name="check-checked" size="12px" color="#52c41a"></wd-icon>
-                <text>专业师傅</text>
-              </view>
-              <view class="feature-item">
-                <wd-icon name="check-checked" size="12px" color="#52c41a"></wd-icon>
-                <text>免费上门</text>
-              </view>
-              <view class="feature-item">
-                <wd-icon name="check-checked" size="12px" color="#52c41a"></wd-icon>
-                <text>快速响应</text>
-              </view>
+          <view class="brand-info">
+            <text class="brand-name">三棵树防水修缮</text>
+            <view class="brand-tags">
+              <text class="tag">专业认证</text>
+              <text class="tag">品质保障</text>
             </view>
           </view>
-          <view class="service-arrow">
-            <wd-icon name="arrow-right" size="16px" color="#ccc"></wd-icon>
-          </view>
         </view>
-
-        <!-- 新房防水施工服务 -->
-        <view class="service-card" @click="navigateToService('new')">
-          <view class="service-icon construction-icon">
-            <wd-icon name="building" size="28px" color="#409eff"></wd-icon>
+        <!-- 信任标识 -->
+        <view class="trust-badges">
+          <view class="trust-item">
+            <wd-icon name="shield" size="32rpx" color="#52c41a"></wd-icon>
+            <text>质量保证</text>
           </view>
-          <view class="service-content">
-            <view class="service-title">新房防水施工</view>
-            <view class="service-features">
-              <view class="feature-item">
-                <wd-icon name="check-checked" size="12px" color="#52c41a"></wd-icon>
-                <text>包工包料</text>
-              </view>
-              <view class="feature-item">
-                <wd-icon name="check-checked" size="12px" color="#52c41a"></wd-icon>
-                <text>标准化施工</text>
-              </view>
-              <view class="feature-item">
-                <wd-icon name="check-checked" size="12px" color="#52c41a"></wd-icon>
-                <text>质保承诺</text>
-              </view>
-            </view>
-          </view>
-          <view class="service-arrow">
-            <wd-icon name="arrow-right" size="16px" color="#ccc"></wd-icon>
+          <view class="trust-item">
+            <wd-icon name="check-checked" size="32rpx" color="#52c41a"></wd-icon>
+            <text>官方认证</text>
           </view>
         </view>
       </view>
     </view>
 
-    <!-- 品牌展示区域 -->
-    <view class="brand-showcase">
-      <view class="showcase-content">
-        <!-- 品牌名称大字展示 -->
-        <view class="brand-display">
-          <view class="brand-logo-large">
-            <wd-icon name="home" size="48px" color="#2c722c"></wd-icon>
+    <!-- 服务功能区 -->
+    <view class="service-section">
+      <view class="section-header">
+        <view class="section-title">
+          <view class="title-main">
+            <wd-icon name="tools" size="40rpx" color="#2c722c"></wd-icon>
+            <text>专业服务</text>
           </view>
-          <view class="brand-text">
-            <text class="brand-main">三棵树</text>
-            <text class="brand-sub">防水修缮</text>
+          <view class="title-sub">AI智能匹配 · 一站式解决方案</view>
+        </view>
+        <view class="section-decoration"></view>
+      </view>
+      
+      <view class="service-grid">
+        <!-- 防水补漏卡片 -->
+        <view class="service-card primary-card" @click="navigateToService('repair')">
+          <view class="card-glow"></view>
+          <view class="card-inner">
+            <view class="card-header">
+              <view class="card-icon repair-icon">
+                <wd-icon name="tools" size="50rpx" color="#fff"></wd-icon>
+                <view class="icon-pulse"></view>
+              </view>
+              <view class="card-badge">热门</view>
+            </view>
+            <view class="card-content">
+              <view class="card-title">防水补漏</view>
+              <view class="card-desc">专业师傅 · 免费上门检测</view>
+              <view class="card-features">
+                <view class="feature">
+                  <wd-icon name="time" size="20rpx" color="#52c41a"></wd-icon>
+                  <text>30分钟响应</text>
+                </view>
+                <view class="feature">
+                  <wd-icon name="user" size="20rpx" color="#52c41a"></wd-icon>
+                  <text>持证师傅</text>
+                </view>
+              </view>
+              <wd-button 
+                type="primary" 
+                size="small" 
+                custom-style="margin-top:20rpx;background:linear-gradient(135deg, #2c722c 0%, #52c41a 100%);border:none;border-radius:25rpx;box-shadow:0 6rpx 16rpx rgba(44,114,44,0.3);font-size:26rpx;"
+              >
+                立即预约
+              </wd-button>
+            </view>
           </view>
         </view>
         
-        <!-- 服务店标识 -->
-        <view class="service-store-badge">
-          <text class="store-text">服务店</text>
-          <view class="store-decoration"></view>
+        <!-- 疏通管道卡片 -->
+        <view class="service-card secondary-card" @click="navigateToService('pipe')">
+          <view class="card-glow"></view>
+          <view class="card-inner">
+            <view class="card-header">
+              <view class="card-icon pipe-icon">
+                <wd-icon name="filter" size="50rpx" color="#fff"></wd-icon>
+                <view class="icon-pulse"></view>
+              </view>
+              <view class="card-badge">推荐</view>
+            </view>
+            <view class="card-content">
+              <view class="card-title">疏通管道</view>
+              <view class="card-desc">高压清洗 · 专业设备</view>
+              <view class="card-features">
+                <view class="feature">
+                  <wd-icon name="time" size="20rpx" color="#409eff"></wd-icon>
+                  <text>24小时服务</text>
+                </view>
+                <view class="feature">
+                  <wd-icon name="tools" size="20rpx" color="#409eff"></wd-icon>
+                  <text>专业设备</text>
+                </view>
+              </view>
+              <wd-button 
+                type="primary" 
+                size="small" 
+                custom-style="margin-top:20rpx;background:linear-gradient(135deg, #409eff 0%, #64b5ff 100%);border:none;border-radius:25rpx;box-shadow:0 6rpx 16rpx rgba(64,158,255,0.3);font-size:26rpx;"
+              >
+                立即预约
+              </wd-button>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+    
+    <!-- 专业优势展示 -->
+    <view class="advantage-section">
+      <view class="advantage-header">
+        <view class="advantage-title">
+          <wd-icon name="shield" size="36rpx" color="#2c722c"></wd-icon>
+          <text>专业优势</text>
+        </view>
+        <view class="advantage-subtitle">值得信赖的专业服务团队</view>
+      </view>
+      
+      <view class="advantage-grid">
+        <view class="advantage-item">
+          <view class="advantage-icon">
+            <wd-icon name="check-checked" size="40rpx" color="#52c41a"></wd-icon>
+            <view class="icon-bg"></view>
+          </view>
+          <view class="advantage-content">
+            <view class="advantage-name">品牌认证</view>
+            <view class="advantage-desc">中国奥委会官方供应商</view>
+          </view>
         </view>
         
-        <!-- 简洁的品牌标识 -->
-        <view class="brand-slogan">
-          <text class="slogan-text">一站式防水修缮服务</text>
-          <view class="slogan-highlights">
-            <text class="highlight">专业</text>
-            <text class="highlight">可靠</text>
-            <text class="highlight">高效</text>
+        <view class="advantage-item">
+          <view class="advantage-icon">
+            <wd-icon name="user" size="40rpx" color="#409eff"></wd-icon>
+            <view class="icon-bg"></view>
           </view>
+          <view class="advantage-content">
+            <view class="advantage-name">专业团队</view>
+            <view class="advantage-desc">持证上岗 经验丰富</view>
+          </view>
+        </view>
+        
+        <view class="advantage-item">
+          <view class="advantage-icon">
+            <wd-icon name="shield" size="40rpx" color="#f56c6c"></wd-icon>
+            <view class="icon-bg"></view>
+          </view>
+          <view class="advantage-content">
+            <view class="advantage-name">服务保障</view>
+            <view class="advantage-desc">质量保证 售后无忧</view>
+          </view>
+        </view>
+        
+        <view class="advantage-item">
+          <view class="advantage-icon">
+            <wd-icon name="time" size="40rpx" color="#faad14"></wd-icon>
+            <view class="icon-bg"></view>
+          </view>
+          <view class="advantage-content">
+            <view class="advantage-name">响应速度</view>
+            <view class="advantage-desc">快速上门 高效服务</view>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 数据统计展示 -->
+    <view class="stats-section">
+      <view class="stats-container">
+        <view class="stat-item">
+          <view class="stat-number">10000+</view>
+          <view class="stat-label">服务客户</view>
+        </view>
+        <view class="stat-divider"></view>
+        <view class="stat-item">
+          <view class="stat-number">99.8%</view>
+          <view class="stat-label">满意度</view>
+        </view>
+        <view class="stat-divider"></view>
+        <view class="stat-item">
+          <view class="stat-number">24h</view>
+          <view class="stat-label">响应时间</view>
         </view>
       </view>
     </view>
@@ -152,15 +230,51 @@
 
 <script lang="ts" setup>
 import FgTabbar from '@/components/fg-tabbar/fg-tabbar.vue'
+import { ref } from 'vue'
 
 defineOptions({
   name: 'Home',
 })
 
+// 轮播图数据 - 使用防水相关的内容
+const bannerList = ref([
+  {
+    value: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNzUwIiBoZWlnaHQ9IjQwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8ZGVmcz4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iZ3JhZGllbnQxIiB4MT0iMCUiIHkxPSIwJSIgeDI9IjEwMCUiIHkyPSIxMDAlIj4KICAgICAgPHN0b3Agb2Zmc2V0PSIwJSIgc3R5bGU9InN0b3AtY29sb3I6IzJjNzIyYztzdG9wLW9wYWNpdHk6MSIgLz4KICAgICAgPHN0b3Agb2Zmc2V0PSIxMDAlIiBzdHlsZT0ic3RvcC1jb2xvcjojNTJjNDFhO3N0b3Atb3BhY2l0eToxIiAvPgogICAgPC9saW5lYXJHcmFkaWVudD4KICA8L2RlZnM+CiAgPHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0idXJsKCNncmFkaWVudDEpIi8+CiAgPHRleHQgeD0iNTAlIiB5PSI0MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSI0OCIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj7pmLLmsLTkuJPlrrY8L3RleHQ+CiAgPHRleHQgeD0iNTAlIiB5PSI2MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIyNCIgZmlsbD0icmdiYSgyNTUsMjU1LDI1NSwwLjkpIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj7kuJPkuJrmlr3lt6Ugwrcg5ZOB6LSo5L+d6ZqcPC90ZXh0Pgo8L3N2Zz4K',
+    title: '防水补漏专家',
+    summary: '专业施工 · 品质保障',
+    type: 'image'
+  },
+  {
+    value: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNzUwIiBoZWlnaHQ9IjQwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8ZGVmcz4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iZ3JhZGllbnQyIiB4MT0iMCUiIHkxPSIwJSIgeDI9IjEwMCUiIHkyPSIxMDAlIj4KICAgICAgPHN0b3Agb2Zmc2V0PSIwJSIgc3R5bGU9InN0b3AtY29sb3I6IzQwOWVmZjtzdG9wLW9wYWNpdHk6MSIgLz4KICAgICAgPHN0b3Agb2Zmc2V0PSIxMDAlIiBzdHlsZT0ic3RvcC1jb2xvcjojNjRiNWZmO3N0b3Atb3BhY2l0eToxIiAvPgogICAgPC9saW5lYXJHcmFkaWVudD4KICA8L2RlZnM+CiAgPHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0idXJsKCNncmFkaWVudDIpIi8+CiAgPHRleHQgeD0iNTAlIiB5PSI0MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSI0OCIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj7mlrDmiL/pmLLmsLQ8L3RleHQ+CiAgPHRleHQgeD0iNTAlIiB5PSI2MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIyNCIgZmlsbD0icmdiYSgyNTUsMjU1LDI1NSwwLjkpIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj7moIflh4blMJbmlr3lt6Ugwrcg5Y2B5bm06LSo5L+dPC90ZXh0Pgo8L3N2Zz4K',
+    title: '新房防水施工',
+    summary: '标准化施工 · 十年质保',
+    type: 'image'
+  },
+  {
+    value: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNzUwIiBoZWlnaHQ9IjQwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8ZGVmcz4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iZ3JhZGllbnQzIiB4MT0iMCUiIHkxPSIwJSIgeDI9IjEwMCUiIHkyPSIxMDAlIj4KICAgICAgPHN0b3Agb2Zmc2V0PSIwJSIgc3R5bGU9InN0b3AtY29sb3I6I2Y1NmM2YztzdG9wLW9wYWNpdHk6MSIgLz4KICAgICAgPHN0b3Agb2Zmc2V0PSIxMDAlIiBzdHlsZT0ic3RvcC1jb2xvcjojZmY5ZjlmO3N0b3Atb3BhY2l0eToxIiAvPgogICAgPC9saW5lYXJHcmFkaWVudD4KICA8L2RlZnM+CiAgPHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0idXJsKCNncmFkaWVudDMpIi8+CiAgPHRleHQgeD0iNTAlIiB5PSI0MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSI0OCIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj7nlY/pgJrnsKHpgZM8L3RleHQ+CiAgPHRleHQgeD0iNTAlIiB5PSI2MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIyNCIgZmlsbD0icmdiYSgyNTUsMjU1LDI1NSwwLjkpIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj7lv6vpgJ/lk43lupQgwrcg5LiT5Lia6K6+5aSHPC90ZXh0Pgo8L3N2Zz4K',
+    title: '管道疏通',
+    summary: '快速响应 · 专业设备',
+    type: 'image'
+  }
+])
+
+// 轮播图点击
+const handleBannerClick = (index: number, item: any) => {
+  console.log('点击了轮播图', index, item)
+  if (index === 0) {
+    navigateToService('repair')
+  } else if (index === 1) {
+    navigateToService('new')
+  } else if (index === 2) {
+    navigateToService('pipe')
+  }
+}
+
 // 服务项目导航
 const navigateToService = (type: string) => {
   const serviceMap = {
     repair: '防水补漏',
+    pipe: '疏通管道',
     new: '新房防水施工'
   }
   
@@ -186,316 +300,454 @@ const navigateToService = (type: string) => {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  background: linear-gradient(180deg, #f0f9f0 0%, #ffffff 100%);
+  background: linear-gradient(180deg, #f8fffe 0%, #f0f9f0 50%, #ffffff 100%);
 }
 
-// 顶部横幅区域
-.banner-section {
+// 顶部banner轮播图
+.banner-swiper-section {
+  position: relative;
   width: 100%;
-  background: linear-gradient(135deg, #2c722c 0%, #52c41a 100%);
-  color: white;
+  overflow: hidden;
+  
+  .banner-swiper {
+    --wot-swiper-nav-dot-color: rgba(255, 255, 255, 0.4);
+    --wot-swiper-nav-dot-active-color: #2c722c;
+    --wot-swiper-nav-dot-size: 10px;
+    --wot-swiper-nav-dot-margin: 0 6px;
+    // border-radius: 0 0 40rpx 40rpx;
+    overflow: hidden;
+  }
+  
+  .tech-decoration {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    
+    .tech-dot {
+      position: absolute;
+      border-radius: 50%;
+      background: rgba(44, 114, 44, 0.1);
+      animation: float 6s ease-in-out infinite;
+      
+      &.tech-dot-1 {
+        width: 120rpx;
+        height: 120rpx;
+        top: 10%;
+        right: 10%;
+        animation-delay: 0s;
+      }
+      
+      &.tech-dot-2 {
+        width: 80rpx;
+        height: 80rpx;
+        top: 60%;
+        left: 5%;
+        animation-delay: 2s;
+      }
+      
+      &.tech-dot-3 {
+        width: 60rpx;
+        height: 60rpx;
+        top: 30%;
+        left: 20%;
+        animation-delay: 4s;
+      }
+    }
+  }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px) scale(1); opacity: 0.7; }
+  50% { transform: translateY(-20px) scale(1.1); opacity: 1; }
+}
+
+// 品牌标识卡片
+.brand-card {
+  margin: -25rpx 25rpx 25rpx;
+  background: #fff;
+  border-radius: 25rpx;
+  padding: 35rpx;
+  box-shadow: 0 15rpx 50rpx rgba(44, 114, 44, 0.08);
+  border: 1rpx solid rgba(44, 114, 44, 0.1);
   
   .brand-header {
-    padding: 40rpx 30rpx 20rpx;
-    
     .brand-logo {
       display: flex;
       align-items: center;
-      margin-bottom: 10rpx;
+      margin-bottom: 25rpx;
       
-      .logo-icon {
-        width: 60rpx;
-        height: 60rpx;
-        background-color: rgba(255, 255, 255, 0.2);
-        border-radius: 50%;
+      .logo-container {
+        position: relative;
+        width: 90rpx;
+        height: 90rpx;
         display: flex;
         justify-content: center;
         align-items: center;
-        margin-right: 20rpx;
-      }
-      
-      .brand-name {
-        font-size: 40rpx;
-        font-weight: bold;
-        color: #fff;
-      }
-    }
-    
-    .brand-subtitle {
-      font-size: 28rpx;
-      color: rgba(255, 255, 255, 0.9);
-      margin-left: 80rpx;
-    }
-  }
-  
-  .banner-image-container {
-    position: relative;
-    padding: 30rpx;
-    margin: 0 30rpx 20rpx;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 20rpx;
-    backdrop-filter: blur(10px);
-    
-    .banner-content {
-      display: flex;
-      align-items: center;
-      
-      .worker-avatar {
-        width: 100rpx;
-        height: 100rpx;
-        background: rgba(255, 255, 255, 0.2);
+        background: rgba(44, 114, 44, 0.1);
         border-radius: 50%;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        margin-right: 30rpx;
+        margin-right: 25rpx;
+        
+        .logo-glow {
+          position: absolute;
+          top: -5rpx;
+          left: -5rpx;
+          right: -5rpx;
+          bottom: -5rpx;
+          border-radius: 50%;
+          background: linear-gradient(135deg, rgba(44, 114, 44, 0.2), rgba(82, 196, 26, 0.2));
+          animation: pulse 3s ease-in-out infinite;
+        }
       }
       
-      .banner-text {
+      .brand-info {
         flex: 1;
         
-        .main-title {
-          display: block;
+        .brand-name {
           font-size: 36rpx;
           font-weight: bold;
-          color: #fff;
-          margin-bottom: 10rpx;
+          color: #2c722c;
+          display: block;
+          margin-bottom: 12rpx;
         }
         
-        .sub-title {
-          font-size: 26rpx;
-          color: rgba(255, 255, 255, 0.8);
+        .brand-tags {
+          display: flex;
+          gap: 12rpx;
+          
+          .tag {
+            padding: 6rpx 14rpx;
+            background: linear-gradient(135deg, rgba(44, 114, 44, 0.1), rgba(82, 196, 26, 0.1));
+            color: #2c722c;
+            font-size: 20rpx;
+            border-radius: 18rpx;
+            border: 1rpx solid rgba(44, 114, 44, 0.2);
+          }
         }
       }
     }
     
-    .banner-decoration {
-      position: absolute;
-      top: -10rpx;
-      right: -10rpx;
-      width: 40rpx;
-      height: 40rpx;
-      background: rgba(255, 255, 255, 0.3);
-      border-radius: 50%;
-    }
-  }
-  
-  .certification-badges {
-    padding: 0 30rpx 30rpx;
-    display: flex;
-    flex-direction: column;
-    gap: 15rpx;
-    
-    .badge {
+    .trust-badges {
       display: flex;
-      align-items: center;
-      background: rgba(255, 255, 255, 0.15);
-      padding: 15rpx 20rpx;
-      border-radius: 30rpx;
+      justify-content: space-around;
+      padding-top: 25rpx;
+      border-top: 1rpx solid #f0f0f0;
       
-      text {
-        font-size: 24rpx;
-        color: rgba(255, 255, 255, 0.9);
-        margin-left: 15rpx;
+      .trust-item {
+        display: flex;
+        align-items: center;
+        gap: 8rpx;
+        
+        text {
+          font-size: 24rpx;
+          color: #666;
+          font-weight: 500;
+        }
       }
     }
   }
 }
 
-// 服务响应区域
-.services-section {
-  padding: 40rpx 30rpx;
+@keyframes pulse {
+  0%, 100% { opacity: 0.5; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.05); }
+}
+
+// 服务功能区
+.service-section {
+  padding: 0 25rpx 25rpx;
   
-  .section-title {
-    text-align: center;
-    margin-bottom: 40rpx;
+  .section-header {
+    position: relative;
+    margin-bottom: 30rpx;
     
-    .title-text {
-      display: block;
-      font-size: 44rpx;
-      font-weight: bold;
-      color: #2c722c;
-      margin-bottom: 15rpx;
+    .section-title {
+      .title-main {
+        display: flex;
+        align-items: center;
+        gap: 12rpx;
+        font-size: 36rpx;
+        font-weight: bold;
+        color: #333;
+        margin-bottom: 12rpx;
+      }
+      
+      .title-sub {
+        font-size: 26rpx;
+        color: #666;
+        margin-left: 52rpx;
+      }
     }
     
-    .title-desc {
-      font-size: 28rpx;
-      color: #666;
+    .section-decoration {
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 80rpx;
+      height: 5rpx;
+      background: linear-gradient(90deg, #2c722c, #52c41a);
+      border-radius: 3rpx;
     }
   }
   
-  .service-cards {
+  .service-grid {
     display: flex;
-    flex-direction: column;
-    gap: 25rpx;
+    justify-content: space-between;
+    gap: 20rpx;
     
     .service-card {
-      background: #fff;
-      border-radius: 24rpx;
-      padding: 35rpx;
-      display: flex;
-      align-items: center;
-      box-shadow: 0 8rpx 32rpx rgba(44, 114, 44, 0.08);
-      border: 2rpx solid transparent;
-      transition: all 0.3s ease;
+      position: relative;
+      flex: 1;
+      border-radius: 25rpx;
+      overflow: hidden;
       
-      &:active {
-        transform: scale(0.98);
-        border-color: #2c722c;
+      .card-glow {
+        position: absolute;
+        top: -2rpx;
+        left: -2rpx;
+        right: -2rpx;
+        bottom: -2rpx;
+        border-radius: 25rpx;
+        opacity: 0;
+        transition: opacity 0.3s ease;
       }
       
-      .service-icon {
-        width: 100rpx;
-        height: 100rpx;
-        border-radius: 20rpx;
+      &.primary-card .card-glow {
+        background: linear-gradient(135deg, rgba(44, 114, 44, 0.3), rgba(82, 196, 26, 0.3));
+      }
+      
+      &.secondary-card .card-glow {
+        background: linear-gradient(135deg, rgba(64, 158, 255, 0.3), rgba(100, 181, 255, 0.3));
+      }
+      
+      &:active .card-glow {
+        opacity: 1;
+      }
+      
+      .card-inner {
+        background: #fff;
+        padding: 30rpx;
+        height: 100%;
         display: flex;
-        justify-content: center;
-        align-items: center;
-        margin-right: 30rpx;
+        flex-direction: column;
+        box-shadow: 0 12rpx 35rpx rgba(0, 0, 0, 0.08);
+        border-radius: 25rpx;
         
-        &.repair-icon {
-          background: rgba(44, 114, 44, 0.1);
-        }
-        
-        &.construction-icon {
-          background: rgba(64, 158, 255, 0.1);
-        }
-      }
-      
-      .service-content {
-        flex: 1;
-        
-        .service-title {
-          font-size: 36rpx;
-          font-weight: bold;
-          color: #333;
-          margin-bottom: 20rpx;
-        }
-        
-        .service-features {
+        .card-header {
+          position: relative;
           display: flex;
-          flex-direction: column;
-          gap: 12rpx;
+          justify-content: space-between;
+          align-items: flex-start;
+          margin-bottom: 20rpx;
           
-          .feature-item {
+          .card-icon {
+            position: relative;
+            width: 100rpx;
+            height: 100rpx;
+            border-radius: 20rpx;
             display: flex;
+            justify-content: center;
             align-items: center;
             
-            text {
-              font-size: 26rpx;
-              color: #666;
-              margin-left: 12rpx;
+            .icon-pulse {
+              position: absolute;
+              top: -5rpx;
+              left: -5rpx;
+              right: -5rpx;
+              bottom: -5rpx;
+              border-radius: 20rpx;
+              opacity: 0.3;
+              animation: iconPulse 2s ease-in-out infinite;
+            }
+            
+            &.repair-icon {
+              background: linear-gradient(135deg, #2c722c, #52c41a);
+              
+              .icon-pulse {
+                background: linear-gradient(135deg, #2c722c, #52c41a);
+              }
+            }
+            
+            &.pipe-icon {
+              background: linear-gradient(135deg, #409eff, #64b5ff);
+              
+              .icon-pulse {
+                background: linear-gradient(135deg, #409eff, #64b5ff);
+              }
+            }
+          }
+          
+          .card-badge {
+            padding: 6rpx 14rpx;
+            background: linear-gradient(135deg, #ff6b6b, #ff8e8e);
+            color: #fff;
+            font-size: 18rpx;
+            border-radius: 12rpx;
+            font-weight: bold;
+          }
+        }
+        
+        .card-content {
+          flex: 1;
+          
+          .card-title {
+            font-size: 32rpx;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 12rpx;
+          }
+          
+          .card-desc {
+            font-size: 24rpx;
+            color: #666;
+            margin-bottom: 20rpx;
+          }
+          
+          .card-features {
+            display: flex;
+            flex-direction: column;
+            gap: 12rpx;
+            margin-bottom: 20rpx;
+            
+            .feature {
+              display: flex;
+              align-items: center;
+              gap: 10rpx;
+              
+              text {
+                font-size: 22rpx;
+                color: #666;
+              }
             }
           }
         }
       }
+    }
+  }
+}
+
+@keyframes iconPulse {
+  0%, 100% { transform: scale(1); opacity: 0.3; }
+  50% { transform: scale(1.1); opacity: 0.6; }
+}
+
+// 专业优势展示
+.advantage-section {
+  margin: 25rpx;
+  background: #fff;
+  border-radius: 25rpx;
+  padding: 35rpx;
+  box-shadow: 0 12rpx 35rpx rgba(0, 0, 0, 0.06);
+  
+  .advantage-header {
+    margin-bottom: 30rpx;
+    
+    .advantage-title {
+      display: flex;
+      align-items: center;
+      gap: 12rpx;
+      font-size: 32rpx;
+      font-weight: bold;
+      color: #333;
+      margin-bottom: 12rpx;
+    }
+    
+    .advantage-subtitle {
+      font-size: 24rpx;
+      color: #666;
+      margin-left: 48rpx;
+    }
+  }
+  
+  .advantage-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 25rpx;
+    
+    .advantage-item {
+      display: flex;
+      align-items: center;
+      gap: 18rpx;
+      padding: 20rpx;
+      background: linear-gradient(135deg, rgba(248, 255, 254, 0.8), rgba(240, 249, 240, 0.8));
+      border-radius: 18rpx;
+      border: 1rpx solid rgba(44, 114, 44, 0.1);
       
-      .service-arrow {
-        margin-left: 20rpx;
+      .advantage-icon {
+        position: relative;
+        width: 70rpx;
+        height: 70rpx;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        
+        .icon-bg {
+          position: absolute;
+          top: -5rpx;
+          left: -5rpx;
+          right: -5rpx;
+          bottom: -5rpx;
+          background: rgba(255, 255, 255, 0.8);
+          border-radius: 50%;
+          box-shadow: 0 6rpx 16rpx rgba(0, 0, 0, 0.1);
+        }
+      }
+      
+      .advantage-content {
+        flex: 1;
+        
+        .advantage-name {
+          font-size: 26rpx;
+          font-weight: bold;
+          color: #333;
+          margin-bottom: 6rpx;
+        }
+        
+        .advantage-desc {
+          font-size: 20rpx;
+          color: #666;
+          line-height: 1.4;
+        }
       }
     }
   }
 }
 
-// 品牌展示区域
-.brand-showcase {
-  flex: 1;
-  margin: 20rpx 30rpx 30rpx;
-  background: linear-gradient(135deg, #e8f4e8 0%, #f0f9f0 100%);
-  border-radius: 24rpx;
-  overflow: hidden;
+// 数据统计展示
+.stats-section {
+  margin: 0 25rpx 25rpx;
+  background: linear-gradient(135deg, #2c722c, #52c41a);
+  border-radius: 25rpx;
+  padding: 35rpx;
   
-  .showcase-content {
-    padding: 50rpx 40rpx;
+  .stats-container {
     display: flex;
-    flex-direction: column;
+    justify-content: space-around;
     align-items: center;
-    text-align: center;
     
-    .brand-display {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      margin-bottom: 40rpx;
+    .stat-item {
+      text-align: center;
+      color: #fff;
       
-      .brand-logo-large {
-        width: 120rpx;
-        height: 120rpx;
-        background: rgba(44, 114, 44, 0.1);
-        border-radius: 50%;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        margin-bottom: 30rpx;
-      }
-      
-      .brand-text {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        
-        .brand-main {
-          font-size: 56rpx;
-          font-weight: bold;
-          color: #2c722c;
-          line-height: 1.2;
-        }
-        
-        .brand-sub {
-          font-size: 40rpx;
-          font-weight: 600;
-          color: #52c41a;
-          margin-top: 10rpx;
-        }
-      }
-    }
-    
-    .service-store-badge {
-      position: relative;
-      margin-bottom: 40rpx;
-      
-      .store-text {
-        font-size: 72rpx;
+      .stat-number {
+        font-size: 42rpx;
         font-weight: bold;
-        color: #2c722c;
-        text-shadow: 2rpx 2rpx 4rpx rgba(44, 114, 44, 0.1);
+        margin-bottom: 8rpx;
+        text-shadow: 0 2rpx 4rpx rgba(0, 0, 0, 0.2);
       }
       
-      .store-decoration {
-        position: absolute;
-        bottom: -10rpx;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 80rpx;
-        height: 6rpx;
-        background: linear-gradient(90deg, #2c722c, #52c41a);
-        border-radius: 3rpx;
+      .stat-label {
+        font-size: 22rpx;
+        opacity: 0.9;
       }
     }
     
-    .brand-slogan {
-      .slogan-text {
-        display: block;
-        font-size: 32rpx;
-        color: #2c722c;
-        margin-bottom: 30rpx;
-        font-weight: 500;
-      }
-      
-      .slogan-highlights {
-        display: flex;
-        justify-content: center;
-        gap: 20rpx;
-        
-        .highlight {
-          padding: 12rpx 24rpx;
-          background: rgba(44, 114, 44, 0.1);
-          color: #2c722c;
-          font-size: 24rpx;
-          border-radius: 20rpx;
-          font-weight: 500;
-        }
-      }
+    .stat-divider {
+      width: 2rpx;
+      height: 70rpx;
+      background: rgba(255, 255, 255, 0.3);
     }
   }
 }
