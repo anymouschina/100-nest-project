@@ -82,6 +82,9 @@
         <wd-button type="primary" v-else block @click="handleLogin">登录</wd-button>
       </view>
     </view>
+    
+    <!-- 自定义tabbar -->
+    <fg-tabbar current="mine"></fg-tabbar>
   </view>
 </template>
 
@@ -91,6 +94,7 @@ import { useToast } from 'wot-design-uni'
 import { uploadFileUrl, useUpload } from '@/utils/uploadFile'
 import { storeToRefs } from 'pinia'
 import { IUploadSuccessInfo } from '@/api/login.typings'
+import FgTabbar from '@/components/fg-tabbar/fg-tabbar.vue'
 
 const userStore = useUserStore()
 

@@ -22,15 +22,24 @@
       <RequestComp />
       <UploadComp />
     </view>
+    
+    <!-- 自定义tabbar -->
+    <fg-tabbar current="about"></fg-tabbar>
   </view>
 </template>
 
 <script lang="ts" setup>
 import RequestComp from './components/request.vue'
 import UploadComp from './components/upload.vue'
+import FgTabbar from '@/components/fg-tabbar/fg-tabbar.vue'
 
 // 获取屏幕边界到安全区域距离
 const { safeAreaInsets } = uni.getSystemInfoSync()
+
+// 页面显示时通知tabbar更新
+onShow(() => {
+  uni.$emit('tabChange')
+})
 </script>
 
 <style lang="scss" scoped>
