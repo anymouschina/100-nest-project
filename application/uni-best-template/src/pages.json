@@ -63,6 +63,14 @@
       }
     },
     {
+      "path": "pages/appointment/form",
+      "type": "page",
+      "style": {
+        "navigationBarTitleText": "服务预约",
+        "navigationStyle": "custom"
+      }
+    },
+    {
       "path": "pages/appointment/index",
       "type": "page",
       "style": {

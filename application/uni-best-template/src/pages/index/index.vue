@@ -58,6 +58,12 @@
           </view>
         </view>
       </view>
+      
+      <!-- 一键预约按钮 -->
+      <view class="quick-appointment" @click="navigateToAppointment">
+        <wd-icon name="service" size="40rpx" color="#fff"></wd-icon>
+        <text>一键预约</text>
+      </view>
     </view>
 
     <!-- 服务功能区 -->
@@ -278,19 +284,16 @@ const navigateToService = (type: string) => {
     new: '新房防水施工'
   }
   
-  uni.showModal({
-    title: serviceMap[type],
-    content: `即将为您提供${serviceMap[type]}服务，是否继续？`,
-    confirmColor: '#2c722c',
-    success: (res) => {
-      if (res.confirm) {
-        uni.showToast({
-          title: `正在为您安排${serviceMap[type]}服务`,
-          icon: 'none',
-          duration: 2000
-        })
-      }
-    }
+  // 直接跳转到预约表单页面
+  uni.navigateTo({
+    url: `/pages/appointment/form`
+  })
+}
+
+// 一键预约
+const navigateToAppointment = () => {
+  uni.navigateTo({
+    url: '/pages/appointment/form'
   })
 }
 </script>
@@ -372,6 +375,30 @@ const navigateToService = (type: string) => {
   padding: 35rpx;
   box-shadow: 0 15rpx 50rpx rgba(44, 114, 44, 0.08);
   border: 1rpx solid rgba(44, 114, 44, 0.1);
+  position: relative;
+  
+  // 一键预约按钮样式
+  .quick-appointment {
+    position: absolute;
+    top: -30rpx;
+    right: 20rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 15rpx 30rpx;
+    background: linear-gradient(135deg, #2c722c, #52c41a);
+    color: #fff;
+    border-radius: 30rpx;
+    box-shadow: 0 10rpx 20rpx rgba(44, 114, 44, 0.2);
+    z-index: 10;
+    animation: pulse 2s infinite;
+    
+    text {
+      margin-left: 10rpx;
+      font-size: 28rpx;
+      font-weight: bold;
+    }
+  }
   
   .brand-header {
     .brand-logo {
@@ -451,8 +478,9 @@ const navigateToService = (type: string) => {
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 0.5; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.05); }
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
 }
 
 // 服务功能区

@@ -15,7 +15,7 @@
       <view class="user-info-content">
         <!-- #ifdef MP-WEIXIN -->
         <button class="avatar-button" open-type="chooseAvatar" @chooseavatar="onChooseAvatar">
-          <wd-img :src="userStore.userInfo.avatar" width="80px" height="80px" radius="50%"></wd-img>
+          <wd-img :src="userStore.userInfo.avatar" width="100%" height="100%" radius="50%"></wd-img>
         </button>
         <!-- #endif -->
         <!-- #ifndef MP-WEIXIN -->
@@ -395,7 +395,7 @@ const handleLogout = () => {
 .user-details {
   position: relative;
   flex: 1;
-  color: #fff;
+  color: black;
 }
 
 .username {

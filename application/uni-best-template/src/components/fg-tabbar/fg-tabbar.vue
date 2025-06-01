@@ -6,7 +6,7 @@
       <wd-tabbar-item name="home" title="首页" icon="home"></wd-tabbar-item>
       
       <!-- 一键预约 - 中间突出按钮 -->
-      <view class="appointment-btn" @click="handleAppointmentClick">一预<br/>键约</view>
+      <wd-button round size="large" custom-class="appointment-btn" @click="handleAppointmentClick">一键预约</wd-button>
       
       <!-- 我的 -->
       <wd-tabbar-item name="mine" title="我的" icon="user"></wd-tabbar-item>
@@ -65,19 +65,9 @@ const tabRoutes = {
 
 // 一键预约点击事件
 const handleAppointmentClick = () => {
-  uni.showModal({
-    title: '一键预约',
-    content: '是否预约三棵树防水修缮服务？',
-    confirmColor: '#2c722c',
-    success: (res) => {
-      if (res.confirm) {
-        uni.showToast({
-          title: '预约成功，我们将尽快联系您',
-          icon: 'none',
-          duration: 2000
-        })
-      }
-    }
+ // 一键预约
+  uni.navigateTo({
+    url: '/pages/appointment/form'
   })
 }
 

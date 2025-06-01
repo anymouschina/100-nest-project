@@ -34,8 +34,9 @@ import { onShow } from '@dcloudio/uni-app'
 
 const themeVars: ConfigProviderThemeVars = {
   // colorTheme: 'red',
-  // buttonPrimaryBgColor: '#07c160',
-  // buttonPrimaryColor: '#07c160',
+  buttonPrimaryBgColor: 'linear-gradient(135deg, #2c722c 0%, #52c41a 100%)',
+  buttonPrimaryColor: '#fff',
+
 }
 const customStyle = ref('background-color: #f7f8fa;')
 // 是否显示返回箭头
