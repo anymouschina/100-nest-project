@@ -67,7 +67,7 @@ const tabRoutes = {
 const handleAppointmentClick = () => {
  // 一键预约
   uni.navigateTo({
-    url: '/pages/appointment/form'
+    url: '/pages/appointment/index'
   })
 }
 

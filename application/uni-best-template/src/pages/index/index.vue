@@ -286,14 +286,14 @@ const navigateToService = (type: string) => {
   
   // 直接跳转到预约表单页面
   uni.navigateTo({
-    url: `/pages/appointment/form`
+    url: `/pages/appointment/index`
   })
 }
 
 // 一键预约
 const navigateToAppointment = () => {
   uni.navigateTo({
-    url: '/pages/appointment/form'
+    url: '/pages/appointment/index'
   })
 }
 </script>
