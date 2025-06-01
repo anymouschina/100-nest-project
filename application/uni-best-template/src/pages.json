@@ -87,6 +87,20 @@
       }
     },
     {
+      "path": "pages/orders/detail",
+      "type": "page",
+      "style": {
+        "navigationBarTitleText": "订单详情"
+      }
+    },
+    {
+      "path": "pages/orders/index",
+      "type": "page",
+      "style": {
+        "navigationBarTitleText": "我的订单"
+      }
+    },
+    {
       "path": "pages/mine/about/index",
       "type": "page",
       "style": {

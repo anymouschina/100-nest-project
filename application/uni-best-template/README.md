@@ -175,3 +175,95 @@ Copyright (c) 2025 菲鸽
 <img alt="special sponsor appwrite" src="https://oss.laf.run/ukw0y1-site/pay/wepay.png" height="330" style="display:inline-block; height:330px;">
 <img alt="special sponsor appwrite" src="https://oss.laf.run/ukw0y1-site/pay/alipay.jpg" height="330" style="display:inline-block; height:330px; margin-left:10px;">
 </p>
+
+# 防水服务应用 uni-best-template
+
+基于 uniapp + Vue3 + TypeScript + wot-design-uni 的三棵树防水服务应用模板项目
+
+## 功能特点
+
+### 首页
+
+- 顶部轮播图展示防水服务案例和促销信息
+- 品牌标识区展示"三棵树防水"专业服务形象
+- 服务功能区块，包含"防水补漏"和"新房防水施工"两大核心服务
+- 专业优势展示区，突出品质保障、施工标准和响应速度
+- 数据统计展示，包含服务客户数量、客户满意度和响应时间
+
+### 一键预约
+
+- 服务类型选择（防水补漏/新房防水施工）
+- 联系人信息填写
+- 服务地址选择
+- 预约时间选择
+- 问题描述输入
+- 一键提交预约申请
+
+### 我的订单
+
+- 订单分类查看（全部订单、待接单、已接单、施工中、已完成）
+- 订单卡片展示重要信息（订单类型、状态、编号、地址等）
+- 订单详情页面，包含：
+  - 订单状态及进度展示
+  - 完整订单信息
+  - 联系人信息
+  - 服务工程师信息
+  - 问题描述详情
+  - 针对不同状态的操作按钮
+
+### 个人中心
+
+- 个人信息展示区，绿色背景配头像和联系信息
+- 订单快捷入口（待接单、已接单、施工中、已完成）
+- 账号管理功能（个人资料、账号安全）
+- 通用设置功能（消息通知、清理缓存、应用更新、关于我们）
+
+### 通用组件
+
+- 自定义底部导航栏（支持凸起效果和边框动画）
+- 顶部导航栏（带返回按钮）
+- 绿色主题色系贯穿全应用
+
+## 技术亮点
+
+- Vue3 Composition API
+- TypeScript 类型支持
+- wot-design-uni UI组件库
+- 响应式设计，适配各类移动设备
+- 动画效果丰富（轮播图、按钮交互、进度展示）
+- CSS变量统一管理主题
+
+## 目录结构
+
+```
+src/
+├── components/        # 公共组件
+│   ├── fg-tabbar/     # 自定义底部导航栏
+├── pages/             # 页面
+│   ├── index/         # 首页
+│   ├── appointment/   # 一键预约页
+│   ├── orders/        # 订单相关页面
+│   │   ├── index.vue  # 订单列表页
+│   │   ├── detail.vue # 订单详情页
+│   │   └── mine/      # 个人中心页
+├── static/            # 静态资源
+├── App.vue            # 应用入口
+├── main.ts            # 主入口文件
+└── uni.scss           # 全局样式变量
+```
+
+## 启动项目
+
+```bash
+# 安装依赖
+pnpm install
+
+# 开发模式运行
+pnpm dev:h5
+# 或其他平台
+pnpm dev:mp-weixin
+```
+
+## 项目贡献
+
+欢迎提交Issue或Pull Request

@@ -56,11 +56,11 @@ const checkIsTabPage = () => {
   
   // 判断当前页面是否为tab页面
   const isTabPage = tabPages.includes(currentPath)
-  if(currentPath === '/pages/index/index'){
+  // if(currentPath === '/pages/index/index'){
     changeBg('linear-gradient(180deg, #f8fffe 0%, #f0f9f0 50%, #ffffff 100%)')
-  }else{
-    changeBg('#f7f8fa')
-  }
+  // }else{
+    // changeBg('#f7f8fa')
+  // }
   // 如果不是tab页面，且不是首页，则显示返回箭头
   showBackArrow.value = !isTabPage && pages.length > 1
 }

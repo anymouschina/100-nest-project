@@ -9,31 +9,75 @@
 
 <template>
   <view class="profile-container">
-    <!-- 用户信息区域 -->
+    <!-- 用户信息区域 - 绿色背景 -->
     <view class="user-info-section">
-      <!-- #ifdef MP-WEIXIN -->
-      <button class="avatar-button" open-type="chooseAvatar" @chooseavatar="onChooseAvatar">
-        <wd-img :src="userStore.userInfo.avatar" width="80px" height="80px" radius="50%"></wd-img>
-      </button>
-      <!-- #endif -->
-      <!-- #ifndef MP-WEIXIN -->
-      <view class="avatar-wrapper" @click="run">
-        <wd-img :src="userStore.userInfo.avatar" width="100%" height="100%" radius="50%"></wd-img>
-      </view>
-      <!-- #endif -->
-      <view class="user-details">
+      <view class="user-info-bg"></view>
+      <view class="user-info-content">
         <!-- #ifdef MP-WEIXIN -->
-        <input
-          type="nickname"
-          class="weui-input"
-          placeholder="请输入昵称"
-          v-model="userStore.userInfo.username"
-        />
+        <button class="avatar-button" open-type="chooseAvatar" @chooseavatar="onChooseAvatar">
+          <wd-img :src="userStore.userInfo.avatar" width="80px" height="80px" radius="50%"></wd-img>
+        </button>
         <!-- #endif -->
         <!-- #ifndef MP-WEIXIN -->
-        <view class="username">{{ userStore.userInfo.username }}</view>
+        <view class="avatar-wrapper" @click="run">
+          <wd-img :src="userStore.userInfo.avatar" width="100%" height="100%" radius="50%"></wd-img>
+        </view>
         <!-- #endif -->
-        <view class="user-id">ID: {{ userStore.userInfo.id }}</view>
+        <view class="user-details">
+          <!-- #ifdef MP-WEIXIN -->
+          <input
+            type="nickname"
+            class="weui-input"
+            placeholder="请输入昵称"
+            v-model="userStore.userInfo.username"
+          />
+          <!-- #endif -->
+          <!-- #ifndef MP-WEIXIN -->
+          <view class="username">{{ userStore.userInfo.username }}</view>
+          <!-- #endif -->
+          <view class="user-id">{{ userStore.userInfo.phone || '13627331273' }}</view>
+          
+          <!-- 右侧设置按钮 -->
+          <view class="settings-icon">
+            <wd-icon name="setting" size="20px" color="#fff" @click="handleSettings"></wd-icon>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 订单模块 -->
+    <view class="orders-section">
+      <view class="orders-header">
+        <view class="header-left">全部订单</view>
+        <view class="header-right" @click="navigateToAllOrders">
+          查看全部 <wd-icon name="arrow-right" size="16px"></wd-icon>
+        </view>
+      </view>
+      <view class="orders-grid">
+        <view class="order-item" @click="navigateToOrdersByStatus('pending')">
+          <view class="order-icon">
+            <wd-icon name="notes" custom-class="icon-green"></wd-icon>
+          </view>
+          <text>待接单</text>
+        </view>
+        <view class="order-item" @click="navigateToOrdersByStatus('accepted')">
+          <view class="order-icon">
+            <wd-icon name="check-circle" custom-class="icon-green"></wd-icon>
+          </view>
+          <text>已接单</text>
+        </view>
+        <view class="order-item" @click="navigateToOrdersByStatus('processing')">
+          <view class="order-icon">
+            <wd-icon name="brush" custom-class="icon-green"></wd-icon>
+          </view>
+          <text>施工中</text>
+        </view>
+        <view class="order-item" @click="navigateToOrdersByStatus('completed')">
+          <view class="order-icon">
+            <wd-icon name="check" custom-class="icon-green"></wd-icon>
+          </view>
+          <text>已完成</text>
+        </view>
       </view>
     </view>
 
@@ -43,12 +87,12 @@
         <view class="group-title">账号管理</view>
         <wd-cell title="个人资料" is-link @click="handleProfileInfo">
           <template #icon>
-            <wd-icon name="user" size="20px"></wd-icon>
+            <wd-icon name="user" size="20px" custom-class="icon-green"></wd-icon>
           </template>
         </wd-cell>
         <wd-cell title="账号安全" is-link @click="handlePassword">
           <template #icon>
-            <wd-icon name="lock-on" size="20px"></wd-icon>
+            <wd-icon name="lock-on" size="20px" custom-class="icon-green"></wd-icon>
           </template>
         </wd-cell>
       </view>
@@ -57,29 +101,28 @@
         <view class="group-title">通用设置</view>
         <wd-cell title="消息通知" is-link @click="handleInform">
           <template #icon>
-            <wd-icon name="notification" size="20px"></wd-icon>
+            <wd-icon name="notification" size="20px" custom-class="icon-green"></wd-icon>
           </template>
         </wd-cell>
         <wd-cell title="清理缓存" is-link @click="handleClearCache">
           <template #icon>
-            <wd-icon name="clear" size="20px"></wd-icon>
+            <wd-icon name="clear" size="20px" custom-class="icon-green"></wd-icon>
           </template>
         </wd-cell>
         <wd-cell title="应用更新" is-link @click="handleAppUpdate">
           <template #icon>
-            <wd-icon name="refresh1" size="20px"></wd-icon>
+            <wd-icon name="refresh1" size="20px" custom-class="icon-green"></wd-icon>
           </template>
         </wd-cell>
         <wd-cell title="关于我们" is-link @click="handleAbout">
           <template #icon>
-            <wd-icon name="info-circle" size="20px"></wd-icon>
+            <wd-icon name="info-circle" size="20px" custom-class="icon-green"></wd-icon>
           </template>
         </wd-cell>
       </view>
-
-      <!-- <view class="logout-button-wrapper">
-        <wd-button type="error" v-if="hasLogin" block @click="handleLogout">退出登录</wd-button>
-        <wd-button type="primary" v-else block @click="handleLogin">登录</wd-button>
+      
+      <!-- <view class="logout-button-wrapper" v-if="hasLogin">
+        <wd-button type="error" block @click="handleLogout">退出登录</wd-button>
       </view> -->
     </view>
     
@@ -129,6 +172,37 @@ const handleLogin = async () => {
   // #ifndef MP-WEIXIN
   uni.navigateTo({ url: '/pages/login/index' })
   // #endif
+}
+
+// 订单相关导航
+const navigateToAllOrders = () => {
+  uni.navigateTo({ url: '/pages/orders/index' })
+}
+
+const navigateToOrdersByStatus = (status: string) => {
+  uni.navigateTo({ url: `/pages/orders/index?status=${status}` })
+}
+
+// 设置
+const handleSettings = () => {
+  uni.showActionSheet({
+    itemList: ['设置', '客服', '反馈'],
+    success: (res) => {
+      switch (res.tapIndex) {
+        case 0:
+          uni.navigateTo({ url: '/pages/mine/settings/index' })
+          break
+        case 1:
+          // 客服
+          toast.success('客服功能开发中')
+          break
+        case 2:
+          // 反馈
+          toast.success('反馈功能开发中')
+          break
+      }
+    }
+  })
 }
 
 // #ifdef MP-WEIXIN
@@ -259,79 +333,161 @@ const handleLogout = () => {
 <style lang="scss" scoped>
 /* 基础样式 */
 .profile-container {
+  position: relative;
+  min-height: 100vh;
   overflow: hidden;
   font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
-  background-color: #f7f8fa;
+  // background-color: #f7f8fa;
 }
-/* 用户信息区域 */
+
+/* 用户信息区域 - 绿色背景 */
 .user-info-section {
-  display: flex;
-  align-items: center;
-  padding: 40rpx;
-  margin: 30rpx 30rpx 20rpx;
-  background-color: #fff;
-  border-radius: 24rpx;
-  box-shadow: 0 6rpx 20rpx rgba(0, 0, 0, 0.08);
-  transition: all 0.3s ease;
+  position: relative;
+  width: 100%;
+  height: 300rpx;
+  overflow: hidden;
+  
+  .user-info-bg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    // background: linear-gradient(to right, #2c722c, #52c41a);
+    z-index: 1;
+  }
+  
+  .user-info-content {
+    position: relative;
+    display: flex;
+    align-items: center;
+    padding: 60rpx 40rpx;
+    z-index: 2;
+  }
 }
 
 .avatar-wrapper {
-  width: 160rpx;
-  height: 160rpx;
-  margin-right: 40rpx;
+  width: 140rpx;
+  height: 140rpx;
+  margin-right: 30rpx;
   overflow: hidden;
-  border: 4rpx solid #f5f5f5;
+  border: 4rpx solid rgba(255, 255, 255, 0.3);
   border-radius: 50%;
-  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.08);
+  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.1);
 }
+
 .avatar-button {
-  height: 160rpx;
+  width: 140rpx;
+  height: 140rpx;
   padding: 0;
-  margin-right: 40rpx;
+  margin-right: 30rpx;
   overflow: hidden;
-  border: 4rpx solid #f5f5f5;
+  border: 4rpx solid rgba(255, 255, 255, 0.3);
   border-radius: 50%;
-  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.08);
+  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.1);
+  background: transparent;
 }
+
 .user-details {
+  position: relative;
   flex: 1;
+  color: #fff;
 }
 
 .username {
   margin-bottom: 12rpx;
-  font-size: 38rpx;
-  font-weight: 600;
-  color: #333;
+  font-size: 42rpx;
+  font-weight: 500;
   letter-spacing: 0.5rpx;
 }
 
 .user-id {
   font-size: 28rpx;
-  color: #666;
+  opacity: 0.8;
 }
 
-.user-created {
-  margin-top: 8rpx;
-  font-size: 24rpx;
-  color: #999;
+.settings-icon {
+  position: absolute;
+  top: 0;
+  right: 0;
+  padding: 10rpx;
 }
+
+/* 订单模块 */
+.orders-section {
+  margin: 30rpx;
+  overflow: hidden;
+  background-color: #fff;
+  border-radius: 12rpx;
+  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.05);
+}
+
+.orders-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 30rpx;
+  border-bottom: 1rpx solid #eee;
+}
+
+.header-left {
+  font-size: 32rpx;
+  font-weight: 500;
+  color: #333;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  color: #999;
+  font-size: 26rpx;
+}
+
+.orders-grid {
+  display: flex;
+  padding: 20rpx 0;
+}
+
+.order-item {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20rpx 0;
+  
+  .order-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 80rpx;
+    height: 80rpx;
+    margin-bottom: 16rpx;
+  }
+  
+  text {
+    font-size: 24rpx;
+    color: #333;
+  }
+}
+
 /* 功能区块 */
 .function-section {
-  padding: 0 20rpx;
+  padding: 0 30rpx;
   margin-top: 20rpx;
 }
 
 .cell-group {
-  margin-bottom: 20rpx;
+  margin-bottom: 30rpx;
   overflow: hidden;
   background-color: #fff;
-  border-radius: 16rpx;
+  border-radius: 12rpx;
   box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
 }
 
 .group-title {
   padding: 24rpx 30rpx 16rpx;
-  font-size: 30rpx;
+  font-size: 28rpx;
   font-weight: 500;
   color: #999;
   background-color: #fafafa;
@@ -349,15 +505,15 @@ const handleLogout = () => {
     font-size: 32rpx;
     color: #333;
   }
-
-  .cell-icon {
-    margin-right: 20rpx;
-    font-size: 36rpx;
+  
+  .icon-green {
+    color: #52c41a;
   }
 }
+
 /* 退出登录按钮 */
 .logout-button-wrapper {
-  padding: 40rpx 30rpx;
+  padding: 40rpx 30rpx 140rpx;
 }
 
 :deep(.wd-button--danger) {
