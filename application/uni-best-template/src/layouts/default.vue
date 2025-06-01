@@ -63,7 +63,6 @@ const checkIsTabPage = () => {
   // 主tab页面列表，这里需要根据实际的tabBar配置来设置
   const tabPages = [
     '/pages/index/index', // 首页
-    '/pages/appointment/index', // 一键预约
     '/pages/mine/index' // 我的
   ]
   

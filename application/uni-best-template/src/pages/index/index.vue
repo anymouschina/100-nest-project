@@ -81,7 +81,7 @@
       
       <view class="service-grid">
         <!-- 防水补漏卡片 -->
-        <view class="service-card primary-card" @click="navigateToService('repair')">
+        <view class="service-card primary-card" @click="navigateToService('waterproof')">
           <view class="card-glow"></view>
           <view class="card-inner">
             <view class="card-header">
@@ -116,7 +116,7 @@
         </view>
         
         <!-- 疏通管道卡片 -->
-        <view class="service-card secondary-card" @click="navigateToService('pipe')">
+        <view class="service-card secondary-card" @click="navigateToService('drain')">
           <view class="card-glow"></view>
           <view class="card-inner">
             <view class="card-header">
@@ -268,25 +268,18 @@ const bannerList = ref([
 const handleBannerClick = (index: number, item: any) => {
   console.log('点击了轮播图', index, item)
   if (index === 0) {
-    navigateToService('repair')
+    navigateToService('waterproof')
   } else if (index === 1) {
     navigateToService('new')
   } else if (index === 2) {
-    navigateToService('pipe')
+    navigateToService('drain')
   }
 }
 
-// 服务项目导航
-const navigateToService = (type: string) => {
-  const serviceMap = {
-    repair: '防水补漏',
-    pipe: '疏通管道',
-    new: '新房防水施工'
-  }
-  
-  // 直接跳转到预约表单页面
+// 跳转到具体服务页面
+const navigateToService = (serviceId: string) => {
   uni.navigateTo({
-    url: `/pages/appointment/index`
+    url: `/pages/index/service-detail?id=${serviceId}`
   })
 }
 

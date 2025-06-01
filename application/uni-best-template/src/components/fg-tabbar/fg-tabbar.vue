@@ -59,7 +59,6 @@ const borderStyle = ref({
 // tabbar路径映射
 const tabRoutes = {
   home: '/pages/index/index',
-  appointment: '/pages/appointment/index',
   mine: '/pages/mine/index'
 }
 

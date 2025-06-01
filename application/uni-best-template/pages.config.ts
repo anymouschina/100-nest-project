@@ -36,12 +36,6 @@ export default defineUniPages({
         text: '首页',
       },
       {
-        iconPath: 'static/tabbar/appointment.png',
-        selectedIconPath: 'static/tabbar/appointmentHL.png',
-        pagePath: 'pages/appointment/index',
-        text: '一键预约',
-      },
-      {
         iconPath: 'static/tabbar/personal.png',
         selectedIconPath: 'static/tabbar/personalHL.png',
         pagePath: 'pages/mine/index',
