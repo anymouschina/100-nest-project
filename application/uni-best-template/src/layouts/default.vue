@@ -36,7 +36,12 @@ const themeVars: ConfigProviderThemeVars = {
   // colorTheme: 'red',
   buttonPrimaryBgColor: 'linear-gradient(135deg, #2c722c 0%, #52c41a 100%)',
   buttonPrimaryColor: '#fff',
-
+  // cellTitleFs:'36rpx',
+  // cellTitleColor:'#2c722c',
+  // cellTitleFontWeight:'bold',
+  // cellTitleLineHeight:'48rpx',
+  // cellTitleLetterSpacing:'0.02em',
+  // cellTitleTextAlign:'left',
 }
 const customStyle = ref('background-color: #f7f8fa;')
 // 是否显示返回箭头

@@ -16,82 +16,120 @@
       </view>
     </view>
     
-    <view class="form-content">
-      <view class="form-item">
-        <text class="required">*</text>
-        <text class="label">选择服务类型</text>
-        <view class="service-options">
-          <view 
-            class="service-option" 
-            :class="{ active: serviceType === 'repair' }"
-            @click="serviceType = 'repair'"
-          >
-            防水补漏
-          </view>
-          <view 
-            class="service-option" 
-            :class="{ active: serviceType === 'new' }"
-            @click="serviceType = 'new'"
-          >
-            新房防水施工
-          </view>
-          <view 
-            class="service-option" 
-            :class="{ active: serviceType === 'unsure' }"
-            @click="serviceType = 'unsure'"
-          >
-            我不清楚
-          </view>
-        </view>
-      </view>
-      
-      <view class="form-item">
-        <text class="required">*</text>
-        <text class="label">选择场景类型</text>
-        <wd-cell title-width="0" custom-class="scene-cell" @click="showSceneSelector">
-          <view class="placeholder">{{ formData.sceneType || '请选择' }}</view>
-        </wd-cell>
-      </view>
-      
-      <view class="form-item">
-        <text class="required">*</text>
-        <text class="label">业主姓名</text>
-        <wd-input v-model="formData.name" placeholder="请填写" custom-class="custom-input"></wd-input>
-      </view>
-      
-      <view class="form-item">
-        <text class="required">*</text>
-        <text class="label">联系电话</text>
-        <wd-input v-model="formData.phone" placeholder="请填写" type="number" custom-class="custom-input"></wd-input>
-      </view>
-      
-      <view class="form-item">
-        <text class="required">*</text>
-        <text class="label">小区位置</text>
-        <wd-cell title-width="0" custom-class="location-cell" @click="chooseLocation">
-          <view class="location-field">
-            <view class="placeholder">可使用定位功能直接选择</view>
-            <view class="location-icon">
-              <wd-icon name="location" size="40rpx" color="#2c722c"></wd-icon>
-            </view>
-          </view>
-        </wd-cell>
-      </view>
-      
-      <view class="form-item">
-        <text class="required">*</text>
-        <text class="label">选择省市区</text>
-        <wd-input v-model="formData.region" placeholder="请填写" custom-class="custom-input"></wd-input>
-      </view>
-      
-      <view class="form-item">
-        <text class="label">详细地址</text>
-        <wd-input v-model="formData.address" placeholder="请填写" custom-class="custom-input"></wd-input>
-      </view>
-      
-      <!-- 添加底部占位，防止内容被提交按钮遮挡 -->
-      <view style="height: 160rpx;"></view>
-    </view>
+    <wd-form :model="formData" align="right" ref="appointmentForm" validate-trigger="submit">
+      <wd-cell-group border>
+        <!-- 服务类型 -->
+        <wd-picker
+          label="选择服务类型"
+          label-width="140px"
+          prop="serviceType"
+          v-model="formData.serviceType"
+          :columns="serviceOptions"
+          placeholder="请选择服务类型"
+          :rules="[{ required: true, message: '请选择服务类型' }]"
+          custom-class="service-picker"
+        ></wd-picker>
+        
+        <!-- 场景类型 -->
+        <wd-select-picker
+          label="选择场景类型"
+          label-width="140px"
+          prop="sceneType"
+          v-model="formData.sceneType"
+          :columns="sceneOptions" 
+          mode="single-select"
+          placeholder="点击选择场景类型"
+          custom-class="scene-select"
+          :rules="[{ required: true, message: '请选择场景类型' }]"
+        ></wd-select-picker>
+      </wd-cell-group>
+      <wd-cell-group border>
+        <!-- 业主姓名 -->
+        <wd-input 
+          label="业主姓名"
+          label-width="140px"
+          prop="name"
+          v-model="formData.name" 
+          placeholder="请填写" 
+          custom-class="custom-input"
+          :rules="[{ required: true, message: '请输入业主姓名' }]"
+        >
+          <template #suffix>
+            <wd-icon name="user" size="36rpx" color="#999" v-if="!formData.name"></wd-icon>
+          </template>
+        </wd-input>
+        
+        <!-- 联系电话 -->
+        <wd-input 
+          label="联系电话"
+          label-width="140px"
+          prop="phone"
+          v-model="formData.phone" 
+          placeholder="请填写" 
+          type="number" 
+          custom-class="custom-input"
+          :rules="[
+            { required: true, message: '请输入联系电话' },
+            { pattern: /^1\d{10}$/, message: '请输入正确的手机号码' }
+          ]"
+        >
+          <template #suffix>
+            <wd-icon name="phone" size="36rpx" color="#999" v-if="!formData.phone"></wd-icon>
+          </template>
+        </wd-input>
+        
+        <!-- 小区位置 -->
+        <wd-input 
+          label="小区位置"
+          label-width="140px"
+          prop="location"
+          v-model="formData.location" 
+          placeholder="点击选择" 
+          readonly 
+          custom-class="custom-input"
+          @click="chooseLocation"
+          :rules="[{ required: true, message: '请选择小区位置' }]"
+        >
+          <template #suffix>
+            <wd-icon name="location" size="36rpx" color="#2c722c"></wd-icon>
+          </template>
+        </wd-input>
+        
+        <!-- 选择省市区 -->
+        <wd-input 
+          label="选择省市区"
+          label-width="140px"
+          prop="region"
+          v-model="formData.region" 
+          placeholder="请选择" 
+          readonly
+          custom-class="custom-input"
+          @click="chooseRegion"
+          :rules="[{ required: true, message: '请选择省市区' }]"
+        >
+          <template #suffix>
+            <wd-icon name="arrow-right" size="36rpx" color="#999"></wd-icon>
+          </template>
+        </wd-input>
+        
+        <!-- 详细地址 -->
+        <wd-input 
+          label="详细地址"
+          label-width="140px"
+          prop="address"
+          v-model="formData.address" 
+          placeholder="请填写" 
+          custom-class="custom-input"
+        >
+          <template #suffix>
+            <wd-icon name="edit-outline" size="36rpx" color="#999" v-if="!formData.address"></wd-icon>
+          </template>
+        </wd-input>
+      </wd-cell-group>
+    </wd-form>
+    
+    <!-- 添加底部占位，防止内容被提交按钮遮挡 -->
+    <view style="height: 160rpx;"></view>
     
     <view class="submit-wrapper">
       <wd-button size="large" type="primary" block custom-class="submit-btn" @click="submitForm">确认预约</wd-button>
@@ -103,11 +141,11 @@
 <script lang="ts" setup>
 import { ref, reactive, onMounted } from 'vue'
 
-// 服务类型
-const serviceType = ref('repair')
-
 // 安全距离
 const safeAreaBottom = ref(0)
+
+// 表单引用
+const appointmentForm = ref()
 
 onMounted(() => {
   // 获取安全区域信息
@@ -123,23 +161,31 @@ onMounted(() => {
 
 // 表单数据
 const formData = reactive({
+  serviceType: '',
   name: '',
   phone: '',
   region: '',
   address: '',
-  sceneType: ''
+  sceneType: '',
+  location: ''
 })
 
-// 场景选择器
-const showSceneSelector = () => {
-  uni.showActionSheet({
-    itemList: ['客厅', '厨房', '卫生间', '阳台', '卧室', '其他'],
-    success: (res) => {
-      const sceneTypes = ['客厅', '厨房', '卫生间', '阳台', '卧室', '其他']
-      formData.sceneType = sceneTypes[res.tapIndex]
-    }
-  })
-}
+// 服务类型选项
+const serviceOptions = ref([
+  { value: 'repair', label: '防水补漏' },
+  { value: 'new', label: '新房防水施工' },
+  { value: 'unsure', label: '我不清楚' }
+])
+
+// 场景选项数据
+const sceneOptions = ref([
+  { value: '客厅', label: '客厅' },
+  { value: '厨房', label: '厨房' },
+  { value: '卫生间', label: '卫生间' },
+  { value: '阳台', label: '阳台' },
+  { value: '卧室', label: '卧室' },
+  { value: '其他', label: '其他' }
+])
 
 // 选择位置
 const chooseLocation = () => {
@@ -148,6 +194,7 @@ const chooseLocation = () => {
     success: (res) => {
       console.log('选择位置成功', res)
       // 自动填充省市区和详细地址
+      formData.location = res.name || res.address
       formData.region = res.address.split(',')[0] || ''
       formData.address = res.address || ''
     },
@@ -169,49 +216,50 @@ const chooseLocation = () => {
   // #endif
 }
 
+// 选择省市区
+const chooseRegion = () => {
+  // 在微信环境中使用地图选择器
+  if (formData.location) {
+    return uni.showToast({ 
+      title: '省市区已通过位置选择器自动填写', 
+      icon: 'none' 
+    })
+  }
+  
+  // 提示用户先选择位置
+  uni.showToast({ 
+    title: '请先选择小区位置，省市区将自动填写', 
+    icon: 'none' 
+  })
+}
+
 // 提交表单
 const submitForm = () => {
-  // 表单验证
-  if (!serviceType.value) {
-    return uni.showToast({ title: '请选择服务类型', icon: 'none' })
-  }
-  
-  if (!formData.sceneType) {
-    return uni.showToast({ title: '请选择场景类型', icon: 'none' })
-  }
-  
-  if (!formData.name) {
-    return uni.showToast({ title: '请输入业主姓名', icon: 'none' })
-  }
-  
-  if (!formData.phone) {
-    return uni.showToast({ title: '请输入联系电话', icon: 'none' })
-  }
-  
-  if (!/^1\d{10}$/.test(formData.phone)) {
-    return uni.showToast({ title: '请输入正确的手机号码', icon: 'none' })
-  }
-  
-  if (!formData.region) {
-    return uni.showToast({ title: '请选择省市区', icon: 'none' })
-  }
-  
-  // 提交表单
-  uni.showLoading({ title: '提交中...' })
-  
-  setTimeout(() => {
-    uni.hideLoading()
-    uni.showToast({
-      title: '预约成功，我们将尽快联系您',
-      icon: 'none',
-      duration: 2000
-    })
-    
-    // 跳转到首页
-    setTimeout(() => {
-      uni.switchTab({ url: '/pages/index/index' })
-    }, 2000)
-  }, 1500)
+  // 使用wd-form进行表单验证
+  appointmentForm.value.validate().then(({ valid, errors }) => {
+    if (valid) {
+      // 表单验证通过，提交数据
+      uni.showLoading({ title: '提交中...' })
+      
+      setTimeout(() => {
+        uni.hideLoading()
+        uni.showToast({
+          title: '预约成功，我们将尽快联系您',
+          icon: 'none',
+          duration: 2000
+        })
+        
+        // 跳转到首页
+        setTimeout(() => {
+          uni.switchTab({ url: '/pages/index/index' })
+        }, 2000)
+      }, 1500)
+    } else {
+      console.log('表单验证失败', errors)
+    }
+  }).catch(error => {
+    console.log('验证出错', error)
+  })
 }
 </script>
 
@@ -251,100 +299,70 @@ const submitForm = () => {
   }
 }
 
-.form-content {
-  padding: 30rpx;
+.service-options {
+  display: flex;
+  width: 100%;
+  // justify-content: flex-end;
 }
 
-.form-item {
-  margin-bottom: 30rpx;
+.radio-group {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
   
-  .required {
-    color: #ff4d4f;
-    margin-right: 6rpx;
-    font-size: 30rpx;
-  }
-  
-  .label {
-    color: #333;
-    font-size: 30rpx;
+  :deep(.wd-radio) {
     margin-bottom: 15rpx;
-    display: inline-block;
+    margin-right: 0;
   }
   
-  .service-options {
-    display: flex;
-    flex-wrap: wrap;
-    margin-top: 20rpx;
-    
-    .service-option {
-      width: 30%;
-      height: 80rpx;
-      background-color: #f1f1f1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border-radius: 10rpx;
-      margin-right: 3%;
-      margin-bottom: 20rpx;
-      color: #666;
-      font-size: 28rpx;
-      
-      &.active {
-        background-color: #e8f5e9;
-        color: #2c722c;
-        border: 2rpx solid #2c722c;
-      }
-    }
+  :deep(.wd-radio__shape) {
+    margin-right: 10rpx;
   }
   
-  .placeholder {
+  :deep(.wd-radio__button) {
     width: 100%;
-    height: 90rpx;
-    line-height: 90rpx;
-    font-size: 28rpx;
-    color: #999;
-  }
-  
-  .location-field {
-    display: flex;
-    align-items: center;
-    width: 100%;
-    
-    .placeholder {
-      flex: 1;
-      margin-top: 0;
-      padding: 0;
-    }
-    
-    .location-icon {
-      width: 60rpx;
-      height: 60rpx;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-  }
-}
-
-.scene-cell, .location-cell {
-  padding: 0 20rpx;
-  border-radius: 10rpx;
-  margin-top: 15rpx;
-  background-color: #fff;
-}
-
-:deep(.custom-input) {
-  margin-top: 15rpx;
-  border-radius: 10rpx;
-  overflow: hidden;
-  
-  .wd-input__inner {
+    height: 80rpx;
+    text-align: right;
+    padding-right: 20rpx;
     border-radius: 10rpx;
-    background-color: #fff;
-    height: 90rpx;
-    padding: 0 20rpx;
-    font-size: 28rpx;
+    
+    &.is-checked {
+      background-color: #e8f5e9;
+      color: #2c722c;
+      border-color: #2c722c;
+    }
   }
+}
+
+.custom-cell {
+  :deep(.wd-cell__title) {
+    font-weight: 500;
+  }
+}
+
+.scene-select {
+  :deep(.wd-picker__value) {
+    text-align: right;
+  }
+}
+
+:deep(.wd-cell-group) {
+  margin: 0 30rpx;
+  border-radius: 8rpx;
+  overflow: hidden;
+}
+
+:deep(.wd-cell__title) {
+  &::before {
+    content: '*';
+    color: #ff4d4f;
+    position: absolute;
+    left: -15rpx;
+  }
+}
+
+:deep(.wd-input__inner) {
+  // text-align: right;
 }
 
 .submit-wrapper {
@@ -353,9 +371,7 @@ const submitForm = () => {
   left: 0;
   right: 0;
   padding: 30rpx;
-  z-index: 99;
-  background-color: #fff;
-  box-shadow: 0 -4rpx 10rpx rgba(0, 0, 0, 0.05);
+  z-index: 9;
 }
 
 .submit-btn {
@@ -363,12 +379,17 @@ const submitForm = () => {
   font-size: 32rpx;
   font-weight: bold;
   border-radius: 45rpx;
-  margin: 0;
   background-color: #3d9c40 !important;
   border-color: #3d9c40 !important;
 }
 
 .safe-area-inset-bottom {
   height: v-bind('safeAreaBottom + "px"');
+}
+
+.service-picker {
+  :deep(.wd-picker__value) {
+    text-align: right;
+  }
 }
 </style> 
