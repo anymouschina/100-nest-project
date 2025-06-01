@@ -2,6 +2,7 @@
 {
   style: {
     navigationBarTitleText: '订单详情',
+    navigationStyle:'custom'
   },
 }
 </route>
@@ -15,23 +16,14 @@
         <view class="status-desc">{{ getStatusDesc(orderDetail.status) }}</view>
       </view>
       
-      <!-- 订单进度条 -->
-      <view class="progress-steps">
-        <view 
-          class="step-item" 
-          v-for="(step, index) in progressSteps" 
-          :key="index"
-          :class="{ 'active': isStepActive(step.status), 'current': isCurrentStep(step.status) }"
-        >
-          <view class="step-icon">
-            <wd-icon :name="step.icon" size="36rpx" custom-class="icon"></wd-icon>
-          </view>
-          <view class="step-content">
-            <view class="step-name">{{ step.name }}</view>
-            <view class="step-time" v-if="step.time">{{ step.time }}</view>
-          </view>
-          <view class="step-line" v-if="index < progressSteps.length - 1"></view>
-        </view>
+      <!-- 使用 wd-steps 组件替换原来的自定义进度条 -->
+      <view class="progress-steps-container">
+        <wd-steps :active="getActiveStep(orderDetail.status)" align-center>
+          <wd-step title="待接单" description="订单已提交" />
+          <wd-step title="已接单" description="工程师已接单" />
+          <wd-step title="施工中" description="正在为您施工" />
+          <wd-step title="已完成" description="服务已完成" />
+        </wd-steps>
       </view>
     </view>
     
@@ -196,14 +188,6 @@ const orderDetail = ref({
   ]
 })
 
-// 进度步骤
-const progressSteps = ref([
-  { name: '已下单', status: 'pending', icon: 'notes', time: orderDetail.value.statusHistory[0]?.time || '' },
-  { name: '已接单', status: 'accepted', icon: 'check-circle', time: orderDetail.value.statusHistory[1]?.time || '' },
-  { name: '施工中', status: 'processing', icon: 'brush', time: orderDetail.value.statusHistory[2]?.time || '' },
-  { name: '已完成', status: 'completed', icon: 'check', time: orderDetail.value.statusHistory[3]?.time || '' }
-])
-
 // 获取状态文本
 const getStatusText = (status: string) => {
   const statusMap: Record<string, string> = {
@@ -226,18 +210,10 @@ const getStatusDesc = (status: string) => {
   return descMap[status] || ''
 }
 
-// 判断步骤是否激活
-const isStepActive = (stepStatus: string) => {
+// 获取当前活动步骤索引
+const getActiveStep = (status: string) => {
   const statusOrder = ['pending', 'accepted', 'processing', 'completed']
-  const currentIndex = statusOrder.indexOf(orderDetail.value.status)
-  const stepIndex = statusOrder.indexOf(stepStatus)
-  
-  return stepIndex <= currentIndex
-}
-
-// 判断是否当前步骤
-const isCurrentStep = (stepStatus: string) => {
-  return stepStatus === orderDetail.value.status
+  return statusOrder.indexOf(status)
 }
 
 // 拨打电话
@@ -353,92 +329,9 @@ onLoad((options) => {
   }
 }
 
-.progress-steps {
-  display: flex;
-  padding: 40rpx 20rpx;
-  
-  .step-item {
-    position: relative;
-    display: flex;
-    flex: 1;
-    flex-direction: column;
-    align-items: center;
-    
-    .step-icon {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 60rpx;
-      height: 60rpx;
-      margin-bottom: 16rpx;
-      background-color: #f0f0f0;
-      border-radius: 50%;
-      z-index: 2;
-      
-      .icon {
-        color: #999;
-      }
-    }
-    
-    .step-content {
-      text-align: center;
-      
-      .step-name {
-        margin-bottom: 6rpx;
-        font-size: 24rpx;
-        color: #999;
-      }
-      
-      .step-time {
-        font-size: 20rpx;
-        color: #999;
-      }
-    }
-    
-    .step-line {
-      position: absolute;
-      top: 30rpx;
-      right: -50%;
-      width: 100%;
-      height: 2rpx;
-      background-color: #f0f0f0;
-      z-index: 1;
-    }
-    
-    &.active {
-      .step-icon {
-        background-color: rgba(44, 114, 44, 0.1);
-        
-        .icon {
-          color: #2c722c;
-        }
-      }
-      
-      .step-content {
-        .step-name {
-          color: #333;
-        }
-        
-        .step-time {
-          color: #666;
-        }
-      }
-      
-      .step-line {
-        background-color: #2c722c;
-      }
-    }
-    
-    &.current {
-      .step-icon {
-        background-color: #2c722c;
-        
-        .icon {
-          color: #fff;
-        }
-      }
-    }
-  }
+/* 新增步骤条容器样式 */
+.progress-steps-container {
+  padding: 30rpx 20rpx;
 }
 
 .info-card {

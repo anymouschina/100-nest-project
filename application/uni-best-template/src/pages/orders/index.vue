@@ -2,6 +2,7 @@
 {
   style: {
     navigationBarTitleText: '我的订单',
+    navigationStyle:'custom'
   },
 }
 </route>
@@ -9,7 +10,7 @@
 <template>
   <view class="orders-container">
     <!-- 订单状态选项卡 -->
-    <wd-tabs v-model="activeTab" sticky>
+    <wd-tabs v-model="activeTab" sticky offset-top="44px">
       <wd-tab title="全部订单" name="all"></wd-tab>
       <wd-tab title="待接单" name="pending"></wd-tab>
       <wd-tab title="已接单" name="accepted"></wd-tab>

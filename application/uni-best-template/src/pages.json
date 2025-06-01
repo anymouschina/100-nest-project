@@ -90,14 +90,16 @@
       "path": "pages/orders/detail",
       "type": "page",
       "style": {
-        "navigationBarTitleText": "订单详情"
+        "navigationBarTitleText": "订单详情",
+        "navigationStyle": "custom"
       }
     },
     {
       "path": "pages/orders/index",
       "type": "page",
       "style": {
-        "navigationBarTitleText": "我的订单"
+        "navigationBarTitleText": "我的订单",
+        "navigationStyle": "custom"
       }
     },
     {

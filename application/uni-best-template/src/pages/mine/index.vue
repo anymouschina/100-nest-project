@@ -56,19 +56,19 @@
       <view class="orders-grid">
         <view class="order-item" @click="navigateToOrdersByStatus('pending')">
           <view class="order-icon">
-            <wd-icon name="notes" custom-class="icon-green"></wd-icon>
+            <wd-icon name="clock" custom-class="icon-green"></wd-icon>
           </view>
           <text>待接单</text>
         </view>
         <view class="order-item" @click="navigateToOrdersByStatus('accepted')">
           <view class="order-icon">
-            <wd-icon name="check-circle" custom-class="icon-green"></wd-icon>
+            <wd-icon name="phone-compute" custom-class="icon-green"></wd-icon>
           </view>
           <text>已接单</text>
         </view>
         <view class="order-item" @click="navigateToOrdersByStatus('processing')">
           <view class="order-icon">
-            <wd-icon name="brush" custom-class="icon-green"></wd-icon>
+            <wd-icon name="time-filled" custom-class="icon-green"></wd-icon>
           </view>
           <text>施工中</text>
         </view>
@@ -211,6 +211,10 @@ const handleSettings = () => {
 const onChooseAvatar = (e: any) => {
   console.log('选择头像', e.detail)
   const { avatarUrl } = e.detail
+  // 直接将选择的头像设置到用户信息中
+  userStore.userInfo.avatar = avatarUrl
+  
+  // 上传头像到服务器
   const { run } = useUpload<IUploadSuccessInfo>(
     uploadFileUrl.USER_AVATAR,
     {},

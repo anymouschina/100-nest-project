@@ -1,3 +1,10 @@
+<route lang="json5">
+  {
+    style: {
+      navigationStyle: 'custom',
+    },
+  }
+  </route>
 <template>
   <wd-config-provider :themeVars="themeVars">
     <scroll-view scroll-y style="height: 100vh;"
