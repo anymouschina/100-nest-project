@@ -103,6 +103,10 @@ export class SysUserService {
     params.password = await bcrypt.hash(params.password, salt);
     delete params.postIds;
     delete params.roleIds;
+    // 确保移除可能存在的userId，让数据库自动生成
+    if ('userId' in params) {
+      delete params.userId;
+    }
     return await this.prisma.sysUser.create({
       data: {
         ...params,
@@ -302,6 +306,10 @@ export class SysUserService {
         const salt = await bcrypt.genSalt();
         item.password = await bcrypt.hash(item.password, salt);
         item.createTime = dayjs().format();
+        // 移除可能存在的userId属性，让数据库自动生成
+        if ('userId' in item) {
+          delete (item as any).userId;
+        }
         if (!isUpdate) {
           const user = await prisma.sysUser.findUnique({
             where: {

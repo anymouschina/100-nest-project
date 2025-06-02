@@ -20,7 +20,12 @@ export class OperLogService {
 
   /* 新增 */
   async addOperLog(addOperLogDto: AddOperLogDto) {
-    return await this.prisma.sysOperLog.create({ data: addOperLogDto });
+    // 确保移除可能存在的operId，让数据库自动生成
+    const logData = { ...addOperLogDto };
+    if ('operId' in logData) {
+      delete logData.operId;
+    }
+    return await this.prisma.sysOperLog.create({ data: logData });
   }
 
   /* 分页查询 */

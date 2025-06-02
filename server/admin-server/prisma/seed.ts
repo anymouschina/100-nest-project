@@ -14,6 +14,7 @@ import { run as tableSeed } from './seeds/table.seed';
 import { run as userSeed } from './seeds/user.seed';
 import { run as webSeed } from './seeds/web.seed';
 import { run as relationSeed } from './seeds/relation.seed';
+import { run as fixSequencesSeed } from './seeds/direct-sql-fix';
 
 async function main() {
   console.log('🌱 Starting database seeding...');
@@ -37,7 +38,7 @@ async function main() {
   
   // Seed relations last
   await relationSeed();
-  
+  await fixSequencesSeed();
   console.log('✅ Database seeding completed!');
 }
 

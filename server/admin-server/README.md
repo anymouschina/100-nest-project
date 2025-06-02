@@ -26,6 +26,14 @@
 
 [Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
 
+## 项目功能
+
+### 数据库功能
+
+1. 使用Prisma作为ORM，管理PostgreSQL数据库
+2. 种子脚本自动填充初始数据
+3. 自增主键序列重置 - 确保新插入数据的ID从已有数据的最大ID值+1开始，而不是从1开始
+
 ## Installation
 
 ```bash

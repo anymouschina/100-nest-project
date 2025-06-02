@@ -13,6 +13,7 @@ import { InjectRedis } from '@nestjs-modules/ioredis';
 import { ExtendedPrismaClient } from 'src/shared/prisma/prisma.extension';
 import Redis from 'ioredis';
 import { DICTTYPE_KEY } from 'src/common/contants/redis.contant';
+import { DataScope } from 'src/common/type/data-scope.type';
 
 @Injectable()
 export class SysDictService {
@@ -32,8 +33,15 @@ export class SysDictService {
         },
       });
       if (config) throw new ApiException('字典类型已存在，请更换后再试。');
+      
+      // 确保移除可能存在的dictId，让数据库自动生成
+      const dictTypeData = { ...addSysDictTypeDto };
+      if ('dictId' in dictTypeData) {
+        delete dictTypeData.dictId;
+      }
+      
       return await prisma.sysDictType.create({
-        data: addSysDictTypeDto,
+        data: dictTypeData,
       });
     });
   }
@@ -67,23 +75,81 @@ export class SysDictService {
   }
 
   /* 分页查询 */
-  async typeList(getSysDictTypeDto: GetSysDictTypeDto) {
+  async typeList(getSysDictTypeDto: GetSysDictTypeDto, dataScope: DataScope) {
     const { dictName, dictType, status, params, skip, take } =
       getSysDictTypeDto;
-    return await this.customPrisma.client.sysDictType.findAndCount({
-      where: {
-        dictName: {
-          contains: dictName,
-        },
-        dictType: {
-          contains: dictType,
-        },
-        status: status,
-        createTime: {
-          gte: params.beginTime,
-          lt: params.endTime,
-        },
+    
+    // 构建查询条件
+    const whereCondition: any = {
+      dictName: {
+        contains: dictName,
       },
+      dictType: {
+        contains: dictType,
+      },
+      status: status,
+      createTime: {
+        gte: params.beginTime,
+        lt: params.endTime,
+      },
+    };
+    
+    // 构建数据权限过滤条件
+    if (dataScope.OR && dataScope.OR.length > 0) {
+      // 针对部门ID和创建者的过滤条件
+      const filterConditions = [];
+      
+      // 获取所有创建者条件
+      const createByConditions = dataScope.OR
+        .filter(condition => condition.createBy)
+        .map(condition => ({ createBy: condition.createBy }));
+      
+      if (createByConditions.length > 0) {
+        filterConditions.push(...createByConditions);
+      }
+      
+      // 获取所有部门ID条件
+      const deptIdConditions = dataScope.OR
+        .filter(condition => condition.deptId && condition.deptId.in && condition.deptId.in.length > 0);
+      
+      if (deptIdConditions.length > 0) {
+        // 如果有部门ID条件，需要联表查询用户表，找出这些部门下的用户
+        // 由于字典表没有直接关联部门，需要通过创建者间接关联
+        const deptIds = deptIdConditions[0].deptId.in;
+        
+        if (deptIds && deptIds.length > 0) {
+          // 查询这些部门下的用户
+          const usersInDepts = await this.prisma.sysUser.findMany({
+            where: {
+              deptId: {
+                in: deptIds
+              },
+              delFlag: '0'
+            },
+            select: {
+              userName: true
+            }
+          });
+          
+          // 将部门用户的userName添加到过滤条件中
+          if (usersInDepts.length > 0) {
+            filterConditions.push({
+              createBy: {
+                in: usersInDepts.map(user => user.userName)
+              }
+            });
+          }
+        }
+      }
+      
+      // 如果有过滤条件，添加到查询中
+      if (filterConditions.length > 0) {
+        whereCondition.OR = filterConditions;
+      }
+    }
+    
+    return await this.customPrisma.client.sysDictType.findAndCount({
+      where: whereCondition,
       skip: skip,
       take: take,
     });
@@ -138,19 +204,77 @@ export class SysDictService {
   }
 
   /* 分页查询字典数据 */
-  async dictDataList(getDictDataListDto: GetDictDataListDto) {
+  async dictDataList(getDictDataListDto: GetDictDataListDto, dataScope: DataScope) {
     const { dictType, dictLabel, skip, take, status } = getDictDataListDto;
+    
+    // 构建查询条件
+    const whereCondition: any = {
+      dictType,
+      status,
+      dictLabel: {
+        contains: dictLabel,
+      }
+    };
+    
+    // 构建数据权限过滤条件
+    if (dataScope.OR && dataScope.OR.length > 0) {
+      // 针对部门ID和创建者的过滤条件
+      const filterConditions = [];
+      
+      // 获取所有创建者条件
+      const createByConditions = dataScope.OR
+        .filter(condition => condition.createBy)
+        .map(condition => ({ createBy: condition.createBy }));
+      
+      if (createByConditions.length > 0) {
+        filterConditions.push(...createByConditions);
+      }
+      
+      // 获取所有部门ID条件
+      const deptIdConditions = dataScope.OR
+        .filter(condition => condition.deptId && condition.deptId.in && condition.deptId.in.length > 0);
+      
+      if (deptIdConditions.length > 0) {
+        // 如果有部门ID条件，需要联表查询用户表，找出这些部门下的用户
+        // 由于字典表没有直接关联部门，需要通过创建者间接关联
+        const deptIds = deptIdConditions[0].deptId.in;
+        
+        if (deptIds && deptIds.length > 0) {
+          // 查询这些部门下的用户
+          const usersInDepts = await this.prisma.sysUser.findMany({
+            where: {
+              deptId: {
+                in: deptIds
+              },
+              delFlag: '0'
+            },
+            select: {
+              userName: true
+            }
+          });
+          
+          // 将部门用户的userName添加到过滤条件中
+          if (usersInDepts.length > 0) {
+            filterConditions.push({
+              createBy: {
+                in: usersInDepts.map(user => user.userName)
+              }
+            });
+          }
+        }
+      }
+      
+      // 如果有过滤条件，添加到查询中
+      if (filterConditions.length > 0) {
+        whereCondition.OR = filterConditions;
+      }
+    }
+    
     return await this.customPrisma.client.sysDictData.findAndCount({
       orderBy: {
         dictSort: 'asc',
       },
-      where: {
-        dictType,
-        status,
-        dictLabel: {
-          contains: dictLabel,
-        },
-      },
+      where: whereCondition,
       skip,
       take,
     });
@@ -166,8 +290,15 @@ export class SysDictService {
         },
       });
       if (dictData) throw new ApiException('数据标签已存在，请更换后重试。');
+      
+      // 确保移除可能存在的dictCode，让数据库自动生成
+      const dictDataItem = { ...addDictDataDto };
+      if ('dictCode' in dictDataItem) {
+        delete dictDataItem.dictCode;
+      }
+      
       return await prisma.sysDictData.create({
-        data: addDictDataDto,
+        data: dictDataItem,
       });
     });
   }

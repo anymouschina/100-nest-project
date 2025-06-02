@@ -44,6 +44,12 @@ export class LoginInforService {
       addLoginInforDto.loginTime = dayjs().format();
       addLoginInforDto.browser = browser.name + browser.version.split('.')[0];
       addLoginInforDto.os = os.name + os.version;
+      
+      // 确保移除可能存在的infoId，让数据库自动生成
+      if ('infoId' in addLoginInforDto) {
+        delete (addLoginInforDto as any).infoId;
+      }
+      
       await this.prisma.sysLoginInfor.create({ data: addLoginInforDto });
       return addLoginInforDto;
     } catch (error) {

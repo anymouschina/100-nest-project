@@ -39,6 +39,9 @@ import { PaginationDto } from 'src/common/dto/pagination.dto';
 import { Keep } from 'src/common/decorators/keep.decorator';
 import { ExcelService } from 'src/modules/common/excel/excel.service';
 import { ExportSysDictDto } from './dto/res-sys-dict.dto';
+import { User } from 'src/common/decorators/user.decorator';
+import { UserEnum } from 'src/common/decorators/user.decorator';
+import { DataScope } from 'src/common/type/data-scope.type';
 
 @Controller('system')
 export class SysDictController {
@@ -69,8 +72,11 @@ export class SysDictController {
   /* 分页查询字典类型列表 */
   @Get('dict/type/list')
   @RequiresPermissions('system:dict:query')
-  async typeList(@Query(PaginationPipe) getSysDictTypeDto: GetSysDictTypeDto) {
-    return await this.sysDictService.typeList(getSysDictTypeDto);
+  async typeList(
+    @Query(PaginationPipe) getSysDictTypeDto: GetSysDictTypeDto,
+    @User(UserEnum.dataScope) dataScope: DataScope,
+  ) {
+    return await this.sysDictService.typeList(getSysDictTypeDto, dataScope);
   }
 
   /* 刷新缓存 */
@@ -86,9 +92,9 @@ export class SysDictController {
   /* 通过ID查询字典类型 */
   @Get('/dict/type/optionselect')
   @RequiresPermissions('system:dict:query')
-  async getOptionselect() {
+  async getOptionselect(@User(UserEnum.dataScope) dataScope: DataScope) {
     const getSysDictTypeDto = new GetSysDictTypeDto();
-    const { rows } = await this.sysDictService.typeList(getSysDictTypeDto);
+    const { rows } = await this.sysDictService.typeList(getSysDictTypeDto, dataScope);
     return rows;
   }
 
@@ -120,8 +126,11 @@ export class SysDictController {
     title: '字典管理',
     businessType: BusinessTypeEnum.export,
   })
-  async export(@Body() getSysDictTypeDto: GetSysDictTypeDto) {
-    const { rows } = await this.sysDictService.typeList(getSysDictTypeDto);
+  async export(
+    @Body() getSysDictTypeDto: GetSysDictTypeDto,
+    @User(UserEnum.dataScope) dataScope: DataScope,
+  ) {
+    const { rows } = await this.sysDictService.typeList(getSysDictTypeDto, dataScope);
     const file = await this.excelService.export(ExportSysDictDto, rows);
     return new StreamableFile(file);
   }
@@ -138,8 +147,9 @@ export class SysDictController {
   @Get('dict/data/list')
   async dictDataList(
     @Query(PaginationPipe) getDictDataListDto: GetDictDataListDto,
+    @User(UserEnum.dataScope) dataScope: DataScope,
   ) {
-    return await this.sysDictService.dictDataList(getDictDataListDto);
+    return await this.sysDictService.dictDataList(getDictDataListDto, dataScope);
   }
 
   /* 新增字典数据 */
@@ -189,8 +199,11 @@ export class SysDictController {
     title: '字典管理',
     businessType: BusinessTypeEnum.export,
   })
-  async exportData(@Body() getDictDataListDto: GetDictDataListDto) {
-    const { rows } = await this.sysDictService.dictDataList(getDictDataListDto);
+  async exportData(
+    @Body() getDictDataListDto: GetDictDataListDto,
+    @User(UserEnum.dataScope) dataScope: DataScope,
+  ) {
+    const { rows } = await this.sysDictService.dictDataList(getDictDataListDto, dataScope);
     const file = await this.excelService.export(AddDictDataDto, rows);
     return new StreamableFile(file);
   }

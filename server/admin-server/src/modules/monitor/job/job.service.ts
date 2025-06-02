@@ -105,6 +105,10 @@ export class JobService {
   /* 新增任务 */
   async addJob(addJobDto: AddJobDto) {
     await this.analysisinvokeTarget(addJobDto);
+    // 确保移除可能存在的jobId，让数据库自动生成
+    if ('jobId' in addJobDto) {
+      delete (addJobDto as any).jobId;
+    }
     const job = await this.prisma.sysJob.create({
       data: addJobDto,
     });
@@ -215,6 +219,10 @@ export class JobService {
 
   /* 添加任务日志记录 */
   async addJobLog(addJobLogDto: AddJobLogDto) {
+    // 确保移除可能存在的jobLogId，让数据库自动生成
+    if ('jobLogId' in addJobLogDto) {
+      delete (addJobLogDto as any).jobLogId;
+    }
     return await this.prisma.sysJobLog.create({
       data: addJobLogDto,
     });

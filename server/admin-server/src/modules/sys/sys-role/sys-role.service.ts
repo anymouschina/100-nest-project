@@ -62,6 +62,12 @@ export class SysRoleService {
     if (role) throw new ApiException('权限字符已存在，请更换后再试。');
     const params: AddSysRoleDto = JSON.parse(JSON.stringify(addSysRoleDto));
     delete params.menuIds;
+    
+    // 确保移除可能存在的roleId，让数据库自动生成
+    if ('roleId' in params) {
+      delete params.roleId;
+    }
+    
     return await this.prisma.sysRole.create({
       data: {
         ...params,
