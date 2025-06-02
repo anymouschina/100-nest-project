@@ -27,8 +27,8 @@
         @click="goToOrderDetail(order.id)"
       >
         <view class="order-header">
-          <view class="order-type">{{ order.serviceType === 'repair' ? '防水补漏' : '新房防水施工' }}</view>
-          <view class="order-status" :class="'status-' + order.status">{{ getStatusText(order.status) }}</view>
+          <view class="order-type">{{ order.serviceTypeName }}</view>
+          <view class="order-status" :class="'status-' + order.status">{{ getStatusText(order) }}</view>
         </view>
         
         <view class="order-info">
@@ -54,7 +54,7 @@
           
           <view class="action-buttons">
             <template v-if="order.status === 'pending'">
-              <wd-button size="small" @click.stop="cancelOrder(order.id)">取消订单</wd-button>
+              <wd-button size="small" @click.stop="cancelOrderAction(order.id)">取消订单</wd-button>
             </template>
             <template v-if="order.status === 'accepted'">
               <wd-button size="small" @click.stop="contactService(order.id)">联系客服</wd-button>
@@ -85,55 +85,110 @@
 import { ref, computed, onMounted } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { useToast } from 'wot-design-uni'
+import { getOrderList, cancelOrder, type IOrderItem } from '@/api/orders'
+import useRequest from '@/hooks/useRequest'
 
 const toast = useToast()
 
 // 活动选项卡
 const activeTab = ref('all')
 
-// 模拟订单数据
-const orders = ref([
+// 订单数据 - 改为接口获取
+const orders = ref<IOrderItem[]>([])
+
+// 获取订单列表
+const { loading: ordersLoading, run: loadOrders } = useRequest(
+  () => getOrderList({ 
+    status: activeTab.value === 'all' ? undefined : activeTab.value as any,
+    page: 1,
+    pageSize: 20
+  }),
   {
-    id: '1001',
-    orderNo: 'FW20230601001',
-    serviceType: 'repair',
-    status: 'pending',
-    appointmentTime: '2023-06-01 14:00',
-    address: '广州市天河区天河路385号',
-    price: 280.00,
-    createTime: '2023-06-01 09:12:33'
-  },
-  {
-    id: '1002',
-    orderNo: 'FW20230602001',
-    serviceType: 'new',
-    status: 'accepted',
-    appointmentTime: '2023-06-02 10:00',
-    address: '广州市海珠区新港中路122号',
-    price: 3800.00,
-    createTime: '2023-05-30 16:28:45'
-  },
-  {
-    id: '1003',
-    orderNo: 'FW20230528001',
-    serviceType: 'repair',
-    status: 'processing',
-    appointmentTime: '2023-05-28 15:30',
-    address: '广州市越秀区建设大马路12号',
-    price: 560.00,
-    createTime: '2023-05-27 14:22:10'
-  },
-  {
-    id: '1004',
-    orderNo: 'FW20230520001',
-    serviceType: 'repair',
-    status: 'completed',
-    appointmentTime: '2023-05-20 09:00',
-    address: '广州市白云区机场路788号',
-    price: 420.00,
-    createTime: '2023-05-19 18:33:42'
+    immediate: true,
+    onSuccess: (data) => {
+      orders.value = data.list
+    },
+    onError: (error) => {
+      console.error('获取订单列表失败', error)
+      // 如果接口失败，使用模拟数据作为降级方案
+      orders.value = [
+        {
+          id: '1001',
+          orderNo: 'FW20230601001',
+          serviceType: 'repair',
+          serviceTypeName: '防水补漏',
+          status: 'pending',
+          statusName: '待接单',
+          appointmentTime: '2023-06-01 14:00',
+          address: '广州市天河区天河路385号',
+          price: 280.00,
+          createTime: '2023-06-01 09:12:33',
+          updateTime: '2023-06-01 09:12:33'
+        },
+        {
+          id: '1002',
+          orderNo: 'FW20230602001',
+          serviceType: 'new',
+          serviceTypeName: '新房防水施工',
+          status: 'accepted',
+          statusName: '已接单',
+          appointmentTime: '2023-06-02 10:00',
+          address: '广州市海珠区新港中路122号',
+          price: 3800.00,
+          createTime: '2023-05-30 16:28:45',
+          updateTime: '2023-05-30 16:28:45'
+        },
+        {
+          id: '1003',
+          orderNo: 'FW20230528001',
+          serviceType: 'repair',
+          serviceTypeName: '防水补漏',
+          status: 'processing',
+          statusName: '施工中',
+          appointmentTime: '2023-05-28 15:30',
+          address: '广州市越秀区建设大马路12号',
+          price: 560.00,
+          createTime: '2023-05-27 14:22:10',
+          updateTime: '2023-05-27 14:22:10'
+        },
+        {
+          id: '1004',
+          orderNo: 'FW20230520001',
+          serviceType: 'repair',
+          serviceTypeName: '防水补漏',
+          status: 'completed',
+          statusName: '已完成',
+          appointmentTime: '2023-05-20 09:00',
+          address: '广州市白云区机场路788号',
+          price: 420.00,
+          createTime: '2023-05-19 18:33:42',
+          updateTime: '2023-05-19 18:33:42'
+        }
+      ]
+    }
   }
-])
+)
+
+// 取消订单请求
+const { loading: cancelLoading, run: cancelOrderRequest } = useRequest(
+  (orderId: string, reason: string) => cancelOrder(orderId, { reason }),
+  {
+    immediate: false,
+    onSuccess: (result) => {
+      if (result.success) {
+        toast.success(result.message || '订单已取消')
+        // 重新加载订单列表
+        loadOrders()
+      } else {
+        toast.error(result.message || '取消订单失败')
+      }
+    },
+    onError: (error) => {
+      console.error('取消订单失败', error)
+      toast.error('取消订单失败，请重试')
+    }
+  }
+)
 
 // 根据tab筛选订单
 const filteredOrders = computed(() => {
@@ -144,15 +199,15 @@ const filteredOrders = computed(() => {
   }
 })
 
-// 获取状态文本
-const getStatusText = (status: string) => {
-  const statusMap: Record<string, string> = {
-    'pending': '待接单',
-    'accepted': '已接单',
-    'processing': '施工中',
-    'completed': '已完成'
-  }
-  return statusMap[status] || status
+// 获取状态文本 - 现在使用接口返回的statusName
+const getStatusText = (order: IOrderItem) => {
+  return order.statusName || order.status
+}
+
+// 监听tab变化，重新加载数据
+const handleTabChange = (tab: string) => {
+  activeTab.value = tab
+  loadOrders()
 }
 
 // 跳转到订单详情
@@ -163,20 +218,14 @@ const goToOrderDetail = (orderId: string) => {
 }
 
 // 取消订单
-const cancelOrder = (orderId: string) => {
+const cancelOrderAction = (orderId: string) => {
   uni.showModal({
     title: '提示',
     content: '确定要取消该订单吗？',
     success: (res) => {
       if (res.confirm) {
-        // 模拟取消订单操作
-        toast.success('订单已取消')
-        // 更新订单状态
-        const orderIndex = orders.value.findIndex(o => o.id === orderId)
-        if (orderIndex !== -1) {
-          // 实际项目中应该调用API
-          orders.value.splice(orderIndex, 1)
-        }
+        // 调用取消订单接口
+        cancelOrderRequest(orderId, '用户主动取消')
       }
     }
   })
@@ -229,7 +278,7 @@ const goToAppointment = () => {
 
 // 页面加载，处理从其他页面带过来的状态参数
 onLoad((options) => {
-  if (options.status) {
+  if (options && options.status) {
     activeTab.value = options.status
   }
 })

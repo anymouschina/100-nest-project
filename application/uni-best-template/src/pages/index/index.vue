@@ -215,17 +215,17 @@
     <view class="stats-section">
       <view class="stats-container">
         <view class="stat-item">
-          <view class="stat-number">10000+</view>
+          <view class="stat-number">{{ statistics.totalCustomers }}</view>
           <view class="stat-label">服务客户</view>
         </view>
         <view class="stat-divider"></view>
         <view class="stat-item">
-          <view class="stat-number">99.8%</view>
+          <view class="stat-number">{{ statistics.satisfactionRate }}</view>
           <view class="stat-label">满意度</view>
         </view>
         <view class="stat-divider"></view>
         <view class="stat-item">
-          <view class="stat-number">24h</view>
+          <view class="stat-number">{{ statistics.responseTime }}</view>
           <view class="stat-label">响应时间</view>
         </view>
       </view>
@@ -238,43 +238,154 @@
 
 <script lang="ts" setup>
 import FgTabbar from '@/components/fg-tabbar/fg-tabbar.vue'
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
+import { getHomeBanners, getHomeServices, getHomeStatistics } from '@/api/home'
+import useRequest from '@/hooks/useRequest'
 
 defineOptions({
   name: 'Home',
 })
 
-// 轮播图数据 - 使用防水相关的内容
-const bannerList = ref([
+// 轮播图数据 - 改为接口获取
+const bannerList = ref([])
+
+// 获取首页轮播图数据
+const { loading: bannersLoading, run: loadBanners } = useRequest(
+  () => getHomeBanners(),
   {
-    value: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNzUwIiBoZWlnaHQ9IjQwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8ZGVmcz4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iZ3JhZGllbnQxIiB4MT0iMCUiIHkxPSIwJSIgeDI9IjEwMCUiIHkyPSIxMDAlIj4KICAgICAgPHN0b3Agb2Zmc2V0PSIwJSIgc3R5bGU9InN0b3AtY29sb3I6IzJjNzIyYztzdG9wLW9wYWNpdHk6MSIgLz4KICAgICAgPHN0b3Agb2Zmc2V0PSIxMDAlIiBzdHlsZT0ic3RvcC1jb2xvcjojNTJjNDFhO3N0b3Atb3BhY2l0eToxIiAvPgogICAgPC9saW5lYXJHcmFkaWVudD4KICA8L2RlZnM+CiAgPHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0idXJsKCNncmFkaWVudDEpIi8+CiAgPHRleHQgeD0iNTAlIiB5PSI0MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSI0OCIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj7pmLLmsLTkuJPlrrY8L3RleHQ+CiAgPHRleHQgeD0iNTAlIiB5PSI2MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIyNCIgZmlsbD0icmdiYSgyNTUsMjU1LDI1NSwwLjkpIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj7kuJPkuJrmlr3lt6Ugwrcg5ZOB6LSo5L+d6ZqcPC90ZXh0Pgo8L3N2Zz4K',
-    title: '防水补漏专家',
-    summary: '专业施工 · 品质保障',
-    type: 'image'
-  },
-  {
-    value: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNzUwIiBoZWlnaHQ9IjQwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8ZGVmcz4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iZ3JhZGllbnQyIiB4MT0iMCUiIHkxPSIwJSIgeDI9IjEwMCUiIHkyPSIxMDAlIj4KICAgICAgPHN0b3Agb2Zmc2V0PSIwJSIgc3R5bGU9InN0b3AtY29sb3I6IzQwOWVmZjtzdG9wLW9wYWNpdHk6MSIgLz4KICAgICAgPHN0b3Agb2Zmc2V0PSIxMDAlIiBzdHlsZT0ic3RvcC1jb2xvcjojNjRiNWZmO3N0b3Atb3BhY2l0eToxIiAvPgogICAgPC9saW5lYXJHcmFkaWVudD4KICA8L2RlZnM+CiAgPHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0idXJsKCNncmFkaWVudDIpIi8+CiAgPHRleHQgeD0iNTAlIiB5PSI0MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSI0OCIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj7mlrDmiL/pmLLmsLQ8L3RleHQ+CiAgPHRleHQgeD0iNTAlIiB5PSI2MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIyNCIgZmlsbD0icmdiYSgyNTUsMjU1LDI1NSwwLjkpIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj7moIflh4blMJbmlr3lt6Ugwrcg5Y2B5bm06LSo5L+dPC90ZXh0Pgo8L3N2Zz4K',
-    title: '新房防水施工',
-    summary: '标准化施工 · 十年质保',
-    type: 'image'
-  },
-  {
-    value: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNzUwIiBoZWlnaHQ9IjQwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8ZGVmcz4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iZ3JhZGllbnQzIiB4MT0iMCUiIHkxPSIwJSIgeDI9IjEwMCUiIHkyPSIxMDAlIj4KICAgICAgPHN0b3Agb2Zmc2V0PSIwJSIgc3R5bGU9InN0b3AtY29sb3I6I2Y1NmM2YztzdG9wLW9wYWNpdHk6MSIgLz4KICAgICAgPHN0b3Agb2Zmc2V0PSIxMDAlIiBzdHlsZT0ic3RvcC1jb2xvcjojZmY5ZjlmO3N0b3Atb3BhY2l0eToxIiAvPgogICAgPC9saW5lYXJHcmFkaWVudD4KICA8L2RlZnM+CiAgPHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0idXJsKCNncmFkaWVudDMpIi8+CiAgPHRleHQgeD0iNTAlIiB5PSI0MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSI0OCIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj7nlY/pgJrnsKHpgZM8L3RleHQ+CiAgPHRleHQgeD0iNTAlIiB5PSI2MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIyNCIgZmlsbD0icmdiYSgyNTUsMjU1LDI1NSwwLjkpIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj7lv6vpgJ/lk43lupQgwrcg5LiT5Lia6K6+5aSHPC90ZXh0Pgo8L3N2Zz4K',
-    title: '管道疏通',
-    summary: '快速响应 · 专业设备',
-    type: 'image'
+    immediate: true,
+    onSuccess: (data) => {
+      console.log('获取轮播图数据成功', data)
+      bannerList.value = data.map(item => ({
+        value: item.imageUrl || generatePlaceholderSVG(item.title, item.id),
+        title: item.title,
+        summary: item.summary,
+        type: 'image',
+        linkType: item.linkType,
+        linkValue: item.linkValue
+      }))
+    },
+    onError: (error) => {
+      console.error('获取轮播图数据失败', error)
+      // 如果接口调用失败，使用默认数据
+      bannerList.value = [
+        {
+          value: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNzUwIiBoZWlnaHQ9IjQwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8ZGVmcz4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iZ3JhZGllbnQxIiB4MT0iMCUiIHkxPSIwJSIgeDI9IjEwMCUiIHkyPSIxMDAlIj4KICAgICAgPHN0b3Agb2Zmc2V0PSIwJSIgc3R5bGU9InN0b3AtY29sb3I6IzJjNzIyYztzdG9wLW9wYWNpdHk6MSIgLz4KICAgICAgPHN0b3Agb2Zmc2V0PSIxMDAlIiBzdHlsZT0ic3RvcC1jb2xvcjojNTJjNDFhO3N0b3Atb3BhY2l0eToxIiAvPgogICAgPC9saW5lYXJHcmFkaWVudD4KICA8L2RlZnM+CiAgPHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0idXJsKCNncmFkaWVudDEpIi8+CiAgPHRleHQgeD0iNTAlIiB5PSI0MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSI0OCIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj7pmLLmsLTkuJPlrrY8L3RleHQ+CiAgPHRleHQgeD0iNTAlIiB5PSI2MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIyNCIgZmlsbD0icmdiYSgyNTUsMjU1LDI1NSwwLjkpIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj7kuJPkuJrmlr3lt6Ugwrcg5ZOB6LSo5L+d6ZqcPC90ZXh0Pgo8L3N2Zz4K',
+          title: '防水补漏专家',
+          summary: '专业施工 · 品质保障',
+          type: 'image',
+          linkType: 'service',
+          linkValue: 'waterproof'
+        },
+        {
+          value: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNzUwIiBoZWlnaHQ9IjQwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8ZGVmcz4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iZ3JhZGllbnQyIiB4MT0iMCUiIHkxPSIwJSIgeDI9IjEwMCUiIHkyPSIxMDAlIj4KICAgICAgPHN0b3Agb2Zmc2V0PSIwJSIgc3R5bGU9InN0b3AtY29sb3I6IzQwOWVmZjtzdG9wLW9wYWNpdHk6MSIgLz4KICAgICAgPHN0b3Agb2Zmc2V0PSIxMDAlIiBzdHlsZT0ic3RvcC1jb2xvcjojNjRiNWZmO3N0b3Atb3BhY2l0eToxIiAvPgogICAgPC9saW5lYXJHcmFkaWVudD4KICA8L2RlZnM+CiAgPHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0idXJsKCNncmFkaWVudDIpIi8+CiAgPHRleHQgeD0iNTAlIiB5PSI0MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSI0OCIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj7mlrDmiL/pmLLmsLQ8L3RleHQ+CiAgPHRleHQgeD0iNTAlIiB5PSI2MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIyNCIgZmlsbD0icmdiYSgyNTUsMjU1LDI1NSwwLjkpIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj7moIflh4blMJbmlr3lt6Ugwrcg5Y2B5bm06LSo5L+dPC90ZXh0Pgo8L3N2Zz4K',
+          title: '新房防水施工',
+          summary: '标准化施工 · 十年质保',
+          type: 'image',
+          linkType: 'service',
+          linkValue: 'new'
+        },
+        {
+          value: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNzUwIiBoZWlnaHQ9IjQwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8ZGVmcz4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iZ3JhZGllbnQzIiB4MT0iMCUiIHkxPSIwJSIgeDI9IjEwMCUiIHkyPSIxMDAlIj4KICAgICAgPHN0b3Agb2Zmc2V0PSIwJSIgc3R5bGU9InN0b3AtY29sb3I6I2Y1NmM2YztzdG9wLW9wYWNpdHk6MSIgLz4KICAgICAgPHN0b3Agb2Zmc2V0PSIxMDAlIiBzdHlsZT0ic3RvcC1jb2xvcjojZmY5ZjlmO3N0b3Atb3BhY2l0eToxIiAvPgogICAgPC9saW5lYXJHcmFkaWVudD4KICA8L2RlZnM+CiAgPHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0idXJsKCNncmFkaWVudDMpIi8+CiAgPHRleHQgeD0iNTAlIiB5PSI0MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSI0OCIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj7nlY/pgJrnsKHpgZM8L3RleHQ+CiAgPHRleHQgeD0iNTAlIiB5PSI2MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIyNCIgZmlsbD0icmdiYSgyNTUsMjU1LDI1NSwwLjkpIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj7lv6vpgJ/lk43lupQgwrcg5LiT5Lia6K6+5aSHPC90ZXh0Pgo8L3N2Zz4K',
+          title: '管道疏通',
+          summary: '快速响应 · 专业设备',
+          type: 'image',
+          linkType: 'service',
+          linkValue: 'drain'
+        }
+      ]
+    }
   }
-])
+)
+
+// 服务数据 - 改为接口获取
+const homeServices = ref([])
+
+// 获取首页服务数据
+const { loading: servicesLoading, run: loadServices } = useRequest(
+  () => getHomeServices(),
+  {
+    immediate: true,
+    onSuccess: (data) => {
+      console.log('获取服务数据成功', data)
+      homeServices.value = data
+    },
+    onError: (error) => {
+      console.error('获取服务数据失败', error)
+      // 默认服务数据在模板中直接使用
+    }
+  }
+)
+
+// 统计数据 - 改为接口获取
+const statistics = ref({
+  totalCustomers: '10000+',
+  satisfactionRate: '99.8%',
+  responseTime: '24h',
+  totalOrders: 0
+})
+
+// 获取首页统计数据
+const { loading: statsLoading, run: loadStats } = useRequest(
+  () => getHomeStatistics(),
+  {
+    immediate: true,
+    onSuccess: (data) => {
+      console.log('获取统计数据成功', data)
+      statistics.value = {
+        totalCustomers: data.totalCustomers > 10000 ? '10000+' : data.totalCustomers,
+        satisfactionRate: data.satisfactionRate + '%',
+        responseTime: data.responseTime,
+        totalOrders: data.totalOrders
+      }
+    },
+    onError: (error) => {
+      console.error('获取统计数据失败', error)
+      // 使用默认统计数据
+    }
+  }
+)
+
+// 生成占位图SVG
+const generatePlaceholderSVG = (title: string, id: string) => {
+  let gradientId = 'gradient1'
+  let color1 = '#2c722c'
+  let color2 = '#52c41a'
+  
+  if (id === 'new') {
+    gradientId = 'gradient2'
+    color1 = '#409eff'
+    color2 = '#64b5ff'
+  } else if (id === 'drain') {
+    gradientId = 'gradient3'
+    color1 = '#f56c6c'
+    color2 = '#ff9f9f'
+  }
+  
+  return `data:image/svg+xml;base64,${btoa(`<svg width="750" height="400" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="${gradientId}" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:${color1};stop-opacity:1" />
+      <stop offset="100%" style="stop-color:${color2};stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <rect width="100%" height="100%" fill="url(#${gradientId})"/>
+  <text x="50%" y="40%" font-family="Arial, sans-serif" font-size="48" font-weight="bold" fill="white" text-anchor="middle">${title}</text>
+</svg>`)}`
+}
 
 // 轮播图点击
 const handleBannerClick = (index: number, item: any) => {
   console.log('点击了轮播图', index, item)
-  if (index === 0) {
-    navigateToService('waterproof')
-  } else if (index === 1) {
-    navigateToService('new')
-  } else if (index === 2) {
-    navigateToService('drain')
+  
+  if (item.linkType === 'service') {
+    navigateToService(item.linkValue)
+  } else if (item.linkType === 'external') {
+    // 处理外部链接
+    uni.showToast({
+      title: '跳转到外部链接: ' + item.linkValue,
+      icon: 'none'
+    })
   }
 }
 
@@ -327,6 +438,11 @@ const handleServiceAppointment = (serviceId: string, event: Event) => {
     url: `/pages/appointment/index?${queryString}`
   })
 }
+
+// 初始化页面
+onMounted(() => {
+  console.log('首页组件挂载')
+})
 </script>
 
 <style lang="scss">

@@ -141,6 +141,8 @@
 <script lang="ts" setup>
 import { ref, reactive, onMounted } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
+import { getServiceTypes, getSceneTypes, submitAppointment, type IAppointmentForm } from '@/api/appointment'
+import useRequest from '@/hooks/useRequest'
 
 // 安全距离
 const safeAreaBottom = ref(0)
@@ -149,7 +151,7 @@ const safeAreaBottom = ref(0)
 const appointmentForm = ref()
 
 // 表单数据
-const formData = reactive({
+const formData = reactive<IAppointmentForm>({
   serviceType: '',
   name: '',
   phone: '',
@@ -159,23 +161,86 @@ const formData = reactive({
   location: ''
 })
 
-// 服务类型选项
-const serviceOptions = ref([
-  { value: 'repair', label: '防水补漏' },
-  { value: 'new', label: '新房防水施工' },
-  { value: 'drain', label: '疏通管道' },
-  { value: 'unsure', label: '我不清楚' }
-])
+// 服务类型选项 - 改为接口获取
+const serviceOptions = ref([])
 
-// 场景选项数据
-const sceneOptions = ref([
-  { value: '客厅', label: '客厅' },
-  { value: '厨房', label: '厨房' },
-  { value: '卫生间', label: '卫生间' },
-  { value: '阳台', label: '阳台' },
-  { value: '卧室', label: '卧室' },
-  { value: '其他', label: '其他' }
-])
+// 场景选项数据 - 改为接口获取
+const sceneOptions = ref([])
+
+// 获取服务类型选项
+const { loading: serviceTypesLoading, run: loadServiceTypes } = useRequest(
+  () => getServiceTypes(),
+  {
+    immediate: true,
+    onSuccess: (data) => {
+      serviceOptions.value = data.map(item => ({
+        value: item.value,
+        label: item.label
+      }))
+    },
+    onError: () => {
+      // 如果接口失败，使用默认数据
+      serviceOptions.value = [
+        { value: 'repair', label: '防水补漏' },
+        { value: 'new', label: '新房防水施工' },
+        { value: 'drain', label: '疏通管道' },
+        { value: 'unsure', label: '我不清楚' }
+      ]
+    }
+  }
+)
+
+// 获取场景类型选项
+const { loading: sceneTypesLoading, run: loadSceneTypes } = useRequest(
+  () => getSceneTypes(),
+  {
+    immediate: true,
+    onSuccess: (data) => {
+      sceneOptions.value = data.map(item => ({
+        value: item.value,
+        label: item.label
+      }))
+    },
+    onError: () => {
+      // 如果接口失败，使用默认数据
+      sceneOptions.value = [
+        { value: '客厅', label: '客厅' },
+        { value: '厨房', label: '厨房' },
+        { value: '卫生间', label: '卫生间' },
+        { value: '阳台', label: '阳台' },
+        { value: '卧室', label: '卧室' },
+        { value: '其他', label: '其他' }
+      ]
+    }
+  }
+)
+
+// 提交预约请求
+const { loading: submitLoading, run: submitAppointmentRequest } = useRequest(
+  () => submitAppointment(formData),
+  {
+    immediate: false,
+    onSuccess: (result) => {
+      uni.showToast({
+        title: `预约成功！订单号：${result.orderNo}`,
+        icon: 'none',
+        duration: 3000
+      })
+      
+      // 跳转到订单详情或首页
+      setTimeout(() => {
+        uni.switchTab({ url: '/pages/index/index' })
+      }, 2000)
+    },
+    onError: (error) => {
+      console.error('预约提交失败', error)
+      uni.showToast({
+        title: '预约提交失败，请重试',
+        icon: 'none'
+      })
+    }
+  }
+)
 
 // 从URL参数获取服务类型并设置默认值
 onLoad((options) => {
@@ -281,22 +346,9 @@ const submitForm = () => {
   // 使用wd-form进行表单验证
   appointmentForm.value.validate().then(({ valid, errors }) => {
     if (valid) {
-      // 表单验证通过，提交数据
-      uni.showLoading({ title: '提交中...' })
-      
-      setTimeout(() => {
-        uni.hideLoading()
-        uni.showToast({
-          title: '预约成功，我们将尽快联系您',
-          icon: 'none',
-          duration: 2000
-        })
-        
-        // 跳转到首页
-        setTimeout(() => {
-          uni.switchTab({ url: '/pages/index/index' })
-        }, 2000)
-      }, 1500)
+      // 表单验证通过，调用接口提交数据
+      console.log('提交预约数据:', formData)
+      submitAppointmentRequest()
     } else {
       console.log('表单验证失败', errors)
     }
