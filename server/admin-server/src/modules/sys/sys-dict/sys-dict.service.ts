@@ -4,6 +4,7 @@ import {
   AddSysDictTypeDto,
   GetDictDataListDto,
   GetSysDictTypeDto,
+  QueryDictTypeDto,
   UpdateDictDataDto,
   UpdateSysDictTypeDto,
 } from './dto/req-sys-dict.dto';
@@ -153,6 +154,36 @@ export class SysDictService {
       skip: skip,
       take: take,
     });
+  }
+
+  /* 查询指定类型的字典列表，不需要权限过滤 */
+  async queryByType(queryDictTypeDto: QueryDictTypeDto) {
+    const { dictType } = queryDictTypeDto;
+    
+    // 查询匹配的字典类型
+    const dictTypeData = await this.prisma.sysDictType.findFirst({
+      where: {
+        dictType: dictType,
+        status: '0', // 只查询正常状态的字典
+      },
+    });
+    
+    if (!dictTypeData) {
+      return { data: [] };
+    }
+    
+    // 查询该类型下的所有字典数据
+    const dictDataList = await this.prisma.sysDictData.findMany({
+      where: {
+        dictType: dictType,
+        status: '0', // 只查询正常状态的字典数据
+      },
+      orderBy: {
+        dictSort: 'asc', // 按字典排序升序排列
+      },
+    });
+    
+    return dictDataList
   }
 
   /* 通过id查询字典类型 */

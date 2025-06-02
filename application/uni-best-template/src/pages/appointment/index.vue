@@ -169,23 +169,28 @@ const sceneOptions = ref([])
 
 // 获取服务类型选项
 const { loading: serviceTypesLoading, run: loadServiceTypes } = useRequest(
-  () => getServiceTypes(),
+  () => getServiceTypes('bussiness_type'),
   {
     immediate: true,
-    onSuccess: (data) => {
-      serviceOptions.value = data.map(item => ({
-        value: item.value,
-        label: item.label
-      }))
+    onSuccess: (response) => {
+      console.log('服务类型接口响应:', response)
+      if (response && Array.isArray(response)) {
+        const dictItems = response
+        console.log('字典数据项:', dictItems)
+        
+        serviceOptions.value = dictItems.map(item => ({
+          value: item.dictValue,
+          label: item.dictLabel
+        }))
+        console.log('处理后的服务类型选项:', serviceOptions.value)
+      } else {
+        console.error('服务类型接口响应异常:', response)
+        useDefaultServiceOptions()
+      }
     },
-    onError: () => {
-      // 如果接口失败，使用默认数据
-      serviceOptions.value = [
-        { value: 'repair', label: '防水补漏' },
-        { value: 'new', label: '新房防水施工' },
-        { value: 'drain', label: '疏通管道' },
-        { value: 'unsure', label: '我不清楚' }
-      ]
+    onError: (error) => {
+      console.error('获取服务类型失败:', error)
+      useDefaultServiceOptions()
     }
   }
 )
@@ -355,6 +360,16 @@ const submitForm = () => {
   }).catch(error => {
     console.log('验证出错', error)
   })
+}
+
+// 默认服务类型选项
+const useDefaultServiceOptions = () => {
+  serviceOptions.value = [
+    { value: 'repair', label: '防水补漏' },
+    { value: 'new', label: '新房防水施工' },
+    { value: 'drain', label: '疏通管道' },
+    { value: 'unsure', label: '我不清楚' }
+  ]
 }
 </script>
 

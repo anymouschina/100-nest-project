@@ -56,6 +56,12 @@ export class GetSysDictTypeDto extends PaginationDto {
   params: ParamsDto = {};
 }
 
+/* 简单查询字典类型 */
+export class QueryDictTypeDto {
+  @IsString()
+  dictType: string;
+}
+
 /* 查询字典数据 */
 export class GetDictDataListDto extends PaginationDto {
   @IsString()

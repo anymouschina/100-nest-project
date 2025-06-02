@@ -25,6 +25,7 @@ import {
   AddSysDictTypeDto,
   GetDictDataListDto,
   GetSysDictTypeDto,
+  QueryDictTypeDto,
   UpdateDictDataDto,
   UpdateSysDictTypeDto,
 } from './dto/req-sys-dict.dto';
@@ -42,6 +43,7 @@ import { ExportSysDictDto } from './dto/res-sys-dict.dto';
 import { User } from 'src/common/decorators/user.decorator';
 import { UserEnum } from 'src/common/decorators/user.decorator';
 import { DataScope } from 'src/common/type/data-scope.type';
+import { Public } from 'src/common/decorators/public.decorator';
 
 @Controller('system')
 export class SysDictController {
@@ -77,6 +79,14 @@ export class SysDictController {
     @User(UserEnum.dataScope) dataScope: DataScope,
   ) {
     return await this.sysDictService.typeList(getSysDictTypeDto, dataScope);
+  }
+
+  /* 查询指定类型的字典列表，不需要权限验证 */
+  @Get('dict/query')
+  @Public()
+  async queryDictByType(@Query() queryDictTypeDto: QueryDictTypeDto) {
+    const result = await this.sysDictService.queryByType(queryDictTypeDto);
+    return DataObj.create(result);
   }
 
   /* 刷新缓存 */

@@ -8,6 +8,31 @@ export interface IServiceType {
   isActive: boolean
 }
 
+// 字典项类型
+export interface IDictItem {
+  dictCode: number
+  dictSort: number
+  dictLabel: string
+  dictValue: string
+  dictType: string
+  cssClass: string | null
+  listClass: string
+  isDefault: string
+  status: string
+  createBy: string
+  createTime: string
+  updateBy: string | null
+  updateTime: string | null
+  remark: string | null
+}
+
+// 系统字典返回类型
+export interface IDictResponse {
+  code: number
+  msg: string
+  data: IDictItem[]
+}
+
 export interface ISceneType {
   value: string
   label: string
@@ -44,9 +69,19 @@ export interface IRegion {
 
 /**
  * 获取服务类型选项
+ * 从系统字典接口获取业务类型数据
  */
-export const getServiceTypes = () => {
-  return http.get<IServiceType[]>('/api/appointment/service-types')
+export const getServiceTypes = (dictType: string) => {
+  // 获取后台管理系统的基础URL
+  const adminBaseUrl = import.meta.env.VITE_ADMIN_BASEURL
+  
+  // 使用完整URL调用接口
+  return http.get<IDictResponse>(`${adminBaseUrl}/system/dict/query`, { dictType })
+    .then(response => {
+      console.log('字典接口原始响应:', response)
+      // 直接返回原始响应，让页面处理数据
+      return response
+    })
 }
 
 /**
