@@ -93,6 +93,7 @@
 
 <script lang="ts" setup>
 import { ref, reactive, onMounted, computed } from 'vue'
+import { onLoad } from '@dcloudio/uni-app'
 import useRequest from '@/hooks/useRequest'
 import { 
   getServiceDetailAPI, 
@@ -106,6 +107,18 @@ const serviceId = ref('waterproof')
 
 // 控制是否使用Mock数据
 const useMockData = ref(globalUseMockData)
+
+// 从路由参数获取服务ID
+onLoad((options) => {
+  console.log('服务详情页面接收到的参数:', options)
+  if (options && options.id) {
+    serviceId.value = options.id
+    console.log('设置服务ID:', serviceId.value)
+  }
+  
+  // 初始化时加载数据
+  loadData()
+})
 
 // 服务数据
 const serviceData = reactive<IServiceDetail>({
@@ -161,9 +174,11 @@ const { loading, error, run } = useRequest(() => getServiceDetailAPI(serviceId.v
 
 // 加载数据
 const loadData = () => {
+  console.log('加载服务详情数据，服务ID:', serviceId.value)
   run().then(res => {
     if (res && res.data) {
       Object.assign(serviceData, res.data)
+      console.log('服务详情数据加载成功')
     }
   }).catch(err => {
     console.error('获取服务详情失败', err)
@@ -188,20 +203,39 @@ const goBack = () => {
 
 // 跳转到预约页面
 const makeAppointment = () => {
+  // 根据服务ID判断服务类型
+  let appointmentType = 'unsure'; // 默认为"我不清楚"
+  
+  if (serviceId.value === 'waterproof') {
+    appointmentType = 'repair'; // 防水补漏
+  } else if (serviceId.value === 'drain') {
+    appointmentType = 'drain'; // 疏通管道
+  } else if (serviceId.value === 'new') {
+    appointmentType = 'new'; // 新房防水施工
+  }
+  
+  console.log('跳转到预约页面，服务类型:', appointmentType)
+  
+  // 构建完整的预约参数
+  const appointmentParams = {
+    serviceType: appointmentType,
+    // 可以添加更多参数，如默认场景类型等
+    sceneType: serviceId.value === 'drain' ? '厨房' : '卫生间', // 根据服务类型设置默认场景
+  }
+  
+  // 将参数转换为URL查询字符串
+  const queryString = Object.entries(appointmentParams)
+    .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
+    .join('&')
+  
   uni.navigateTo({
-    url: '/pages/appointment/index?serviceType=' + serviceId.value
+    url: '/pages/appointment/index?' + queryString
   })
 }
 
 onMounted(() => {
-  // 获取页面参数
-  const query = uni.getEnterOptionsSync().query
-  if (query && query.id) {
-    serviceId.value = query.id as string
-  }
-  
-  // 初始化时加载数据
-  loadData()
+  // onMounted钩子中的其他初始化逻辑
+  console.log('服务详情页面已挂载')
 })
 </script>
 

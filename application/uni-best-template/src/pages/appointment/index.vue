@@ -140,24 +140,13 @@
 
 <script lang="ts" setup>
 import { ref, reactive, onMounted } from 'vue'
+import { onLoad } from '@dcloudio/uni-app'
 
 // 安全距离
 const safeAreaBottom = ref(0)
 
 // 表单引用
 const appointmentForm = ref()
-
-onMounted(() => {
-  // 获取安全区域信息
-  uni.getSystemInfo({
-    success: (res) => {
-      console.log('系统信息', res)
-      if (res.safeAreaInsets) {
-        safeAreaBottom.value = res.safeAreaInsets.bottom || 0
-      }
-    }
-  })
-})
 
 // 表单数据
 const formData = reactive({
@@ -174,6 +163,7 @@ const formData = reactive({
 const serviceOptions = ref([
   { value: 'repair', label: '防水补漏' },
   { value: 'new', label: '新房防水施工' },
+  { value: 'drain', label: '疏通管道' },
   { value: 'unsure', label: '我不清楚' }
 ])
 
@@ -186,6 +176,59 @@ const sceneOptions = ref([
   { value: '卧室', label: '卧室' },
   { value: '其他', label: '其他' }
 ])
+
+// 从URL参数获取服务类型并设置默认值
+onLoad((options) => {
+  console.log('预约页面接收到的参数:', options)
+  
+  // 处理服务类型参数
+  if (options && options.serviceType) {
+    // 处理参数映射，确保能匹配到选项
+    let serviceType = options.serviceType
+    
+    // 特殊处理：将waterproof映射到repair
+    if (serviceType === 'waterproof') {
+      serviceType = 'repair'
+    } else if (serviceType === 'new') {
+      serviceType = 'new'
+    } else if (serviceType === 'drain') {
+      serviceType = 'drain'
+    } else if (serviceType === 'unsure' || !serviceType) {
+      serviceType = 'unsure'
+    }
+    
+    console.log('设置服务类型:', serviceType)
+    // 设置默认选中的服务类型
+    formData.serviceType = serviceType
+  }
+  
+  // 处理其他可能的参数
+  if (options && options.sceneType) {
+    // 设置场景类型
+    formData.sceneType = options.sceneType
+  }
+  
+  // 如果有其他预填充数据，也可以在这里处理
+  if (options && options.name) {
+    formData.name = options.name
+  }
+  
+  if (options && options.phone) {
+    formData.phone = options.phone
+  }
+})
+
+onMounted(() => {
+  // 获取安全区域信息
+  uni.getSystemInfo({
+    success: (res) => {
+      console.log('系统信息', res)
+      if (res.safeAreaInsets) {
+        safeAreaBottom.value = res.safeAreaInsets.bottom || 0
+      }
+    }
+  })
+})
 
 // 选择位置
 const chooseLocation = () => {

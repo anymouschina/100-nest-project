@@ -64,9 +64,10 @@ const tabRoutes = {
 
 // 一键预约点击事件
 const handleAppointmentClick = () => {
- // 一键预约
+  console.log('底部导航栏一键预约按钮点击')
+  // 一键预约
   uni.navigateTo({
-    url: '/pages/appointment/index'
+    url: '/pages/appointment/index?serviceType=unsure'
   })
 }
 

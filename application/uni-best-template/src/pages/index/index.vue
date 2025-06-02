@@ -108,6 +108,7 @@
                 type="primary" 
                 size="small" 
                 custom-style="margin-top:20rpx;background:linear-gradient(135deg, #2c722c 0%, #52c41a 100%);border:none;border-radius:25rpx;box-shadow:0 6rpx 16rpx rgba(44,114,44,0.3);font-size:26rpx;"
+                @click="handleServiceAppointment('waterproof', $event)"
               >
                 立即预约
               </wd-button>
@@ -143,6 +144,7 @@
                 type="primary" 
                 size="small" 
                 custom-style="margin-top:20rpx;background:linear-gradient(135deg, #409eff 0%, #64b5ff 100%);border:none;border-radius:25rpx;box-shadow:0 6rpx 16rpx rgba(64,158,255,0.3);font-size:26rpx;"
+                @click="handleServiceAppointment('drain', $event)"
               >
                 立即预约
               </wd-button>
@@ -276,17 +278,53 @@ const handleBannerClick = (index: number, item: any) => {
   }
 }
 
+// 一键预约
+const navigateToAppointment = () => {
+  console.log('首页跳转到一键预约，默认服务类型: unsure')
+  uni.navigateTo({
+    url: '/pages/appointment/index?serviceType=unsure'
+  })
+}
+
 // 跳转到具体服务页面
 const navigateToService = (serviceId: string) => {
+  console.log('跳转到服务详情页面:', serviceId)
   uni.navigateTo({
     url: `/pages/index/service-detail?id=${serviceId}`
   })
 }
 
-// 一键预约
-const navigateToAppointment = () => {
+// 处理卡片上的立即预约按钮点击
+const handleServiceAppointment = (serviceId: string, event: Event) => {
+  // 阻止事件冒泡，避免触发卡片的点击事件
+  event.stopPropagation()
+  
+  // 根据服务ID映射到相应的服务类型
+  let serviceType = 'unsure';
+  if (serviceId === 'waterproof') {
+    serviceType = 'repair'; // 防水补漏
+  } else if (serviceId === 'drain') {
+    serviceType = 'drain'; // 疏通管道
+  } else if (serviceId === 'new') {
+    serviceType = 'new'; // 新房防水施工
+  }
+  
+  console.log('服务卡片立即预约按钮跳转，服务类型:', serviceType)
+  
+  // 构建预约参数
+  const appointmentParams = {
+    serviceType,
+    // 可以根据不同服务类型设置默认场景
+    sceneType: serviceId === 'drain' ? '厨房' : '卫生间'
+  }
+  
+  // 将参数转换为URL查询字符串
+  const queryString = Object.entries(appointmentParams)
+    .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
+    .join('&')
+  
   uni.navigateTo({
-    url: '/pages/appointment/index'
+    url: `/pages/appointment/index?${queryString}`
   })
 }
 </script>

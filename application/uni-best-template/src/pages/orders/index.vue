@@ -209,8 +209,21 @@ const reviewOrder = (orderId: string) => {
 
 // 跳转到预约页面
 const goToAppointment = () => {
-  uni.switchTab({
-    url: '/pages/appointment/index'
+  console.log('订单页面跳转到预约页面')
+  
+  // 构建预约参数
+  const appointmentParams = {
+    serviceType: 'unsure',
+    // 可以根据需要添加其他默认参数
+  }
+  
+  // 将参数转换为URL查询字符串
+  const queryString = Object.entries(appointmentParams)
+    .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
+    .join('&')
+  
+  uni.navigateTo({
+    url: '/pages/appointment/index?' + queryString
   })
 }
 
