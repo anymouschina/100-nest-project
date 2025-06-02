@@ -87,7 +87,21 @@
     "setting": {
       "urlCheck": false
     },
-    "usingComponents": true
+    "usingComponents": true,
+    "requiredPrivateInfos": [
+      "chooseLocation",
+      "getLocation",
+      "chooseAddress",
+      "chooseContact"
+    ],
+    "permission": {
+      "scope.userLocation": {
+        "desc": "您的位置信息将用于小程序选择服务地址"
+      },
+      "scope.address": {
+        "desc": "您的通讯录信息将用于自动填写联系方式"
+      }
+    }
   },
   "mp-alipay": {
     "usingComponents": true,

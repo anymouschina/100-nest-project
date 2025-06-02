@@ -74,7 +74,7 @@
           ]"
         >
           <template #suffix>
-            <wd-icon name="phone" size="36rpx" color="#999" v-if="!formData.phone"></wd-icon>
+            <wd-icon name="phone" size="36rpx" color="#999" v-if="!formData.phone" @click.stop="chooseContact"></wd-icon>
           </template>
         </wd-input>
         
@@ -303,20 +303,58 @@ onMounted(() => {
 // 选择位置
 const chooseLocation = () => {
   // #ifdef MP-WEIXIN
-  uni.chooseLocation({
+  // 先获取当前位置
+  uni.showLoading({
+    title: '定位中...',
+    mask: true
+  })
+  
+  // 打开位置选择器的方法
+  const openLocationChooser = (options = {}) => {
+    uni.chooseLocation({
+      ...options,
+      success: (locationRes) => {
+        console.log('选择位置成功', locationRes)
+        // 自动填充省市区和详细地址
+        formData.location = locationRes.name || locationRes.address
+        formData.region = locationRes.address.split(',')[0] || ''
+      },
+      fail: (err) => {
+        console.log('选择位置失败', err)
+        if (err.errMsg.includes('auth')) {
+          uni.showToast({
+            title: '请授权位置权限',
+            icon: 'none'
+          })
+        } else {
+          uni.showToast({
+            title: '选择位置失败',
+            icon: 'none'
+          })
+        }
+      }
+    })
+  }
+  
+  // 获取当前位置，然后打开位置选择器
+  uni.getLocation({
+    type: 'gcj02', // 使用gcj02坐标系
     success: (res) => {
-      console.log('选择位置成功', res)
-      // 自动填充省市区和详细地址
-      formData.location = res.name || res.address
-      formData.region = res.address.split(',')[0] || ''
-      formData.address = res.address || ''
+      uni.hideLoading()
+      console.log('获取当前位置成功', res)
+      
+      // 使用当前位置打开位置选择器
+      openLocationChooser({
+        latitude: res.latitude,
+        longitude: res.longitude
+      })
     },
     fail: (err) => {
-      console.log('选择位置失败', err)
-      uni.showToast({
-        title: '请授权位置权限',
-        icon: 'none'
-      })
+      uni.hideLoading()
+      console.log('获取当前位置失败', err)
+      
+      // 如果获取当前位置失败，直接打开位置选择器
+      openLocationChooser()
     }
   })
   // #endif
@@ -370,6 +408,54 @@ const useDefaultServiceOptions = () => {
     { value: 'drain', label: '疏通管道' },
     { value: 'unsure', label: '我不清楚' }
   ]
+}
+
+// 选择联系人
+const chooseContact = () => {
+  // #ifdef MP-WEIXIN
+  uni.chooseContact({
+    success: (res) => {
+      console.log('选择联系人成功:', res)
+      // 提取手机号，通常是11位数字
+      const phoneMatch = res.phoneNumber.match(/1\d{10}/)
+      if (phoneMatch) {
+        formData.phone = phoneMatch[0]
+        uni.showToast({
+          title: '已自动填写联系电话',
+          icon: 'success',
+          duration: 2000
+        })
+      } else {
+        // 如果没有找到符合格式的手机号，直接使用返回的号码
+        formData.phone = res.phoneNumber.replace(/\s+/g, '')
+        uni.showToast({
+          title: '请确认电话号码格式是否正确',
+          icon: 'none',
+          duration: 2000
+        })
+      }
+      
+      // 如果有姓名且用户还没填写姓名，自动填充姓名
+      if (res.displayName && !formData.name) {
+        formData.name = res.displayName
+      }
+    },
+    fail: (err) => {
+      console.error('选择联系人失败:', err)
+      uni.showToast({
+        title: '选择联系人失败',
+        icon: 'none'
+      })
+    }
+  })
+  // #endif
+  
+  // #ifndef MP-WEIXIN
+  uni.showToast({
+    title: '该功能仅在微信小程序中可用',
+    icon: 'none'
+  })
+  // #endif
 }
 </script>
 
