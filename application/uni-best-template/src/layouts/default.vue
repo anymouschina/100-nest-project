@@ -11,15 +11,15 @@
      :style="customStyle"
     >
       <wd-navbar 
-        custom-style="background: transparent;" 
-        fixed 
-        placeholder 
-        :bordered="false" 
-        safeAreaInsetTop
-        :left-arrow="showBackArrow"
-        @click-left="handleBack"
-      ></wd-navbar>
-      <slot />
+          custom-style="background: transparent;" 
+          fixed 
+          placeholder 
+          :bordered="false" 
+          safeAreaInsetTop
+          :left-arrow="showBackArrow"
+          @click-left="handleBack"
+        ></wd-navbar>
+          <slot />
     </scroll-view>
     <wd-toast />
     <wd-message-box />

@@ -8,123 +8,152 @@ datasource db {
 }
 
 model User {
-  userId    Int      @id @default(autoincrement())
-  name      String
-  email     String?  @unique
-  password  String?
-  address   String?
-  createdAt DateTime @default(now())
-  
-  // WeChat user fields
-  openId    String?  @unique
-  unionId   String?  @unique
-  avatarUrl String?
-  gender    Int?
-  country   String?
-  province  String?
-  city      String?
-  language  String?
-  
-  orders Order[]
-
-  cart Cart?
-
+  userId          Int               @id @default(autoincrement())
+  name            String
+  email           String?           @unique
+  password        String?
+  address         String?
+  createdAt       DateTime          @default(now())
+  openId          String?           @unique
+  unionId         String?           @unique
+  avatarUrl       String?
+  gender          Int?
+  country         String?
+  province        String?
+  city            String?
+  language        String?
+  appointments    Appointment[]
+  cart            Cart?
   CoupunOrderUser CoupunOrderUser[]
+  orders          Order[]
 }
 
 model Order {
-  orderId   Int      @id @default(autoincrement())
-  total     Float
-  status    Status   @default(PENDING)
-  createdAt DateTime @default(now())
-
-  user   User @relation(fields: [userId], references: [userId])
-  userId Int
-
-  items OrderItem[]
-
+  orderId         Int               @id @default(autoincrement())
+  total           Float
+  status          Status            @default(PENDING)
+  createdAt       DateTime          @default(now())
+  userId          Int
+  appointmentId   Int?
+  appointmentInfo Json?
+  paymentStatus   PaymentStatus     @default(UNPAID)
   CoupunOrderUser CoupunOrderUser[]
+  appointment     Appointment?      @relation(fields: [appointmentId], references: [id])
+  user            User              @relation(fields: [userId], references: [userId])
+  items           OrderItem[]
 }
 
 model OrderItem {
   orderItemId Int      @id @default(autoincrement())
   quantity    Int
   createdAt   DateTime @default(now())
-
-  order   Order @relation(fields: [orderId], references: [orderId])
-  orderId Int
-
-  product   Product @relation(fields: [productId], references: [productId])
-  productId Int
+  orderId     Int
+  productId   Int
+  order       Order    @relation(fields: [orderId], references: [orderId])
+  product     Product  @relation(fields: [productId], references: [productId])
 }
 
 model Product {
-  productId   Int      @id @default(autoincrement())
+  productId   Int         @id @default(autoincrement())
   name        String
   price       Float
   description String
   stock       Int
-  createdAt   DateTime @default(now())
-
-  cartItems CartItem[]
-
-  orderItems OrderItem[]
+  createdAt   DateTime    @default(now())
+  cartItems   CartItem[]
+  orderItems  OrderItem[]
 }
 
 model Cart {
-  cartId    Int      @id @default(autoincrement())
-  createdAt DateTime @default(now())
-
-  user   User @relation(fields: [userId], references: [userId])
-  userId Int  @unique
-
-  items CartItem[]
+  cartId    Int        @id @default(autoincrement())
+  createdAt DateTime   @default(now())
+  userId    Int        @unique
+  user      User       @relation(fields: [userId], references: [userId])
+  items     CartItem[]
 }
 
 model CartItem {
   cartItemId Int      @id @default(autoincrement())
   quantity   Int
   createdAt  DateTime @default(now())
-
-  cart   Cart @relation(fields: [cartId], references: [cartId])
-  cartId Int
-
-  product   Product @relation(fields: [productId], references: [productId])
-  productId Int
+  cartId     Int
+  productId  Int
+  cart       Cart     @relation(fields: [cartId], references: [cartId])
+  product    Product  @relation(fields: [productId], references: [productId])
 }
 
 model Coupon {
-  couponId  Int      @id @default(autoincrement())
-  code      String   @unique
-  discount  Decimal
-  expireAt  DateTime
-  createdAt DateTime @default(now())
-
+  couponId        Int               @id @default(autoincrement())
+  code            String            @unique
+  discount        Decimal
+  expireAt        DateTime
+  createdAt       DateTime          @default(now())
   CoupunOrderUser CoupunOrderUser[]
 }
 
 model CoupunOrderUser {
-  user   User @relation(fields: [userId], references: [userId])
-  userId Int
-
-  order   Order @relation(fields: [orderId], references: [orderId])
-  orderId Int
-
-  coupun   Coupon @relation(fields: [couponId], references: [couponId])
+  userId   Int
+  orderId  Int
   couponId Int
+  coupun   Coupon @relation(fields: [couponId], references: [couponId])
+  order    Order  @relation(fields: [orderId], references: [orderId])
+  user     User   @relation(fields: [userId], references: [userId])
 
   @@id([userId, orderId, couponId])
 }
 
 model BlacklistedToken {
-  id          Int      @id @default(autoincrement())
-  token       String   @unique
-  userId      Int
+  id            Int      @id @default(autoincrement())
+  token         String   @unique
+  userId        Int
   blacklistedAt DateTime @default(now())
-  expiresAt   DateTime
+  expiresAt     DateTime
+}
+
+model Appointment {
+  id             Int               @id @default(autoincrement())
+  serviceType    String
+  name           String
+  phone          String
+  region         String
+  address        String?
+  sceneType      String[]
+  location       String
+  createdAt      DateTime          @default(now())
+  userId         Int
+  cancelReason   String?
+  cancelledAt    DateTime?
+  cityCode       String?
+  completedAt    DateTime?
+  districtCode   String?
+  followUpCount  Int               @default(0)
+  lastFollowUpAt DateTime?
+  latitude       Float?
+  longitude      Float?
+  status         AppointmentStatus @default(PENDING)
+  updatedAt      DateTime          @updatedAt
+  user           User              @relation(fields: [userId], references: [userId])
+  orders         Order[]
 }
 
 enum Status {
+  PENDING    // 待接单
+  ACCEPTED   // 已接单
+  PROCESSING // 施工中
+  COMPLETED  // 已完成
+  CANCELLED  // 已取消
+  DELIVERED  // 已交付 (保留原有状态)
+}
+
+enum PaymentStatus {
+  UNPAID
+  PAID
+  REFUNDED
+}
+
+enum AppointmentStatus {
   PENDING
-  DELIVERED
+  PROCESSING
+  COMPLETED
+  CANCELLED
 }

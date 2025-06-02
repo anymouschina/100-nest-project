@@ -48,6 +48,8 @@ export interface IAppointmentForm {
   region: string
   location: string
   address: string
+  latitude?: string
+  longitude?: string
   description?: string
   appointmentTime?: string
 }

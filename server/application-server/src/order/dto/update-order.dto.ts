@@ -1,17 +1,26 @@
 import { PartialType } from '@nestjs/mapped-types';
 import { CreateOrderDto } from './create-order.dto';
 import { $Enums } from '@prisma/client';
-import { IsEnum, IsNotEmpty } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 import { Transform } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 
-const Status = ['DELIVERED'];
+// 使用枚举值定义可用状态
+const Status = [
+  'PENDING',   // 待接单
+  'ACCEPTED',  // 已接单
+  'PROCESSING', // 施工中
+  'COMPLETED', // 已完成
+  'CANCELLED', // 已取消
+  'DELIVERED'  // 已交付
+];
 
 export class UpdateOrderDto extends PartialType(CreateOrderDto) {
   @ApiProperty({
-    example: 'DELIVERED',
+    example: 'ACCEPTED',
     required: true,
-    description: 'The status of the Order',
+    description: '订单状态',
+    enum: Status,
     type: 'string',
     name: 'status',
   })
@@ -21,4 +30,15 @@ export class UpdateOrderDto extends PartialType(CreateOrderDto) {
   })
   @IsNotEmpty()
   status: $Enums.Status;
+
+  @ApiProperty({
+    example: '客户要求取消',
+    required: false,
+    description: '状态变更原因（如取消原因）',
+    type: 'string',
+    name: 'reason',
+  })
+  @IsString()
+  @IsOptional()
+  reason?: string;
 }

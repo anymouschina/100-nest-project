@@ -117,7 +117,9 @@ export default defineManifestConfig({
     usingComponents: true,
     // __usePrivacyCheck__: true,
     requiredPrivateInfos: [
+      "chooseAddress",
       "chooseLocation",
+      "choosePoi",
       "getLocation"
     ],
     permission: {

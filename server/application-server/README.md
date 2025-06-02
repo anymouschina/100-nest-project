@@ -81,7 +81,11 @@ Here are the additional features that has been added to the application:
 - Order History Retrieval for a specific users
   - Endpoint: `GET /api/users/:userId/orders`
 - Applying Discounts and Coupons to orders
-  - Endpoint: `POST /api/orders/apply-coupon`\
+  - Endpoint: `POST /api/orders/apply-coupon`
+- 一键预约功能
+  - 提交预约申请: `POST /api/appointment/submit`
+  - 获取用户所有预约: `GET /api/appointment/user`
+  - 获取预约详情: `GET /api/appointment/:id`
 
 ## Dummy Data
 

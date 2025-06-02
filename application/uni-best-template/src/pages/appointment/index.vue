@@ -158,7 +158,9 @@ const formData = reactive<IAppointmentForm>({
   region: '',
   address: '',
   sceneType: '',
-  location: ''
+  location: '',
+  latitude: '',
+  longitude: ''
 })
 
 // 服务类型选项 - 改为接口获取
@@ -227,7 +229,7 @@ const { loading: submitLoading, run: submitAppointmentRequest } = useRequest(
     immediate: false,
     onSuccess: (result) => {
       uni.showToast({
-        title: `预约成功！订单号：${result.orderNo}`,
+        title: `预约成功！`,
         icon: 'none',
         duration: 3000
       })
@@ -318,6 +320,10 @@ const chooseLocation = () => {
         // 自动填充省市区和详细地址
         formData.location = locationRes.name || locationRes.address
         formData.region = locationRes.address.split(',')[0] || ''
+        // 保存经纬度信息
+        formData.latitude = locationRes.latitude.toString()
+        formData.longitude = locationRes.longitude.toString()
+        console.log('已保存位置信息，经度：', formData.longitude, '纬度：', formData.latitude)
       },
       fail: (err) => {
         console.log('选择位置失败', err)
