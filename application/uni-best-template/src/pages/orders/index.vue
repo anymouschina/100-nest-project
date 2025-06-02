@@ -44,7 +44,7 @@
           @click="goToOrderDetail(order.id)"
         >
           <view class="order-header">
-            <view class="order-type">{{ order.serviceTypeName }}</view>
+            <view class="order-type">{{ showServiceTypeText(order.serviceType) }}</view>
             <view class="order-status" :class="'status-' + order.status">{{ getStatusText(order) }}</view>
           </view>
           
@@ -150,19 +150,21 @@ const pagination = ref({
 
 // 服务类型字典
 const serviceTypeDict = ref<Record<string, string>>({})
-
+const showServiceTypeText = (serviceType: string) => {
+  console.log(serviceTypeDict.value,'serviceTypeDict',serviceType)
+  return serviceTypeDict.value[serviceType] || serviceType
+}
 // 获取服务类型字典
 const loadServiceTypes = async () => {
   try {
-    const response = await getServiceTypes('bussiness_type')
-    if (response && Array.isArray(response)) {
-      const dictItems = response
-      
-      // 构建服务类型字典，key为dictValue，value为dictLabel
-      serviceTypeDict.value = dictItems.reduce((acc, item) => {
+    const { data } = await getServiceTypes('bussiness_type')
+    console.log(data,'response111')
+    if (data && Array.isArray(data)) {
+      serviceTypeDict.value = data.reduce((acc, item) => {
         acc[item.dictValue] = item.dictLabel
         return acc
       }, {} as Record<string, string>)
+      // 构建服务类型字典，key为dictValue，value为dictLabel
       
       console.log('服务类型字典:', serviceTypeDict.value)
     }
