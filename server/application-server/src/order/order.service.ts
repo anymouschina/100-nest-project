@@ -410,7 +410,21 @@ export class OrderService {
                  'email', u.email,
                  'openId', u."openId"
                ) as user,
-               a.* as appointment
+               jsonb_build_object(
+                 'id', a.id,
+                 'serviceType', a."serviceType",
+                 'name', a.name,
+                 'phone', a.phone,
+                 'region', a.region,
+                 'address', a.address,
+                 'sceneType', a."sceneType",
+                 'location', a.location,
+                 'createdAt', a."createdAt",
+                 'updatedAt', a."updatedAt",
+                 'userId', a."userId",
+                 'latitude', a.latitude,
+                 'longitude', a.longitude
+               ) as appointment
         FROM "Order" o
         LEFT JOIN "OrderItem" oi ON o."orderId" = oi."orderId"
         LEFT JOIN "Product" p ON oi."productId" = p."productId"
@@ -427,7 +441,7 @@ export class OrderService {
       
       // 执行查询
       const orders = await this.databaseService.$queryRawUnsafe(dataQuery, ...params);
-      console.log(orders,'orders')
+      
       return {
         orders,
         total

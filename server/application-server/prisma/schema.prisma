@@ -130,7 +130,6 @@ model Appointment {
   lastFollowUpAt DateTime?
   latitude       Float?
   longitude      Float?
-  status         AppointmentStatus @default(PENDING)
   updatedAt      DateTime          @updatedAt
   user           User              @relation(fields: [userId], references: [userId])
   orders         Order[]
