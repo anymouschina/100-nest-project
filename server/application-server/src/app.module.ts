@@ -10,6 +10,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { ScheduleModule } from '@nestjs/schedule';
 import { AppointmentModule } from './appointment/appointment.module';
+import { MicroservicesModule } from './microservices/microservices.module';
 
 @Module({
   imports: [
@@ -21,7 +22,8 @@ import { AppointmentModule } from './appointment/appointment.module';
     ProductModule, 
     CartModule, 
     OrderModule,
-    AppointmentModule
+    AppointmentModule,
+    MicroservicesModule
   ],
   controllers: [],
   providers: [

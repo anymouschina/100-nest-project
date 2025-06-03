@@ -1,0 +1,83 @@
+import { Controller, Get, Param, Query, Put, Body, ParseIntPipe } from '@nestjs/common';
+import { OrderService } from './order.service';
+import { Public } from 'src/common/decorators/public.decorator';
+
+/**
+ * 订单控制器
+ * 提供订单列表查询、订单详情、订单状态更新等功能
+ */
+@Controller('api/admin/orders')
+export class OrderController {
+  constructor(private readonly orderService: OrderService) {}
+
+  /**
+   * 测试微服务连接
+   * @returns 连接状态
+   */
+  @Get('test-connection')
+  async testConnection() {
+    try {
+      // 尝试获取订单列表，只获取第一页的一条数据
+      const result = await this.orderService.findAll(undefined, undefined, 1, 1);
+      return {
+        success: true,
+        message: '微服务连接成功',
+        data: result
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: `微服务连接失败: ${error.message}`,
+        error
+      };
+    }
+  }
+
+  /**
+   * 获取订单列表
+   * @param status 订单状态
+   * @param userId 用户ID
+   * @param page 页码
+   * @param pageSize 每页数量
+   * @returns 订单列表数据
+   */
+  @Get()
+  @Public()
+  async findAll(
+    @Query('status') status?: string,
+    @Query('userId') userId?: number,
+    @Query('page') page?: number,
+    @Query('pageSize') pageSize?: number,
+  ) {
+    return this.orderService.findAll(
+      status,
+      userId,
+      page || 1,
+      pageSize || 20,
+    );
+  }
+
+  /**
+   * 获取订单详情
+   * @param id 订单ID
+   * @returns 订单详情
+   */
+  @Get(':id')
+  async findOne(@Param('id', ParseIntPipe) id: number) {
+    return this.orderService.findOne(id);
+  }
+
+  /**
+   * 更新订单状态
+   * @param id 订单ID
+   * @param data 更新数据
+   * @returns 更新后的订单
+   */
+  @Put(':id/status')
+  async updateStatus(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() data: { status: string; reason?: string },
+  ) {
+    return this.orderService.updateStatus(id, data.status, data.reason);
+  }
+} 

@@ -58,4 +58,16 @@ export default {
    * 启用就是后端允许跨域
    */
   cors: false,
+
+  /**
+   * 应用服务器URL
+   * 用于调用application-server的接口
+   */
+  APPLICATION_SERVER_URL: 'http://localhost:3000',
+
+  /**
+   * 微服务配置
+   */
+  MICROSERVICE_HOST: 'localhost',
+  MICROSERVICE_PORT: 3001,
 };
