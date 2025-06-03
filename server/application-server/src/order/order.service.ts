@@ -144,70 +144,131 @@ export class OrderService {
    * @returns A promise that resolves to the updated order or an error object.
    */
   async updateStatus(orderId: number, updateOrderDto: UpdateOrderDto) {
-    // 获取订单详情，使用任意类型来避免类型冲突
-    const order = await this.databaseService.order.findFirst({
-      where: { orderId }
-    });
+    // 使用事务确保订单和预约状态同步更新
+    return this.databaseService.$transaction(async (tx) => {
+      try {
+        // 获取订单详情，使用任意类型来避免类型冲突
+        const order = await tx.order.findFirst({
+          where: { orderId }
+        });
 
-    if (!order) return { error: { message: 'Order was not found' } };
+        if (!order) return { error: { message: 'Order was not found' } };
 
-    // 尝试获取关联的预约
-    const orderWithAppointment = await this.databaseService.$queryRaw`
-      SELECT o.*, a.id as appointment_id 
-      FROM "Order" o
-      LEFT JOIN "Appointment" a ON o."appointmentId" = a.id
-      WHERE o."orderId" = ${orderId}
-    ` as any[];
+        // 尝试获取关联的预约
+        const orderWithAppointment = await tx.$queryRaw`
+          SELECT o.*, a.id as appointment_id 
+          FROM "Order" o
+          LEFT JOIN "Appointment" a ON o."appointmentId" = a.id
+          WHERE o."orderId" = ${orderId}
+        ` as any[];
 
-    // 只有未完成的订单才能更新状态
-    const orderStatus = String(order.status);
-    const newStatus = String(updateOrderDto.status);
-    const completedStatuses = ['DELIVERED', 'COMPLETED', 'CANCELLED'];
-    
-    if (completedStatuses.includes(orderStatus)) {
-      return { error: { message: `The order has already been ${orderStatus.toLowerCase()}, cannot change status` } };
-    }
+        // 只有未完成的订单才能更新状态
+        const orderStatus = String(order.status);
+        const newStatus = String(updateOrderDto.status);
+        const completedStatuses = ['DELIVERED', 'COMPLETED', 'CANCELLED'];
+        
+        if (completedStatuses.includes(orderStatus)) {
+          return { error: { message: `The order has already been ${orderStatus.toLowerCase()}, cannot change status` } };
+        }
 
-    // 检查状态转换是否有效
-    if (!this.isValidStatusTransition(orderStatus, newStatus)) {
-      return { error: { message: `Cannot change status from ${orderStatus} to ${newStatus}` } };
-    }
+        // 检查状态转换是否有效
+        if (!this.isValidStatusTransition(orderStatus, newStatus)) {
+          return { error: { message: `Cannot change status from ${orderStatus} to ${newStatus}` } };
+        }
 
-    // 如果订单关联了预约，同步更新预约状态
-    const appointmentId = orderWithAppointment?.[0]?.appointment_id;
-    if (appointmentId) {
-      await this.updateRelatedAppointmentStatus(appointmentId, newStatus, updateOrderDto.reason);
-    }
+        // 如果是CANCELLED状态且有原因，先更新appointmentInfo
+        if (newStatus === 'CANCELLED' && updateOrderDto.reason) {
+          // 直接使用SQL更新预约信息，避免类型问题
+          await tx.$queryRaw`
+            UPDATE "Order"
+            SET "appointmentInfo" = COALESCE("appointmentInfo", '{}'::jsonb) || 
+                ${JSON.stringify({
+                  cancelReason: updateOrderDto.reason,
+                  cancelledAt: new Date()
+                })}::jsonb
+            WHERE "orderId" = ${orderId}
+          `;
+        }
 
-    // 准备更新数据
-    const updateData: any = { 
-      status: updateOrderDto.status
-    };
-
-    // 如果是CANCELLED状态且有原因，可以将原因保存到appointmentInfo中
-    if (newStatus === 'CANCELLED' && updateOrderDto.reason) {
-      // 直接使用SQL更新预约信息，避免类型问题
-      await this.databaseService.$queryRaw`
-        UPDATE "Order"
-        SET "appointmentInfo" = COALESCE("appointmentInfo", '{}'::jsonb) || 
-            ${JSON.stringify({
-              cancelReason: updateOrderDto.reason,
-              cancelledAt: new Date()
-            })}::jsonb
-        WHERE "orderId" = ${orderId}
-      `;
-    }
-
-    // 更新订单状态
-    return this.databaseService.order.update({
-      data: { status: updateOrderDto.status },
-      where: { orderId },
-      include: {
-        items: {
+        // 更新订单状态
+        const updatedOrder = await tx.order.update({
+          data: { status: updateOrderDto.status },
+          where: { orderId },
           include: {
-            product: true
+            items: {
+              include: {
+                product: true
+              }
+            }
+          }
+        });
+
+        // 如果订单关联了预约，同步更新预约状态
+        const appointmentId = orderWithAppointment?.[0]?.appointment_id;
+        if (appointmentId) {
+          // 获取当前预约状态
+          const currentAppointment = await tx.$queryRaw`
+            SELECT * FROM "Appointment" WHERE "id" = ${appointmentId}
+          ` as any[];
+          
+          if (currentAppointment && currentAppointment.length > 0) {
+            const currentStatus = currentAppointment[0].status;
+            
+            // 不允许从已完成或已取消状态改变
+            if (currentStatus !== 'COMPLETED' && currentStatus !== 'CANCELLED') {
+              // 订单状态与预约状态的映射
+              const statusMapping: Record<string, string> = {
+                'PENDING': 'PENDING',
+                'ACCEPTED': 'PENDING',
+                'PROCESSING': 'PROCESSING',
+                'COMPLETED': 'COMPLETED',
+                'CANCELLED': 'CANCELLED',
+                'DELIVERED': 'COMPLETED'
+              };
+              
+              const appointmentStatus = statusMapping[newStatus];
+              
+              if (appointmentStatus) {
+                // 根据不同状态更新预约
+                if (appointmentStatus === 'COMPLETED') {
+                  await tx.$queryRaw`
+                    UPDATE "Appointment"
+                    SET "status" = ${appointmentStatus}::"AppointmentStatus",
+                        "updatedAt" = NOW(),
+                        "completedAt" = NOW()
+                    WHERE "id" = ${appointmentId}
+                  `;
+                } else if (appointmentStatus === 'CANCELLED') {
+                  await tx.$queryRaw`
+                    UPDATE "Appointment"
+                    SET "status" = ${appointmentStatus}::"AppointmentStatus",
+                        "updatedAt" = NOW(),
+                        "cancelledAt" = NOW(),
+                        "cancelReason" = ${updateOrderDto.reason || '订单已取消'}
+                    WHERE "id" = ${appointmentId}
+                  `;
+                } else {
+                  await tx.$queryRaw`
+                    UPDATE "Appointment"
+                    SET "status" = ${appointmentStatus}::"AppointmentStatus",
+                        "updatedAt" = NOW()
+                    WHERE "id" = ${appointmentId}
+                  `;
+                }
+                
+                console.log(`已将预约 ${appointmentId} 状态更新为 ${appointmentStatus}`);
+              }
+            } else {
+              console.log(`预约已经是 ${currentStatus} 状态，不再更新`);
+            }
           }
         }
+
+        return updatedOrder;
+      } catch (error) {
+        console.error('更新订单状态时出错:', error);
+        // 发生错误时事务会自动回滚
+        throw error;
       }
     });
   }
@@ -230,59 +291,6 @@ export class OrderService {
     };
 
     return validTransitions[currentStatus]?.includes(newStatus) || false;
-  }
-
-  /**
-   * 更新关联的预约状态
-   * @param appointmentId - 预约ID
-   * @param orderStatus - 订单状态
-   * @param reason - 原因
-   */
-  private async updateRelatedAppointmentStatus(appointmentId: number, orderStatus: string, reason?: string) {
-    // 订单状态与预约状态的映射
-    const statusMapping: Record<string, string> = {
-      'PENDING': 'PENDING',
-      'ACCEPTED': 'PENDING',
-      'PROCESSING': 'PROCESSING',
-      'COMPLETED': 'COMPLETED',
-      'CANCELLED': 'CANCELLED',
-      'DELIVERED': 'COMPLETED'
-    };
-
-    const appointmentStatus = statusMapping[orderStatus];
-    
-    if (appointmentStatus) {
-      try {
-        // 使用原生SQL更新预约状态，以避免可能的类型问题
-        if (appointmentStatus === 'COMPLETED') {
-          await this.databaseService.$queryRaw`
-            UPDATE "Appointment"
-            SET "status" = ${appointmentStatus}::"AppointmentStatus",
-                "updatedAt" = NOW(),
-                "completedAt" = NOW()
-            WHERE "id" = ${appointmentId}
-          `;
-        } else if (appointmentStatus === 'CANCELLED') {
-          await this.databaseService.$queryRaw`
-            UPDATE "Appointment"
-            SET "status" = ${appointmentStatus}::"AppointmentStatus",
-                "updatedAt" = NOW(),
-                "cancelledAt" = NOW(),
-                "cancelReason" = ${reason || '订单已取消'}
-            WHERE "id" = ${appointmentId}
-          `;
-        } else {
-          await this.databaseService.$queryRaw`
-            UPDATE "Appointment"
-            SET "status" = ${appointmentStatus}::"AppointmentStatus",
-                "updatedAt" = NOW()
-            WHERE "id" = ${appointmentId}
-          `;
-        }
-      } catch (error) {
-        console.error('Error updating appointment status:', error);
-      }
-    }
   }
 
   /**
@@ -419,7 +427,7 @@ export class OrderService {
       
       // 执行查询
       const orders = await this.databaseService.$queryRawUnsafe(dataQuery, ...params);
-      
+      console.log(orders,'orders')
       return {
         orders,
         total
