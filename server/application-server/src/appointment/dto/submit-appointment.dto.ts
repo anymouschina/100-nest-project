@@ -21,8 +21,7 @@ export class SubmitAppointmentDto {
   @IsString()
   address?: string;
 
-  @IsArray()
-  @IsString({ each: true })
+  @IsString()
   @Type(() => String)
   sceneType: string | string[];
 

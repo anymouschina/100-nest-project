@@ -12,10 +12,11 @@ async function bootstrap() {
   
   // 创建微服务
   app.connectMicroservice<MicroserviceOptions>({
-    transport: Transport.TCP,
+    transport: Transport.REDIS,
     options: {
-      host: process.env.MICROSERVICE_HOST || 'localhost',
-      port: process.env.MICROSERVICE_PORT ? parseInt(process.env.MICROSERVICE_PORT) : 3004,
+      host: process.env.REDIS_HOST || 'localhost',
+      port: process.env.REDIS_PORT ? parseInt(process.env.REDIS_PORT) : 6379,
+      password: process.env.REDIS_PASSWORD || '123456',
     },
   });
 
@@ -23,7 +24,7 @@ async function bootstrap() {
     .setTitle('OMS API')
     .setDescription('Order Management System API')
     .setVersion('1.0')
-    .addServer('http://localhost:3001', 'Local environment')
+    .addServer(`http://localhost:${Config.PORT}`, 'Local environment')
     .addBearerAuth({
       type: 'http',
       scheme: 'bearer',
@@ -47,7 +48,7 @@ async function bootstrap() {
 
   // 启动微服务
   await app.startAllMicroservices();
-  console.log(`Microservice is running on port ${process.env.MICROSERVICE_PORT || 3002}`);
+  console.log(`Microservice is running on Redis at ${process.env.REDIS_HOST || 'localhost'}:${process.env.REDIS_PORT || 6379}`);
 
   // 启动HTTP服务
   await app.listen(Config.PORT);

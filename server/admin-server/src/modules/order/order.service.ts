@@ -1,6 +1,6 @@
 import { Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { ClientProxy, ClientProxyFactory, Transport, TcpClientOptions } from '@nestjs/microservices';
+import { ClientProxy, ClientProxyFactory, Transport, RedisOptions } from '@nestjs/microservices';
 import { OrderMicroservicePatterns } from '../../shared/constants/microservice.constants';
 import { firstValueFrom, timeout } from 'rxjs';
 
@@ -14,20 +14,21 @@ export class OrderService implements OnModuleInit {
 
   async onModuleInit() {
     // 初始化微服务客户端
-    const host = this.configService.get<string>('MICROSERVICE_HOST') || 'localhost';
-    const port = this.configService.get<number>('MICROSERVICE_PORT') || 3002;
+    const host = this.configService.get<string>('REDIS_HOST') || 'localhost';
+    const port = this.configService.get<number>('REDIS_PORT') || 6379;
     
-    this.logger.log(`Initializing order microservice client at ${host}:${port}`);
+    this.logger.log(`Initializing order microservice client at Redis ${host}:${port}`);
     
     this.client = ClientProxyFactory.create({
-      transport: Transport.TCP,
+      transport: Transport.REDIS,
       options: {
         host,
         port,
+        password: this.configService.get<string>('REDIS_PASSWORD') || '123456',
         retryAttempts: 3,  // 重试次数
         retryDelay: 1000,  // 重试间隔（毫秒）
       },
-    } as TcpClientOptions);
+    } as RedisOptions);
 
     // 尝试连接，确保服务可用
     try {

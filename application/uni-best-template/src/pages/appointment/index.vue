@@ -30,16 +30,16 @@
           @confirm="handleProblemTypeChange"
         ></wd-picker>
         
-        <!-- 子类型 -->
+        <!-- 子类型（多选） -->
         <wd-select-picker
           v-if="showSceneOptions && subTypeOptions.length > 0"
           :label="subTypeLabel"
-          v-model="formData.subType"
+          v-model="formData.subTypes"
           :columns="subTypeOptions"
-          prop="subType"
+          prop="subTypes"
           :placeholder="`请选择${subTypeLabel}`"
           align-right
-          mode="single-select"
+          mode="multiple"
           :rules="[{ required: true, message: `请选择${subTypeLabel}` }]"
         ></wd-select-picker>
         
@@ -178,14 +178,34 @@ import { useUpload } from 'wot-design-uni'
 const { startUpload, abort, chooseFile, UPLOAD_STATUS } = useUpload()
 
 // 上传相关配置
-const uploadUrl = import.meta.env.VITE_UPLOAD_BASEURL // 设置上传地址
+const uploadUrl = import.meta.env.VITE_UPLOAD_BASEURL // 设置公共上传接口地址
 const uploadHeader = { 'Content-Type': 'multipart/form-data' }
 const uploadData = { businessType: 'appointment' } // 额外的表单数据
 const uploadStatusKey = 'status' // 状态字段名
 
 
 function handleChange({ fileList: files }) {
-  uploadImgs.value = Array.from(files).map(item => JSON.parse(item.response).url)
+  try {
+    uploadImgs.value = Array.from(files).map((item: any) => {
+      // 安全地解析响应数据
+      try {
+        if (typeof item.response === 'string') {
+          const parsed = JSON.parse(item.response);
+          return parsed.url || (parsed.data && parsed.data.url) || '';
+        } else if (item.response && typeof item.response === 'object') {
+          return item.response.url || (item.response.data && item.response.data.url) || '';
+        }
+        return item.url || '';
+      } catch (e) {
+        console.error('解析上传响应失败:', e);
+        return item.url || '';
+      }
+    }).filter(Boolean);
+    
+    console.log('处理后的上传图片URLs:', uploadImgs.value);
+  } catch (error) {
+    console.error('处理上传文件列表失败:', error);
+  }
 }
 
 // 安全距离
@@ -198,6 +218,7 @@ const uploadImgs = ref([])
 const formData = reactive<IAppointmentForm>({
   problemType: '',
   subType: '',
+  subTypes: [], // 多选子类型
   problemDesc: '',
   name: '',
   gender: 'male',
@@ -206,8 +227,7 @@ const formData = reactive<IAppointmentForm>({
   location: '',
   latitude: '',
   longitude: '',
-  images: [],
-  imageUrls:[]
+  images: []
 })
 
 // 手机号验证
@@ -276,6 +296,7 @@ const showSceneOptions = computed(() => {
 const handleProblemTypeChange = () => {
   // 清空子类型选择和问题描述
   formData.subType = ''
+  formData.subTypes = []
   formData.problemDesc = ''
 }
 
@@ -446,9 +467,11 @@ const submitForm = () => {
     if (valid) {
       // 处理图片数据格式，确保能够正确提交
       // wot-design-uni上传组件可能会以对象形式存储图片信息
+      // 设置上传的图片数组
       formData.images = uploadImgs.value
+      
       // 表单验证通过，调用接口提交数据
-      console.log('提交预约数据:', formData,Array.from(new Set(uploadImgs.value)))
+      console.log('提交预约数据:', formData, Array.from(new Set(uploadImgs.value)))
       submitAppointmentRequest()
     } else {
       console.log('表单验证失败', errors)

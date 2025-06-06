@@ -28,10 +28,8 @@ export class AppointmentController {
     
     // 处理sceneType，确保它是一个数组
     if (appointmentData.sceneType && !Array.isArray(appointmentData.sceneType)) {
-      appointmentData.sceneType = [String(appointmentData.sceneType)];
+      appointmentData.sceneType = String(appointmentData.sceneType).split(',');
     }
-    
-    console.log('使用用户ID:', userId, '提交预约');
     return this.appointmentService.submitAppointment(
       userId, 
       appointmentData,
