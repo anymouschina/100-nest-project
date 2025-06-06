@@ -9,23 +9,41 @@
 
 <template>
   <view class="order-detail-container">
-    <!-- 订单状态卡片 -->
-    <view class="status-card">
-      <view class="status-header" :class="'bg-' + orderDetail.status">
-        <view class="status-text">{{ getStatusText(orderDetail.status) }}</view>
-        <view class="status-desc">{{ getStatusDesc(orderDetail.status) }}</view>
-      </view>
-      
-      <!-- 使用 wd-steps 组件替换原来的自定义进度条 -->
-      <view class="progress-steps-container">
-        <wd-steps :active="getActiveStep(orderDetail.status)" align-center>
-          <wd-step title="待接单" description="订单已提交" />
-          <wd-step title="已接单" description="工程师已接单" />
-          <wd-step title="施工中" description="正在为您施工" />
-          <wd-step title="已完成" description="服务已完成" />
-        </wd-steps>
-      </view>
+    <!-- MessageBox 组件 -->
+    <wd-message-box></wd-message-box>
+    
+    <!-- 加载状态 -->
+    <view class="loading-container" v-if="loading">
+      <wd-loading color="#2c722c" />
+      <text>加载中...</text>
     </view>
+    
+    <!-- 错误提示 -->
+    <view class="error-container" v-else-if="error">
+      <wd-icon name="warning-fill" size="80rpx" color="#fa4350"></wd-icon>
+      <text>{{ errorMessage }}</text>
+      <wd-button type="primary" size="small" @click="fetchOrderDetail">重新加载</wd-button>
+    </view>
+    
+    <!-- 订单详情内容 -->
+    <template v-else>
+      <!-- 订单状态卡片 -->
+      <view class="status-card">
+        <view class="status-header" :class="'bg-' + orderDetail.status">
+          <view class="status-text">{{ orderDetail.statusName }}</view>
+          <view class="status-desc">{{ getStatusDesc(orderDetail.status) }}</view>
+        </view>
+        
+        <!-- 使用 wd-steps 组件替换原来的自定义进度条 -->
+        <view class="progress-steps-container">
+          <wd-steps :active="getActiveStep(orderDetail.status)" align-center>
+            <wd-step title="待接单" description="订单已提交" />
+            <wd-step title="已接单" description="工程师已接单" />
+            <wd-step title="施工中" description="正在为您施工" />
+            <wd-step title="已完成" description="服务已完成" />
+          </wd-steps>
+        </view>
+      </view>
     
     <!-- 订单信息卡片 -->
     <view class="info-card">
@@ -129,7 +147,7 @@
     <view class="bottom-actions">
       <template v-if="orderDetail.status === 'pending'">
         <wd-button type="info" @click="contactCustomerService">联系客服</wd-button>
-        <wd-button type="danger" @click="cancelOrder">取消订单</wd-button>
+        <wd-button type="danger" @click="showCancelDialog">取消订单</wd-button>
       </template>
       
       <template v-if="orderDetail.status === 'accepted'">
@@ -147,46 +165,101 @@
         <wd-button type="success" @click="reviewOrder">评价服务</wd-button>
       </template>
     </view>
+    </template>
   </view>
 </template>
 
 <script lang="ts" setup>
 import { ref, computed, onMounted } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
-import { useToast } from 'wot-design-uni'
+import { useToast, useMessage } from 'wot-design-uni'
+import { getOrderDetail, cancelOrder, type IOrderDetail } from '@/api/orders'
+
+// API返回的订单详情类型
+interface ApiOrderDetail {
+  orderId?: number;
+  total?: number;
+  status?: string;
+  createdAt?: string;
+  userId?: number;
+  appointmentId?: number;
+  appointmentInfo?: {
+    name?: string;
+    phone?: string;
+    region?: string;
+    address?: string;
+    latitude?: number;
+    longitude?: number;
+    location?: string;
+    imageUrls?: string[];
+    sceneType?: string[];
+    description?: string;
+    serviceType?: string;
+  };
+  paymentStatus?: string;
+  buyerAddress?: string;
+  items?: any[];
+  engineerInfo?: {
+    name?: string;
+    id?: string;
+    phone?: string;
+    rating?: number;
+  };
+}
 
 const toast = useToast()
+const message = useMessage()
 
 // 订单ID
 const orderId = ref('')
 
-// 模拟订单详情数据
-const orderDetail = ref({
-  id: '1001',
-  orderNo: 'FW20230601001',
-  serviceType: 'repair',
-  status: 'processing',
-  appointmentTime: '2023-06-01 14:00',
-  address: '广州市天河区天河路385号',
-  price: 280.00,
-  createTime: '2023-06-01 09:12:33',
-  contactName: '张先生',
-  contactPhone: '13800138000',
-  paymentMethod: '微信支付',
-  description: '卫生间墙角渗水，大约有50cm x 30cm的面积受潮发霉，需要专业防水处理。',
-  engineer: {
-    name: '李工程师',
-    id: 'ENG10086',
-    phone: '13900139000',
-    rating: 4.9
-  },
-  statusHistory: [
-    { status: 'pending', time: '2023-06-01 09:12:33' },
-    { status: 'accepted', time: '2023-06-01 10:25:45' },
-    { status: 'processing', time: '2023-06-01 14:05:22' },
-    { status: 'completed', time: '' }
-  ]
+// 加载状态
+const loading = ref(false)
+const error = ref(false)
+const errorMessage = ref('加载失败，请重试')
+
+// 取消订单相关
+const cancelReason = ref('')
+const cancelLoading = ref(false)
+
+// 订单详情数据
+const orderDetail = ref<IOrderDetail>({
+  id: '',
+  orderNo: '',
+  serviceType: '',
+  serviceTypeName: '',
+  status: 'pending',
+  statusName: '',
+  appointmentTime: '',
+  address: '',
+  price: 0,
+  createTime: '',
+  contactName: '',
+  contactPhone: '',
+  paymentMethod: '',
+  description: '',
+  statusHistory: []
 })
+
+// 格式化日期
+const formatDate = (dateString: string) => {
+  try {
+    const date = new Date(dateString)
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+  } catch (e) {
+    return dateString
+  }
+}
+
+// 获取服务类型名称
+const getServiceTypeName = (type: string) => {
+  const serviceTypeMap: Record<string, string> = {
+    'repair': '防水补漏',
+    'new': '新房防水施工',
+    'wallRenovation': '墙面翻新'
+  }
+  return serviceTypeMap[type] || type
+}
 
 // 获取状态文本
 const getStatusText = (status: string) => {
@@ -236,21 +309,47 @@ const contactCustomerService = () => {
   })
 }
 
-// 取消订单
-const cancelOrder = () => {
-  uni.showModal({
-    title: '提示',
-    content: '确定要取消该订单吗？',
-    success: (res) => {
-      if (res.confirm) {
-        toast.success('订单已取消')
-        // 返回上一页
-        setTimeout(() => {
-          uni.navigateBack()
-        }, 1500)
-      }
-    }
+// 显示取消订单弹窗
+const showCancelDialog = () => {
+  message.prompt({
+    title: '取消订单',
+    msg: '请输入取消原因',
+    inputValue: cancelReason.value,
+    inputPlaceholder: '请输入取消原因',
+    confirmButtonText: '确认取消',
+    cancelButtonText: '再想想'
+  }).then(({ value }) => {
+    // 用户点击确定
+    cancelReason.value = String(value || '用户取消')
+    handleCancelOrder()
+  }).catch(() => {
+    // 用户点击取消，不做任何操作
   })
+}
+
+// 处理取消订单
+const handleCancelOrder = async () => {
+  if (!cancelReason.value.trim()) {
+    toast.error('请输入取消原因')
+    return
+  }
+  
+  cancelLoading.value = true
+  try {
+    const res = await cancelOrder(orderId.value, { reason: cancelReason.value })
+    if (res.code === 0 || res.code === 200) {
+      toast.success('订单已取消')
+      // 刷新订单详情
+      fetchOrderDetail()
+    } else {
+      toast.error(res.msg || '取消订单失败')
+    }
+  } catch (err) {
+    toast.error('取消订单失败，请重试')
+    console.error('取消订单失败:', err)
+  } finally {
+    cancelLoading.value = false
+  }
 }
 
 // 查看工程师位置
@@ -272,12 +371,68 @@ const reviewOrder = () => {
   })
 }
 
+// 获取订单详情
+const fetchOrderDetail = async () => {
+  if (!orderId.value) return
+  
+  loading.value = true
+  error.value = false
+  
+  try {
+    const res = await getOrderDetail(orderId.value)
+    if (res.code === 0 || res.code === 200) {
+      // 处理接口返回的数据
+      const apiData = res.data as ApiOrderDetail || {} as ApiOrderDetail
+      const appointmentInfo = apiData.appointmentInfo || {} as ApiOrderDetail['appointmentInfo']
+      
+      // 格式化订单详情数据
+      orderDetail.value = {
+        id: apiData.orderId?.toString() || '',
+        orderNo: apiData.orderId?.toString() || '',
+        serviceType: appointmentInfo.serviceType || 'repair',
+        serviceTypeName: getServiceTypeName(appointmentInfo.serviceType || 'repair'),
+        status: apiData.status?.toLowerCase() || 'pending',
+        statusName: getStatusText(apiData.status?.toLowerCase() || 'pending'),
+        appointmentTime: formatDate(apiData.createdAt || ''),
+        address: appointmentInfo.address ? `${appointmentInfo.region || ''} ${appointmentInfo.address}` : '',
+        price: apiData.total || 0,
+        createTime: formatDate(apiData.createdAt || ''),
+        contactName: appointmentInfo.name || '',
+        contactPhone: appointmentInfo.phone || '',
+        paymentMethod: apiData.paymentStatus === 'PAID' ? '已支付' : '未支付',
+        description: appointmentInfo.description || '',
+        // 如果有工程师信息，则添加
+        ...(apiData.engineerInfo ? {
+          engineer: {
+            name: apiData.engineerInfo.name || '未分配',
+            id: apiData.engineerInfo.id || '',
+            phone: apiData.engineerInfo.phone || '',
+            rating: apiData.engineerInfo.rating || 4.8
+          }
+        } : {}),
+        statusHistory: []
+      }
+    } else {
+      error.value = true
+      errorMessage.value = res.msg || '获取订单详情失败，请重试'
+    }
+  } catch (err) {
+    console.error('获取订单详情失败:', err)
+    error.value = true
+    errorMessage.value = '获取订单详情失败，请重试'
+  } finally {
+    loading.value = false
+  }
+}
+
 // 页面加载
 onLoad((options) => {
   if (options.id) {
     orderId.value = options.id
-    // 实际项目中应该根据ID从API获取详情
-    console.log('加载订单详情，ID:', orderId.value)
+    fetchOrderDetail()
+  } else {
+    error.value = true
+    errorMessage.value = '订单ID不存在，请返回重试'
   }
 })
 </script>
@@ -287,6 +442,21 @@ onLoad((options) => {
   min-height: 100vh;
   padding: 30rpx;
   background-color: #f7f8fa;
+}
+
+// 加载状态和错误提示样式
+.loading-container, .error-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin-top: 200rpx;
+  
+  text {
+    margin: 30rpx 0;
+    color: #999;
+    font-size: 28rpx;
+  }
 }
 
 .status-card {
@@ -459,5 +629,10 @@ onLoad((options) => {
     background-color: #52c41a;
     border-color: #52c41a;
   }
+}
+
+// 取消订单弹窗内容样式
+.cancel-dialog-content {
+  padding: 20rpx;
 }
 </style> 

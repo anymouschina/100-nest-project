@@ -9,6 +9,10 @@
 </route>
 <template>
   <view class="page-container">
+    <image  @click="navigateToService('waterproof')" 
+    src="https://linkxspace.cn/nest-admin//upload/2025-06-06/1749223711269-662960777-r7NZ0iGwXvvhab6995f82c02a702eb4c65d6cf491deb.jpg" 
+    mode="widthFix" class="banner-img"></image>
+
     <!-- 顶部banner轮播图 -->
     <view class="banner-swiper-section mb-5 h-400rpx">
       <wd-swiper 
@@ -153,7 +157,6 @@
         </view>
       </view>
     </view>
-    
     <!-- 专业优势展示 -->
     <view class="advantage-section">
       <view class="advantage-header">

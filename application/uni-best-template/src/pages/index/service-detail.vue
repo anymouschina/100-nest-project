@@ -9,6 +9,10 @@
 
 <template>
   <view class="service-detail">
+    <image @click="makeAppointment"
+    
+    src="https://linkxspace.cn/nest-admin//upload/2025-06-06/1749223887358-161576767-qpkpCEhcnaKo6d90c01dd60f857ce07e211443addf02.jpg" mode="widthFix" class="banner-img"></image>
+
     <!-- 顶部banner -->
     <view class="banner">
       <swiper 

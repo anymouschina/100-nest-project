@@ -314,7 +314,7 @@ const { loading: submitLoading, run: submitAppointmentRequest } = useRequest(
       
       // 跳转到订单详情或首页
       setTimeout(() => {
-        uni.switchTab({ url: '/pages/index/index' })
+        uni.navigateTo({ url: '/pages/orders/index' })
       }, 2000)
     },
     onError: (error) => {
