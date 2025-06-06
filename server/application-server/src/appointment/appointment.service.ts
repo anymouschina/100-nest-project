@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { DatabaseService } from '../database/database.service';
 import { SubmitAppointmentDto } from './dto/submit-appointment.dto';
 import { AppointmentStatus } from './dto/update-status.dto';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class AppointmentService {
@@ -57,79 +58,126 @@ export class AppointmentService {
    * @returns 创建的预约和订单信息
    */
   async submitAppointment(userId: number, appointmentData: SubmitAppointmentDto, userName?: string, openId?: string) {
-    // 使用事务确保预约和订单同时创建成功或失败
-    return this.dbService.$transaction(async (tx) => {
-      // 确保用户存在
-      const validUserId = await this.ensureUserExists(userId, userName, openId);
+    try {
+      console.log('==== 开始处理预约提交 ====');
+      console.log('输入参数:', { userId, userName, openId });
+      console.log('预约数据:', JSON.stringify(appointmentData));
+      
+      // 确保sceneType是数组
+      const sceneType = Array.isArray(appointmentData.sceneType) 
+        ? appointmentData.sceneType 
+        : [String(appointmentData.sceneType)];
+      console.log('处理后的sceneType:', sceneType);
       
       // 预处理经纬度，确保是数字类型
       const latitude = appointmentData.latitude ? parseFloat(String(appointmentData.latitude)) : null;
       const longitude = appointmentData.longitude ? parseFloat(String(appointmentData.longitude)) : null;
+      console.log('处理后的坐标:', { latitude, longitude });
       
-      // 1. 创建预约记录 - 根据当前数据库结构调整
-      const appointment = await tx.$queryRaw`
-        INSERT INTO "Appointment" (
-          "serviceType", "name", "phone", "region", "address", 
-          "sceneType", "location", "userId", "createdAt", "updatedAt", "status",
-          "latitude", "longitude"
-        )
-        VALUES (
-          ${appointmentData.serviceType}, 
-          ${appointmentData.name}, 
-          ${appointmentData.phone}, 
-          ${appointmentData.region}, 
-          ${appointmentData.address}, 
-          ${appointmentData.sceneType}::text[], 
-          ${appointmentData.location}, 
-          ${validUserId}, 
-          NOW(),
-          NOW(),
-          'PENDING'::"AppointmentStatus",
-          ${latitude}::float,
-          ${longitude}::float
-        )
-        RETURNING *;
-      `;
-
-      // 获取插入的预约ID
-      const appointmentResult = appointment as unknown as any[];
-      const appointmentId = appointmentResult[0].id;
-
-      // 2. 创建金额为0的订单，关联预约信息
-      const orderData = {
-        serviceType: appointmentData.serviceType,
-        name: appointmentData.name,
-        phone: appointmentData.phone,
-        region: appointmentData.region,
-        address: appointmentData.address,
-        sceneType: appointmentData.sceneType,
-        location: appointmentData.location,
-        latitude: latitude,
-        longitude: longitude
-      };
-
-      // 将JSON对象转换为jsonb类型
-      const jsonOrderData = JSON.stringify(orderData);
-
-      const order = await tx.$queryRaw`
-        INSERT INTO "Order" (
-          "total", "status", "paymentStatus", "appointmentInfo", 
-          "userId", "appointmentId", "createdAt"
-        )
-        VALUES (
-          0, 'PENDING', 'UNPAID', ${jsonOrderData}::jsonb, 
-          ${validUserId}, ${appointmentId}, NOW()
-        )
-        RETURNING *;
-      `;
-
-      const orderResult = order as unknown as any[];
-
-      return {
-        appointment: appointmentResult[0],
-        order: orderResult[0],
-      };
-    });
+      // 使用事务确保预约和订单同时创建成功或失败
+      console.log('开始事务处理');
+      return await this.dbService.$transaction(async (prisma) => {
+        console.log('事务内 - 开始');
+        
+        // 确保用户存在
+        console.log('查询用户:', userId);
+        const user = await prisma.user.findUnique({
+          where: { userId }
+        });
+        console.log('查询用户结果:', user ? '用户存在' : '用户不存在');
+        
+        let validUserId = userId;
+        if (!user) {
+          console.log('用户不存在，尝试查找或创建用户');
+          // 检查是否可以通过openId找到用户
+          if (openId) {
+            console.log('尝试通过openId查找用户:', openId);
+            const userByOpenId = await prisma.user.findUnique({
+              where: { openId }
+            });
+            
+            if (userByOpenId) {
+              console.log('通过openId找到用户:', userByOpenId.userId);
+              validUserId = userByOpenId.userId;
+            } else {
+              // 创建新用户
+              console.log('通过openId未找到用户，创建新用户');
+              const newUser = await prisma.user.create({
+                data: {
+                  name: userName || `User_${Date.now()}`,
+                  openId
+                }
+              });
+              console.log('已创建新用户:', newUser.userId);
+              validUserId = newUser.userId;
+            }
+          } else {
+            // 没有openId，创建新用户
+            console.log('没有openId，创建新用户');
+            const newUser = await prisma.user.create({
+              data: {
+                name: userName || `User_${Date.now()}`
+              }
+            });
+            console.log('已创建新用户:', newUser.userId);
+            validUserId = newUser.userId;
+          }
+        }
+        
+        // 创建预约记录
+        const appointment = await prisma.appointment.create({
+          data: {
+            serviceType: appointmentData.serviceType,
+            name: appointmentData.name,
+            phone: appointmentData.phone,
+            region: appointmentData.region,
+            address: appointmentData.address,
+            sceneType,
+            location: appointmentData.location,
+            latitude,
+            longitude,
+            description: appointmentData.description,
+            imageUrls: appointmentData.imageUrls || [],
+            userId: validUserId
+          }
+        });
+        
+        // 创建订单数据对象
+        const appointmentInfo = {
+          serviceType: appointmentData.serviceType,
+          name: appointmentData.name,
+          phone: appointmentData.phone,
+          region: appointmentData.region,
+          address: appointmentData.address,
+          sceneType,
+          location: appointmentData.location,
+          latitude,
+          longitude,
+          description: appointmentData.description,
+          imageUrls: appointmentData.imageUrls || []
+        };
+        
+        // 创建金额为0的订单
+        const order = await prisma.order.create({
+          data: {
+            total: 0,
+            status: 'PENDING',
+            paymentStatus: 'UNPAID',
+            appointmentInfo,
+            userId: validUserId,
+            appointmentId: appointment.id
+          }
+        });
+        
+        return {
+          appointment,
+          order
+        };
+      });
+    } catch (error) {
+      console.error('提交预约时出错:', error);
+      throw error;
+    }
   }
 
   /**

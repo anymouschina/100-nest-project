@@ -203,67 +203,6 @@ export class OrderService {
           }
         });
 
-        // 如果订单关联了预约，同步更新预约状态
-        const appointmentId = orderWithAppointment?.[0]?.appointment_id;
-        if (appointmentId) {
-          // 获取当前预约状态
-          const currentAppointment = await tx.$queryRaw`
-            SELECT * FROM "Appointment" WHERE "id" = ${appointmentId}
-          ` as any[];
-          
-          if (currentAppointment && currentAppointment.length > 0) {
-            const currentStatus = currentAppointment[0].status;
-            
-            // 不允许从已完成或已取消状态改变
-            if (currentStatus !== 'COMPLETED' && currentStatus !== 'CANCELLED') {
-              // 订单状态与预约状态的映射
-              const statusMapping: Record<string, string> = {
-                'PENDING': 'PENDING',
-                'ACCEPTED': 'PENDING',
-                'PROCESSING': 'PROCESSING',
-                'COMPLETED': 'COMPLETED',
-                'CANCELLED': 'CANCELLED',
-                'DELIVERED': 'COMPLETED'
-              };
-              
-              const appointmentStatus = statusMapping[newStatus];
-              
-              if (appointmentStatus) {
-                // 根据不同状态更新预约
-                if (appointmentStatus === 'COMPLETED') {
-                  await tx.$queryRaw`
-                    UPDATE "Appointment"
-                    SET "status" = ${appointmentStatus}::"AppointmentStatus",
-                        "updatedAt" = NOW(),
-                        "completedAt" = NOW()
-                    WHERE "id" = ${appointmentId}
-                  `;
-                } else if (appointmentStatus === 'CANCELLED') {
-                  await tx.$queryRaw`
-                    UPDATE "Appointment"
-                    SET "status" = ${appointmentStatus}::"AppointmentStatus",
-                        "updatedAt" = NOW(),
-                        "cancelledAt" = NOW(),
-                        "cancelReason" = ${updateOrderDto.reason || '订单已取消'}
-                    WHERE "id" = ${appointmentId}
-                  `;
-                } else {
-                  await tx.$queryRaw`
-                    UPDATE "Appointment"
-                    SET "status" = ${appointmentStatus}::"AppointmentStatus",
-                        "updatedAt" = NOW()
-                    WHERE "id" = ${appointmentId}
-                  `;
-                }
-                
-                console.log(`已将预约 ${appointmentId} 状态更新为 ${appointmentStatus}`);
-              }
-            } else {
-              console.log(`预约已经是 ${currentStatus} 状态，不再更新`);
-            }
-          }
-        }
-
         return updatedOrder;
       } catch (error) {
         console.error('更新订单状态时出错:', error);

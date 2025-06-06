@@ -15,7 +15,7 @@ export class OrderService implements OnModuleInit {
   async onModuleInit() {
     // 初始化微服务客户端
     const host = this.configService.get<string>('MICROSERVICE_HOST') || 'localhost';
-    const port = this.configService.get<number>('MICROSERVICE_PORT') || 3001;
+    const port = this.configService.get<number>('MICROSERVICE_PORT') || 3002;
     
     this.logger.log(`Initializing order microservice client at ${host}:${port}`);
     

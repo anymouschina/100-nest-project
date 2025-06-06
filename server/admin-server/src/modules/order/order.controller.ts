@@ -1,6 +1,7 @@
 import { Controller, Get, Param, Query, Put, Body, ParseIntPipe } from '@nestjs/common';
 import { OrderService } from './order.service';
 import { Public } from 'src/common/decorators/public.decorator';
+import { BusinessTypeEnum, Log } from 'src/common/decorators/log.decorator';
 
 /**
  * 订单控制器
@@ -74,6 +75,12 @@ export class OrderController {
    * @returns 更新后的订单
    */
   @Put(':id/status')
+  @Log({
+    title: '订单管理',
+    businessType: BusinessTypeEnum.update,
+    isSaveRequestData: true,
+    isSaveResponseData: true
+  })
   async updateStatus(
     @Param('id', ParseIntPipe) id: number,
     @Body() data: { status: string; reason?: string },

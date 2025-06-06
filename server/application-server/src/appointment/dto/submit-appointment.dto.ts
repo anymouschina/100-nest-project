@@ -23,7 +23,8 @@ export class SubmitAppointmentDto {
 
   @IsArray()
   @IsString({ each: true })
-  sceneType: string[];
+  @Type(() => String)
+  sceneType: string | string[];
 
   @IsString()
   @IsNotEmpty()
@@ -38,4 +39,13 @@ export class SubmitAppointmentDto {
   @IsOptional()
   @Type(() => Number)
   longitude?: number;
+  
+  @IsString()
+  @IsOptional()
+  description?: string;
+  
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  imageUrls?: string[];
 } 

@@ -16,58 +16,79 @@
       </view>
     </view>
     
-    <wd-form :model="formData" align="right" ref="appointmentForm" validate-trigger="submit">
+    <wd-form :model="formData" label-width="50%" ref="appointmentForm" validate-trigger="submit">
+      <!-- 问题类型 -->
       <wd-cell-group border>
-        <!-- 服务类型 -->
         <wd-picker
-          label="选择服务类型"
-          label-width="140px"
-          prop="serviceType"
-          v-model="formData.serviceType"
-          :columns="serviceOptions"
-          placeholder="请选择服务类型"
-          :rules="[{ required: true, message: '请选择服务类型' }]"
-          custom-class="service-picker"
+          label="问题类型"
+          v-model="formData.problemType"
+          :columns="problemTypes"
+          prop="problemType"
+          placeholder="请选择问题类型"
+          align-right
+          :rules="[{ required: true, message: '请选择问题类型' }]"
+          @confirm="handleProblemTypeChange"
         ></wd-picker>
         
-        <!-- 场景类型 -->
+        <!-- 子类型 -->
         <wd-select-picker
-          label="选择场景类型"
-          label-width="140px"
-          prop="sceneType"
-          v-model="formData.sceneType"
-          :columns="sceneOptions" 
+          v-if="showSceneOptions && subTypeOptions.length > 0"
+          :label="subTypeLabel"
+          v-model="formData.subType"
+          :columns="subTypeOptions"
+          prop="subType"
+          :placeholder="`请选择${subTypeLabel}`"
+          align-right
           mode="single-select"
-          placeholder="点击选择场景类型"
-          custom-class="scene-select"
-          :rules="[{ required: true, message: '请选择场景类型' }]"
+          :rules="[{ required: true, message: `请选择${subTypeLabel}` }]"
         ></wd-select-picker>
+        
+        <!-- 问题描述 -->
+        <wd-input
+          v-if="formData.problemType === 'other'"
+          label="问题描述"
+          v-model="formData.problemDesc"
+          prop="problemDesc"
+          placeholder="请填写问题描述"
+          type="textarea"
+          :rules="[{ required: true, message: '请输入问题描述' }]"
+        ></wd-input>
       </wd-cell-group>
+      
+      <!-- 联系人信息 -->
       <wd-cell-group border>
-        <!-- 业主姓名 -->
+                <!-- 预约人 -->
         <wd-input 
-          label="业主姓名"
-          label-width="140px"
-          prop="name"
+          label="预约人"
           v-model="formData.name" 
-          placeholder="请填写" 
-          custom-class="custom-input"
-          :rules="[{ required: true, message: '请输入业主姓名' }]"
+          prop="name"
+          align-right
+          placeholder="请填写姓氏" 
+          :rules="[{ required: true, message: '请输入预约人姓氏' }]"
         >
-          <template #suffix>
-            <wd-icon name="user" size="36rpx" color="#999" v-if="!formData.name"></wd-icon>
-          </template>
         </wd-input>
         
+        <!-- 性别选择 -->
+        <wd-radio-group
+          label="称谓"
+          v-model="formData.gender"
+          prop="gender"
+          inline
+          cell
+          :rules="[{ required: true, message: '请选择称谓' }]"
+        >
+          <wd-radio :value="'male'" >先生</wd-radio>
+          <wd-radio :value="'female'" >女士</wd-radio>
+        </wd-radio-group>
+          
         <!-- 联系电话 -->
         <wd-input 
           label="联系电话"
-          label-width="140px"
-          prop="phone"
           v-model="formData.phone" 
+          prop="phone"
+          align-right
           placeholder="请填写" 
-          type="number" 
-          custom-class="custom-input"
+          type="tel" 
           :rules="[
             { required: true, message: '请输入联系电话' },
             { pattern: /^1\d{10}$/, message: '请输入正确的手机号码' }
@@ -81,12 +102,11 @@
         <!-- 小区位置 -->
         <wd-input 
           label="小区位置"
-          label-width="140px"
-          prop="location"
           v-model="formData.location" 
+          prop="location"
+          align-right
           placeholder="点击选择" 
           readonly 
-          custom-class="custom-input"
           @click="chooseLocation"
           :rules="[{ required: true, message: '请选择小区位置' }]"
         >
@@ -95,41 +115,50 @@
           </template>
         </wd-input>
         
-        <!-- 选择省市区 -->
-        <wd-input 
-          label="选择省市区"
-          label-width="140px"
-          prop="region"
-          v-model="formData.region" 
-          placeholder="请选择" 
-          readonly
-          custom-class="custom-input"
-          @click="chooseRegion"
-          :rules="[{ required: true, message: '请选择省市区' }]"
-        >
-          <template #suffix>
-            <wd-icon name="arrow-right" size="36rpx" color="#999"></wd-icon>
-          </template>
-        </wd-input>
-        
         <!-- 详细地址 -->
         <wd-input 
           label="详细地址"
-          label-width="140px"
-          prop="address"
           v-model="formData.address" 
-          placeholder="请填写" 
-          custom-class="custom-input"
+          prop="address"
+          align-right
+          placeholder="例如：小区名称X栋X单元X号" 
+          :rules="[{ required: true, message: '请输入详细地址' }]"
         >
           <template #suffix>
             <wd-icon name="edit-outline" size="36rpx" color="#999" v-if="!formData.address"></wd-icon>
           </template>
         </wd-input>
       </wd-cell-group>
+      
+      <!-- 上传照片 -->
+      <wd-cell-group border>
+        <wd-cell title="上传照片">
+          <wd-upload
+            v-model="formData.images"
+            multiple
+            accept="image"
+            max-count="3"
+            max-size="10485760"
+            :successStatus="201"
+            :action="uploadUrl"
+            name="file"
+            @change="handleChange"
+          />
+          <view class="upload-tips">选填，最多可上传3张照片</view>
+        </wd-cell>
+      </wd-cell-group>
     </wd-form>
     
     <!-- 添加底部占位，防止内容被提交按钮遮挡 -->
     <view style="height: 160rpx;"></view>
+    
+    <!-- 调试信息 -->
+    <view v-if="formData.images && formData.images.length > 0" class="debug-info">
+      <view class="debug-title">上传图片列表:</view>
+      <view v-for="(img, index) in formData.images" :key="index" class="debug-item">
+        {{ index + 1 }}. {{ img }}
+      </view>
+    </view>
     
     <view class="submit-wrapper">
       <wd-button size="large" type="primary" block custom-class="submit-btn" @click="submitForm">确认预约</wd-button>
@@ -143,84 +172,112 @@ import { ref, reactive, onMounted } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { getServiceTypes, getSceneTypes, submitAppointment, type IAppointmentForm } from '@/api/appointment'
 import useRequest from '@/hooks/useRequest'
+import { useUpload } from 'wot-design-uni'
+
+// 使用wot-design-uni的上传钩子
+const { startUpload, abort, chooseFile, UPLOAD_STATUS } = useUpload()
+
+// 上传相关配置
+const uploadUrl = import.meta.env.VITE_UPLOAD_BASEURL // 设置上传地址
+const uploadHeader = { 'Content-Type': 'multipart/form-data' }
+const uploadData = { businessType: 'appointment' } // 额外的表单数据
+const uploadStatusKey = 'status' // 状态字段名
+
+
+function handleChange({ fileList: files }) {
+  uploadImgs.value = Array.from(files).map(item => JSON.parse(item.response).url)
+}
 
 // 安全距离
 const safeAreaBottom = ref(0)
 
 // 表单引用
 const appointmentForm = ref()
-
+const uploadImgs = ref([])
 // 表单数据
 const formData = reactive<IAppointmentForm>({
-  serviceType: '',
+  problemType: '',
+  subType: '',
+  problemDesc: '',
   name: '',
+  gender: 'male',
   phone: '',
-  region: '',
   address: '',
-  sceneType: '',
   location: '',
   latitude: '',
-  longitude: ''
+  longitude: '',
+  images: [],
+  imageUrls:[]
 })
 
-// 服务类型选项 - 改为接口获取
-const serviceOptions = ref([])
+// 手机号验证
+const validatePhone = (val) => {
+  return /^1\d{10}$/.test(val)
+}
 
-// 场景选项数据 - 改为接口获取
-const sceneOptions = ref([])
+// 问题类型选项
+const problemTypes = ref([
+  { value: 'waterproof', label: '防水补漏' },
+  { value: 'wallRenovation', label: '墙面翻新' },
+  { value: 'tileRepair', label: '瓷砖修复' },
+  { value: 'other', label: '其它问题' }
+])
 
-// 获取服务类型选项
-const { loading: serviceTypesLoading, run: loadServiceTypes } = useRequest(
-  () => getServiceTypes('bussiness_type'),
-  {
-    immediate: true,
-    onSuccess: (response) => {
-      console.log('服务类型接口响应:', response)
-      if (response && Array.isArray(response)) {
-        const dictItems = response
-        console.log('字典数据项:', dictItems)
-        
-        serviceOptions.value = dictItems.map(item => ({
-          value: item.dictValue,
-          label: item.dictLabel
-        }))
-        console.log('处理后的服务类型选项:', serviceOptions.value)
-      } else {
-        console.error('服务类型接口响应异常:', response)
-        useDefaultServiceOptions()
-      }
-    },
-    onError: (error) => {
-      console.error('获取服务类型失败:', error)
-      useDefaultServiceOptions()
-    }
-  }
-)
+// 子类型选项映射
+const subTypeOptionsMap = reactive({
+  // 防水补漏的子类型
+  waterproof: [
+    { value: 'bathroom', label: '卫生间' },
+    { value: 'kitchen', label: '厨房' },
+    { value: 'window', label: '窗户' },
+    { value: 'exteriorWall', label: '外墙' },
+    { value: 'roof', label: '屋面' },
+    { value: 'basement', label: '地下室' },
+    { value: 'other', label: '其它' }
+  ],
+  // 墙面翻新的子类型
+  wallRenovation: [
+    { value: 'wholeHouse', label: '全屋翻新' },
+    { value: 'partial', label: '局部翻新' },
+    { value: 'repair', label: '墙面维修' },
+    { value: 'other', label: '其它' }
+  ],
+  // 瓷砖修复的子类型
+  tileRepair: [
+    { value: 'hollow', label: '瓷砖空鼓' },
+    { value: 'falling', label: '瓷砖脱落' },
+    { value: 'broken', label: '瓷砖破损' },
+    { value: 'recolor', label: '瓷砖改色' },
+    { value: 'other', label: '其它' }
+  ],
+  // 其他问题没有子类型
+  other: []
+})
 
-// 获取场景类型选项
-const { loading: sceneTypesLoading, run: loadSceneTypes } = useRequest(
-  () => getSceneTypes(),
-  {
-    immediate: true,
-    onSuccess: (data) => {
-      sceneOptions.value = data.map(item => ({
-        value: item.value,
-        label: item.label
-      }))
-    },
-    onError: () => {
-      // 如果接口失败，使用默认数据
-      sceneOptions.value = [
-        { value: '客厅', label: '客厅' },
-        { value: '厨房', label: '厨房' },
-        { value: '卫生间', label: '卫生间' },
-        { value: '阳台', label: '阳台' },
-        { value: '卧室', label: '卧室' },
-        { value: '其他', label: '其他' }
-      ]
-    }
-  }
-)
+// 当前选择的子类型选项
+const subTypeOptions = computed(() => {
+  return subTypeOptionsMap[formData.problemType] || []
+})
+
+// 子类型的标签名称
+const subTypeLabel = computed(() => {
+  if (formData.problemType === 'waterproof') return '问题位置'
+  if (formData.problemType === 'wallRenovation') return '翻新类型'
+  if (formData.problemType === 'tileRepair') return '瓷砖问题'
+  return '类型'
+})
+
+// 是否显示场景选项
+const showSceneOptions = computed(() => {
+  return formData.problemType && formData.problemType !== 'other'
+})
+
+// 问题类型变更处理
+const handleProblemTypeChange = () => {
+  // 清空子类型选择和问题描述
+  formData.subType = ''
+  formData.problemDesc = ''
+}
 
 // 提交预约请求
 const { loading: submitLoading, run: submitAppointmentRequest } = useRequest(
@@ -256,33 +313,42 @@ onLoad((options) => {
   // 处理服务类型参数
   if (options && options.serviceType) {
     // 处理参数映射，确保能匹配到选项
-    let serviceType = options.serviceType
+    let problemType = options.serviceType
     
-    // 特殊处理：将waterproof映射到repair
-    if (serviceType === 'waterproof') {
-      serviceType = 'repair'
-    } else if (serviceType === 'new') {
-      serviceType = 'new'
-    } else if (serviceType === 'drain') {
-      serviceType = 'drain'
-    } else if (serviceType === 'unsure' || !serviceType) {
-      serviceType = 'unsure'
+    // 特殊处理：映射旧参数到新类型
+    if (problemType === 'repair' || problemType === 'waterproof') {
+      problemType = 'waterproof'
+    } else if (problemType === 'new') {
+      problemType = 'wallRenovation'
+    } else if (problemType === 'drain') {
+      problemType = 'other'
+    } else if (problemType === 'unsure' || !problemType) {
+      problemType = 'other'
     }
     
-    console.log('设置服务类型:', serviceType)
-    // 设置默认选中的服务类型
-    formData.serviceType = serviceType
+    console.log('设置问题类型:', problemType)
+    // 设置默认选中的问题类型
+    formData.problemType = problemType
   }
   
   // 处理其他可能的参数
   if (options && options.sceneType) {
-    // 设置场景类型
-    formData.sceneType = options.sceneType
+    // 设置子类型
+    formData.subType = options.sceneType
   }
   
   // 如果有其他预填充数据，也可以在这里处理
   if (options && options.name) {
-    formData.name = options.name
+    // 尝试解析姓名和性别
+    if (options.name.endsWith('先生')) {
+      formData.name = options.name.replace('先生', '')
+      formData.gender = 'male'
+    } else if (options.name.endsWith('女士')) {
+      formData.name = options.name.replace('女士', '')
+      formData.gender = 'female'
+    } else {
+      formData.name = options.name
+    }
   }
   
   if (options && options.phone) {
@@ -373,30 +439,16 @@ const chooseLocation = () => {
   // #endif
 }
 
-// 选择省市区
-const chooseRegion = () => {
-  // 在微信环境中使用地图选择器
-  if (formData.location) {
-    return uni.showToast({ 
-      title: '省市区已通过位置选择器自动填写', 
-      icon: 'none' 
-    })
-  }
-  
-  // 提示用户先选择位置
-  uni.showToast({ 
-    title: '请先选择小区位置，省市区将自动填写', 
-    icon: 'none' 
-  })
-}
-
 // 提交表单
 const submitForm = () => {
   // 使用wd-form进行表单验证
   appointmentForm.value.validate().then(({ valid, errors }) => {
     if (valid) {
+      // 处理图片数据格式，确保能够正确提交
+      // wot-design-uni上传组件可能会以对象形式存储图片信息
+      formData.images = uploadImgs.value
       // 表单验证通过，调用接口提交数据
-      console.log('提交预约数据:', formData)
+      console.log('提交预约数据:', formData,Array.from(new Set(uploadImgs.value)))
       submitAppointmentRequest()
     } else {
       console.log('表单验证失败', errors)
@@ -406,15 +458,7 @@ const submitForm = () => {
   })
 }
 
-// 默认服务类型选项
-const useDefaultServiceOptions = () => {
-  serviceOptions.value = [
-    { value: 'repair', label: '防水补漏' },
-    { value: 'new', label: '新房防水施工' },
-    { value: 'drain', label: '疏通管道' },
-    { value: 'unsure', label: '我不清楚' }
-  ]
-}
+// 这里不需要任何代码，我们已经在前面定义了所有需要的上传处理函数
 
 // 选择联系人
 const chooseContact = () => {
@@ -501,70 +545,64 @@ const chooseContact = () => {
   }
 }
 
-.service-options {
-  display: flex;
-  width: 100%;
-  // justify-content: flex-end;
-}
-
-.radio-group {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  
-  :deep(.wd-radio) {
-    margin-bottom: 15rpx;
-    margin-right: 0;
-  }
-  
-  :deep(.wd-radio__shape) {
-    margin-right: 10rpx;
-  }
-  
-  :deep(.wd-radio__button) {
-    width: 100%;
-    height: 80rpx;
-    text-align: right;
-    padding-right: 20rpx;
-    border-radius: 10rpx;
-    
-    &.is-checked {
-      background-color: #e8f5e9;
-      color: #2c722c;
-      border-color: #2c722c;
-    }
-  }
-}
-
-.custom-cell {
-  :deep(.wd-cell__title) {
-    font-weight: 500;
-  }
-}
-
-.scene-select {
-  :deep(.wd-picker__value) {
-    text-align: right;
-  }
-}
-
 :deep(.wd-cell-group) {
-  margin: 0 30rpx;
+  margin: 0 30rpx 20rpx;
   border-radius: 8rpx;
   overflow: hidden;
 }
 
-:deep(.wd-cell__title) {
-  &::before {
-    content: '*';
-    color: #ff4d4f;
-    position: absolute;
-    left: -15rpx;
+.gender-group {
+  display: flex;
+  justify-content: space-between;
+  :deep(.wd-cell__value) {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
   }
 }
 
+.gender-radio {
+  flex:1;
+  
+  :deep(.wd-radio__shape) {
+    margin-right: 8rpx;
+  }
+  
+  :deep(.wd-radio__label) {
+    text-align: center;
+  }
+}
+
+:deep(.wd-form .wd-cell) {
+  padding: 20rpx 32rpx;
+  justify-content: space-between;
+}
+
+:deep(.wd-form .wd-cell__title) {
+  width: 50%;
+  min-width: 50%;
+  flex: 0 0 50%;
+  font-size: 28rpx;
+  padding-right: 10rpx;
+  box-sizing: border-box;
+}
+
+:deep(.wd-cell__value) {
+  width: 50%;
+  flex: 0 0 50%;
+  text-align: right;
+}
+
+:deep(.wd-picker__value),
 :deep(.wd-input__inner) {
-  // text-align: right;
+  text-align: right;
+}
+
+.upload-tips {
+  color: #999;
+  font-size: 24rpx;
+  margin-top: 8rpx;
+  text-align: right;
 }
 
 .submit-wrapper {
@@ -574,6 +612,8 @@ const chooseContact = () => {
   right: 0;
   padding: 30rpx;
   z-index: 9;
+  background-color: #fff;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .submit-btn {
@@ -589,9 +629,24 @@ const chooseContact = () => {
   height: v-bind('safeAreaBottom + "px"');
 }
 
-.service-picker {
-  :deep(.wd-picker__value) {
-    text-align: right;
-  }
+/* 调试信息样式 */
+.debug-info {
+  margin: 20rpx 30rpx;
+  padding: 20rpx;
+  background-color: #f7f7f7;
+  border-radius: 8rpx;
+  font-size: 24rpx;
+  color: #666;
+}
+
+.debug-title {
+  font-weight: bold;
+  margin-bottom: 10rpx;
+}
+
+.debug-item {
+  word-break: break-all;
+  margin-bottom: 5rpx;
+  padding-left: 10rpx;
 }
 </style> 

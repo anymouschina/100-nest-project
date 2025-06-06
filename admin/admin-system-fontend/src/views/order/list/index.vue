@@ -111,7 +111,6 @@
           <el-tag :type="ORDER_STATUS_TAG_TYPE[scope.row.status]">
             {{ ORDER_STATUS_MAP[scope.row.status] }}
           </el-tag>
-          {{ scope.row.status }}
         </template>
       </el-table-column>
       <el-table-column label="支付状态" align="center">

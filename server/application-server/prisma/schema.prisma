@@ -130,6 +130,8 @@ model Appointment {
   lastFollowUpAt DateTime?
   latitude       Float?
   longitude      Float?
+  description    String?           // 预约描述字段
+  imageUrls      String[]          // 图片URL数组
   updatedAt      DateTime          @updatedAt
   user           User              @relation(fields: [userId], references: [userId])
   orders         Order[]

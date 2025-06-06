@@ -92,10 +92,7 @@
       "chooseAddress",
       "chooseLocation",
       "choosePoi",
-      "getLocation",
-      "onLocationChange",
-      "startLocationUpdate",
-      "startLocationUpdateBackground"
+      "getLocation"
     ],
     "permission": {
       "scope.userLocation": {

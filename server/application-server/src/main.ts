@@ -15,7 +15,7 @@ async function bootstrap() {
     transport: Transport.TCP,
     options: {
       host: process.env.MICROSERVICE_HOST || 'localhost',
-      port: process.env.MICROSERVICE_PORT ? parseInt(process.env.MICROSERVICE_PORT) : 3001,
+      port: process.env.MICROSERVICE_PORT ? parseInt(process.env.MICROSERVICE_PORT) : 3004,
     },
   });
 
@@ -23,7 +23,7 @@ async function bootstrap() {
     .setTitle('OMS API')
     .setDescription('Order Management System API')
     .setVersion('1.0')
-    .addServer('http://localhost:3000', 'Local environment')
+    .addServer('http://localhost:3001', 'Local environment')
     .addBearerAuth({
       type: 'http',
       scheme: 'bearer',
@@ -47,7 +47,7 @@ async function bootstrap() {
 
   // 启动微服务
   await app.startAllMicroservices();
-  console.log(`Microservice is running on port ${process.env.MICROSERVICE_PORT || 3001}`);
+  console.log(`Microservice is running on port ${process.env.MICROSERVICE_PORT || 3002}`);
 
   // 启动HTTP服务
   await app.listen(Config.PORT);

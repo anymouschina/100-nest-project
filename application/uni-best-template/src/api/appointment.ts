@@ -41,15 +41,22 @@ export interface ISceneType {
 }
 
 export interface IAppointmentForm {
-  serviceType: string
-  sceneType: string
-  name: string
-  phone: string
-  region: string
-  location: string
-  address: string
-  latitude?: string
-  longitude?: string
+  problemType: string     // 问题类型
+  subType?: string        // 子类型/场景类型
+  problemDesc?: string    // 问题描述（其他问题时使用）
+  name: string            // 预约人姓氏
+  gender: string          // 性别：male/female
+  phone: string           // 联系电话
+  location: string        // 小区位置
+  address: string         // 详细地址
+  latitude?: string       // 纬度
+  longitude?: string      // 经度
+  images?: any[]          // 上传的照片
+  
+  // 兼容原有字段，用于提交到后端
+  serviceType?: string
+  sceneType?: string
+  region?: string
   description?: string
   appointmentTime?: string
 }
@@ -97,7 +104,22 @@ export const getSceneTypes = () => {
  * 提交预约申请
  */
 export const submitAppointment = (data: IAppointmentForm) => {
-  return http.post<IAppointmentResult>('/api/appointment/submit', data)
+  // 转换数据格式以兼容后端接口
+  const submitData = {
+    serviceType: data.problemType || data.serviceType,
+    sceneType: data.subType || data.problemDesc || data.sceneType,
+    name: data.name + (data.gender === 'male' ? '先生' : '女士'),
+    phone: data.phone,
+    region: data.region || '',
+    location: data.location,
+    address: data.address,
+    latitude: data.latitude,
+    longitude: data.longitude,
+    description: data.problemDesc || data.description || '',
+    imageUrls: data.images
+  }
+  
+  return http.post<IAppointmentResult>('/api/appointment/submit', submitData)
 }
 
 /**
