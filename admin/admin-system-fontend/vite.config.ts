@@ -41,7 +41,8 @@ export default defineConfig(({ mode, command }) => {
         // https://cn.vitejs.dev/config/#server-proxy
         "/dev-api": {
           // target: 'http://192.168.3.38:8080',
-          target: "http://127.0.0.1:3000",
+          // target: "http://127.0.0.1:3000",
+          target:"https://linkxspace.cn/nest-admin",
           changeOrigin: true,
           rewrite: (p) => p.replace(/^\/dev-api/, ""),
         },

@@ -12,6 +12,7 @@
   ],
   "scripts": {
     "dev": "vite --mode development",
+    "prod": "vite",
     "build": "vite build",
     "preview": "vite preview"
   },
