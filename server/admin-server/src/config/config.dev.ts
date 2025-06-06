@@ -70,6 +70,7 @@ export default {
      * 如果不设置，则使用localhost:端口号
      */
     url: '',
+    baseUrl:'https://linkxspace.cn/nest-admin/'
   },
 
   /**
