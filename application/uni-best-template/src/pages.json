@@ -108,7 +108,24 @@
       "path": "pages/mine/about/index",
       "type": "page",
       "style": {
-        "navigationBarTitleText": "关于我们"
+        "navigationBarTitleText": "设置",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/mine/agreement/privacy",
+      "type": "page",
+      "style": {
+        "navigationBarTitleText": "隐私政策",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/mine/agreement/user",
+      "type": "page",
+      "style": {
+        "navigationBarTitleText": "用户协议",
+        "navigationStyle": "custom"
       }
     },
     {

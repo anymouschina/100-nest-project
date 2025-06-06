@@ -83,7 +83,7 @@
 
     <!-- 功能区块 -->
     <view class="function-section">
-      <view class="cell-group">
+      <!-- <view class="cell-group">
         <view class="group-title">账号管理</view>
         <wd-cell title="个人资料" is-link @click="handleProfileInfo">
           <template #icon>
@@ -95,16 +95,16 @@
             <wd-icon name="lock-on" size="20px" custom-class="icon-green"></wd-icon>
           </template>
         </wd-cell>
-      </view>
+      </view> -->
 
       <view class="cell-group">
         <view class="group-title">通用设置</view>
-        <wd-cell title="消息通知" is-link @click="handleInform">
+        <wd-cell title="联系客服" is-link @click="handleInform">
           <template #icon>
             <wd-icon name="notification" size="20px" custom-class="icon-green"></wd-icon>
           </template>
         </wd-cell>
-        <wd-cell title="清理缓存" is-link @click="handleClearCache">
+        <!-- <wd-cell title="清理缓存" is-link @click="handleClearCache">
           <template #icon>
             <wd-icon name="clear" size="20px" custom-class="icon-green"></wd-icon>
           </template>
@@ -113,8 +113,8 @@
           <template #icon>
             <wd-icon name="refresh1" size="20px" custom-class="icon-green"></wd-icon>
           </template>
-        </wd-cell>
-        <wd-cell title="关于我们" is-link @click="handleAbout">
+        </wd-cell> -->
+        <wd-cell title="设置" is-link @click="handleAbout">
           <template #icon>
             <wd-icon name="info-circle" size="20px" custom-class="icon-green"></wd-icon>
           </template>
@@ -244,7 +244,13 @@ const handlePassword = () => {
 // 消息通知
 const handleInform = () => {
   // uni.navigateTo({ url: `/pages/mine/inform/index` })
-  toast.success('功能开发中')
+  // toast.success('功能开发中')
+  uni.makePhoneCall({
+    phoneNumber: '13627331273',
+    fail: () => {
+      toast.error('拨打电话失败')
+    }
+  })
 }
 // 应用更新
 const handleAppUpdate = () => {

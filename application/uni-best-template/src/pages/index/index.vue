@@ -253,7 +253,7 @@ const bannerList = ref([])
 const { loading: bannersLoading, run: loadBanners } = useRequest(
   () => getHomeBanners(),
   {
-    immediate: true,
+    // immediate: true,
     onSuccess: (data) => {
       console.log('获取轮播图数据成功', data)
       bannerList.value = data.map(item => ({
@@ -305,7 +305,7 @@ const homeServices = ref([])
 const { loading: servicesLoading, run: loadServices } = useRequest(
   () => getHomeServices(),
   {
-    immediate: true,
+    // immediate: true,
     onSuccess: (data) => {
       console.log('获取服务数据成功', data)
       homeServices.value = data
@@ -329,7 +329,7 @@ const statistics = ref({
 const { loading: statsLoading, run: loadStats } = useRequest(
   () => getHomeStatistics(),
   {
-    immediate: true,
+    // immediate: true,
     onSuccess: (data) => {
       console.log('获取统计数据成功', data)
       statistics.value = {

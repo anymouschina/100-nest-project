@@ -1,7 +1,8 @@
 <route lang="json5">
 {
   style: {
-    navigationBarTitleText: '关于我们',
+    navigationBarTitleText: '设置',
+    navigationStyle: 'custom', // 开启自定义导航栏
   },
 }
 </route>
@@ -36,6 +37,23 @@
           </view>
         </view>
       </view>
+      
+      <!-- 用户协议与隐私政策 -->
+      <view class="info-section">
+        <view class="section-title">法律条款</view>
+        <view class="section-content">
+          <view class="policy-item" @click="navigateToUserAgreement">
+            <wd-icon name="document" size="20px" class="contact-icon"></wd-icon>
+            <text class="contact-text">用户协议</text>
+            <wd-icon name="arrow-right" size="16px" class="arrow-icon"></wd-icon>
+          </view>
+          <view class="policy-item" @click="navigateToPrivacyPolicy">
+            <wd-icon name="lock" size="20px" class="contact-icon"></wd-icon>
+            <text class="contact-text">隐私政策</text>
+            <wd-icon name="arrow-right" size="16px" class="arrow-icon"></wd-icon>
+          </view>
+        </view>
+      </view>
 
       <!-- 版权信息 -->
       <view class="copyright">
@@ -55,6 +73,20 @@ const appLogo = ref(import.meta.env.VITE_APP_LOGO || '/static/logo.svg')
 
 // 当前年份
 const currentYear = computed(() => new Date().getFullYear())
+
+// 导航到用户协议页面
+const navigateToUserAgreement = () => {
+  uni.navigateTo({
+    url: '/pages/mine/agreement/user'
+  })
+}
+
+// 导航到隐私政策页面
+const navigateToPrivacyPolicy = () => {
+  uni.navigateTo({
+    url: '/pages/mine/agreement/privacy'
+  })
+}
 </script>
 
 <style lang="scss" scoped>
@@ -155,6 +187,39 @@ const currentYear = computed(() => new Date().getFullYear())
 .contact-text {
   font-size: 30rpx;
   color: #666;
+}
+
+/* 协议和隐私政策 */
+.policy-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 20rpx;
+  position: relative;
+  padding: 16rpx 0;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+
+  &::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    height: 1px;
+    background-color: #f5f5f5;
+    transform: scaleY(0.5);
+  }
+
+  &:last-child::after {
+    display: none;
+  }
+}
+
+.arrow-icon {
+  margin-left: auto;
+  color: #ccc;
 }
 
 /* 版权信息 */
