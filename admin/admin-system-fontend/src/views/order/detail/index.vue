@@ -49,6 +49,9 @@
         <el-descriptions-item label="订单金额">¥{{ orderInfo.total || 0 }}</el-descriptions-item>
         <el-descriptions-item label="创建时间">{{ parseTime(orderInfo.createdAt) }}</el-descriptions-item>
         <el-descriptions-item label="更新时间">{{ parseTime(orderInfo.updatedAt) }}</el-descriptions-item>
+        <el-descriptions-item label="买家地址" v-if="orderInfo.buyerAddress">
+          {{ orderInfo.buyerAddress }}
+        </el-descriptions-item>
         <el-descriptions-item label="取消原因" v-if="orderInfo.cancelReason">
           {{ orderInfo.cancelReason }}
         </el-descriptions-item>
@@ -72,7 +75,7 @@
       <el-divider />
 
       <el-descriptions title="服务信息" :column="2" border>
-        <el-descriptions-item label="服务类型">{{ SERVICE_TYPE_MAP[orderInfo.serviceType] || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="服务类型">{{ SERVICE_TYPE_MAP[orderInfo.appointmentInfo?.serviceType] || '-' }}</el-descriptions-item>
         <el-descriptions-item label="场景类型">{{ orderInfo.appointmentInfo?.sceneType?.join(', ') || '-' }}</el-descriptions-item>
         <el-descriptions-item label="预约ID">{{ orderInfo.appointmentId }}</el-descriptions-item>
         <el-descriptions-item label="跟进次数">{{ orderInfo.followUpCount || 0 }}</el-descriptions-item>
@@ -97,6 +100,22 @@
 
       <div v-if="orderInfo.appointmentInfo?.latitude && orderInfo.appointmentInfo?.longitude" class="map-container">
         <div id="map" style="height: 300px; margin-top: 15px;"></div>
+      </div>
+
+      <!-- 预约图片展示 -->
+      <el-divider v-if="orderInfo.appointmentInfo?.imageUrls && orderInfo.appointmentInfo.imageUrls.length > 0" />
+      
+      <div v-if="orderInfo.appointmentInfo?.imageUrls && orderInfo.appointmentInfo.imageUrls.length > 0">
+        <h3>预约现场图片</h3>
+        
+        <el-image
+          v-for="(url, index) in formatImageUrls(orderInfo.appointmentInfo.imageUrls)"
+          :key="index"
+          :src="url"
+          :preview-src-list="formatImageUrls(orderInfo.appointmentInfo.imageUrls)"
+          fit="cover"
+          style="width: 100px; height: 100px; margin-right: 10px; margin-bottom: 10px;"
+        />
       </div>
 
       <el-divider v-if="orderInfo.items && orderInfo.items.length > 0" />
@@ -176,8 +195,15 @@ function goBack() {
 function getOrderDetail(id) {
   loading.value = true;
   getOrder(id).then(response => {
-    // 根据实际API响应结构调整
-    orderInfo.value = response.data || response || {};
+    // 适配新的API响应结构
+    if (response.code === 200) {
+      // 新的响应结构
+      orderInfo.value = response;
+    } else {
+      // 兼容旧的响应结构
+      orderInfo.value = response.data || response || {};
+    }
+    
     loading.value = false;
     console.log('订单详情:', orderInfo.value);
     
@@ -198,6 +224,25 @@ function initMap() {
   // 此处应该实现地图初始化逻辑
   // 如果需要使用第三方地图库如高德地图、百度地图等，需要先引入相应的SDK
   console.log('地图初始化');
+}
+
+/** 格式化图片URL，确保使用完整的URL地址 */
+function formatImageUrls(urls) {
+  if (!urls || !Array.isArray(urls)) return [];
+  
+  return urls.map(url => {
+    // 如果URL已经是完整的绝对URL（以http或https开头），则直接返回
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return url;
+    }
+    
+    // 如果URL是相对路径，添加基础URL前缀
+    // 使用环境变量中的API基础URL或默认使用当前域名
+    const baseApiUrl = import.meta.env.VITE_APP_BASE_API || '';
+    
+    // 如果URL以/开头，则直接拼接，否则添加/
+    return `${baseApiUrl}${url.startsWith('/') ? url : '/' + url}`;
+  });
 }
 
 /** 更新订单状态 */

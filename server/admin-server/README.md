@@ -40,6 +40,9 @@
 2. 提供公共上传接口（无需鉴权），返回可访问的URL
    - 单文件上传：`POST /public/upload`
    - 多文件上传：`POST /public/uploads`
+3. 上传的资源支持跨域访问，不受同源策略限制
+   - 所有静态资源目录添加了CORS头，允许从任何域名访问
+   - 支持通过配置文件中的`app.url`设置返回完整的访问URL
 
 ## Installation
 

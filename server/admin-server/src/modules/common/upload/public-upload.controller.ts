@@ -29,8 +29,8 @@ export class PublicUploadController {
     @Query('fileName') fileName,
   ) {
     // 构建文件的访问URL
-    const baseUrl = this.configService.get('app.url', '');
-    const port = this.configService.get('port', '');
+    const baseUrl = this.configService.get('app.url');
+    const port = this.configService.get('port');
     const url = baseUrl ? baseUrl : `http://localhost:${port}`;
     
     return {
@@ -49,8 +49,8 @@ export class PublicUploadController {
   @UseInterceptors(FilesInterceptor('files'))
   async uploadFiles(@UploadedFiles() files: Array<Express.Multer.File>, @Query('fileName') fileName) {
     // 构建文件的访问URL
-    const baseUrl = this.configService.get('app.url', '');
-    const port = this.configService.get('port', '');
+    const baseUrl = this.configService.get('app.url');
+    const port = this.configService.get('port');
     const url = baseUrl ? baseUrl : `http://localhost:${port}`;
     
     return files.map((file, index) => {

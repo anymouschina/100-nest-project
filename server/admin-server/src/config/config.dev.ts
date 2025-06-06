@@ -60,6 +60,19 @@ export default {
   cors: false,
 
   /**
+   * 应用服务配置
+   */
+  app: {
+    /**
+     * 应用URL
+     * 用于构建完整的文件访问URL
+     * 例如：http://example.com
+     * 如果不设置，则使用localhost:端口号
+     */
+    url: '',
+  },
+
+  /**
    * 应用服务器URL
    * 用于调用application-server的接口
    */
