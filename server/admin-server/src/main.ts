@@ -59,5 +59,6 @@ async function bootstrap() {
   /* 读取环境变量里的项目启动端口 */
   const port = configService.get('port');
   await app.listen(port);
+  console.log(`Admin server is running on port ${port}`);
 }
 bootstrap();
