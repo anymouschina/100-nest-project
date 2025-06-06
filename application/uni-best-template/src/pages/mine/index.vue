@@ -35,7 +35,7 @@
           <!-- #ifndef MP-WEIXIN -->
           <view class="username">{{ userStore.userInfo.username }}</view>
           <!-- #endif -->
-          <view class="user-id">{{ userStore.userInfo.phone || '13627331273' }}</view>
+          <view class="user-id">{{ userStore.userInfo.phone  }}</view>
           
           <!-- 右侧设置按钮 -->
           <view class="settings-icon">
