@@ -133,6 +133,20 @@ export const dynamicRoutes = [
     ]
   },
   {
+    path: '/system/order-detail',
+    component: Layout,
+    hidden: true,
+    permissions: ['system:order:list'],
+    children: [
+      {
+        path: 'index/:orderId(\\d+)',
+        component: () => import('@/views/order/detail/index'),
+        name: 'Detail',
+        meta: { title: '订单详情', activeMenu: '/system/order/list' }
+      }
+    ]
+  },
+  {
     path: '/system/dict-data',
     component: Layout,
     hidden: true,

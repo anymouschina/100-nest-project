@@ -80,6 +80,44 @@ export const useUserStore = defineStore(
       _logout()
       removeUserInfo()
     }
+    
+    /**
+     * 获取微信用户信息（头像和昵称）
+     */
+    const getWxUserInfo = (): Promise<{
+      avatarUrl: string
+      nickName: string
+    }> => {
+      return new Promise((resolve, reject) => {
+        // #ifdef MP-WEIXIN
+        uni.getUserProfile({
+          desc: '获取您的头像和昵称',
+          success: (res) => {
+            const { userInfo } = res
+            resolve({
+              avatarUrl: userInfo.avatarUrl,
+              nickName: userInfo.nickName
+            })
+          },
+          fail: (err) => {
+            console.error('获取微信用户信息失败', err)
+            resolve({
+              avatarUrl: '',
+              nickName: ''
+            })
+          }
+        })
+        // #endif
+        
+        // #ifndef MP-WEIXIN
+        resolve({
+          avatarUrl: '',
+          nickName: ''
+        })
+        // #endif
+      })
+    }
+    
     /**
      * 微信登录
      */
@@ -88,12 +126,37 @@ export const useUserStore = defineStore(
       const data = await getWxCode()
 
       const res = await _wxLogin(data)
-      console.log('微信登录code', data,res)
+      console.log('微信登录code', data, res)
 
-      if(res.data){
-        token.value = res.data.token;
-        setUserInfo(res.data as any)
+      // 尝试获取微信用户信息
+      try {
+        const wxUserInfo = await getWxUserInfo()
+        console.log('获取到微信用户信息', wxUserInfo)
+        
+        // 如果有微信用户信息，则使用微信头像和昵称
+        if (wxUserInfo.avatarUrl && res.data) {
+          const updatedUserInfo = {
+            ...res.data,
+            avatar: wxUserInfo.avatarUrl,
+            username: wxUserInfo.nickName || res.data.username
+          } as any
+          
+          if(updatedUserInfo){
+            token.value = updatedUserInfo.token;
+            setUserInfo(updatedUserInfo)
+          }
+        } else if(res.data) {
+          token.value = res.data.token;
+          setUserInfo(res.data as any)
+        }
+      } catch (error) {
+        console.error('获取微信用户信息失败', error)
+        if(res.data){
+          token.value = res.data.token;
+          setUserInfo(res.data as any)
+        }
       }
+      
       getUserInfo()
       return res
     }

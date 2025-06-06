@@ -55,8 +55,15 @@ export class SysMenuService {
         });
         if (!parentMenu) throw new ApiException('上级菜单不存在，请重新选择。');
       }
+      
+      // 确保移除可能存在的menuId，让数据库自动生成
+      const menuData = { ...addSysMenuDto };
+      if ('menuId' in menuData) {
+        delete menuData.menuId;
+      }
+      
       return await prisma.sysMenu.create({
-        data: addSysMenuDto,
+        data: menuData,
       });
     });
   }

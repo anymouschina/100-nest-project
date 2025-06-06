@@ -43,7 +43,7 @@ export class UserService {
    * WeChat login or register a user
    * Adapts to work with the existing User schema
    * 
-   * @param wxLoginDto - The WeChat login data with code
+   * @param wxLoginDto - The WeChat login data with code and user profile info
    * @returns The user data and a JWT token
    */
   async wxLogin(wxLoginDto: WxLoginDto) {
@@ -70,7 +70,7 @@ export class UserService {
         );
       }
 
-      const { openid } = response.data;
+      const { openid, session_key } = response.data;
       
       // Since we're having issues with the Prisma types, use a workaround
       // Store the WeChat ID in the email field as a temporary solution
@@ -81,14 +81,42 @@ export class UserService {
         where: { email: wechatEmail },
       });
 
+      // Extract user info from the request if provided
+      const { userInfo } = wxLoginDto;
+      const nickname = userInfo?.nickName || `WxUser_${openid.substring(0, 8)}`;
+      const avatarUrl = userInfo?.avatarUrl || null;
+
       if (!user) {
         // Create a new user with WeChat info encoded in standard fields
         user = await this.databaseService.user.create({
           data: {
-            name: `WxUser_${openid.substring(0, 8)}`,
+            name: nickname,
             email: wechatEmail,
             password: `wx_${openid}`, // Not secure, just a placeholder
             address: `wx_${openid}`,  // Using address to store WeChat ID
+            avatarUrl: avatarUrl, // Store avatar URL if available
+            openId: openid,       // Store openId directly
+            // Add other WeChat user fields if available
+            gender: userInfo?.gender,
+            country: userInfo?.country,
+            province: userInfo?.province,
+            city: userInfo?.city,
+            language: userInfo?.language,
+          },
+        });
+      } else if (userInfo) {
+        // Update user information if profile data is provided
+        user = await this.databaseService.user.update({
+          where: { userId: user.userId },
+          data: {
+            name: nickname,
+            avatarUrl: avatarUrl,
+            // Update other WeChat user fields if available
+            gender: userInfo?.gender,
+            country: userInfo?.country,
+            province: userInfo?.province,
+            city: userInfo?.city,
+            language: userInfo?.language,
           },
         });
       }
@@ -104,9 +132,15 @@ export class UserService {
         user: {
           userId: user.userId,
           name: user.name,
+          avatarUrl: user.avatarUrl,
           // Include WeChat ID as metadata
           wechatMetadata: {
             openId: openid,
+            // Include additional WeChat info if available
+            gender: user.gender,
+            country: user.country,
+            province: user.province,
+            city: user.city,
           }
         },
         token,
@@ -138,17 +172,21 @@ export class UserService {
     }
     
     // Extract WeChat openId from email if it's a WeChat user
-    let openId = null;
-    if (user.email?.startsWith('wx_') && user.email?.endsWith('@example.com')) {
+    let openId = user.openId;
+    if (!openId && user.email?.startsWith('wx_') && user.email?.endsWith('@example.com')) {
       openId = user.email.slice(3, -12); // Remove 'wx_' prefix and '@example.com' suffix
     }
     
     return {
       userId: user.userId,
       name: user.name,
-      avatar: null, // Add user avatar if available
+      avatarUrl: user.avatarUrl, // Return avatar URL if available
       wechatInfo: openId ? {
         openId,
+        gender: user.gender,
+        country: user.country,
+        province: user.province,
+        city: user.city,
       } : null,
       // Add any other non-sensitive user information
       joinedAt: user.createdAt,

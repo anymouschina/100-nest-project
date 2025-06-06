@@ -8,6 +8,7 @@
  *
  */
 import { UploadController } from './upload.controller';
+import { PublicUploadController } from './public-upload.controller';
 import { Module } from '@nestjs/common';
 import { MulterModule } from '@nestjs/platform-express';
 import * as fs from 'fs';
@@ -75,7 +76,7 @@ function resetName(file: Express.Multer.File) {
       inject: [ConfigService],
     }),
   ],
-  controllers: [UploadController],
+  controllers: [UploadController, PublicUploadController],
   providers: [MulterModule],
   exports: [MulterModule],
 })

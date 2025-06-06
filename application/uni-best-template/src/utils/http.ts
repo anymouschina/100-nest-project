@@ -1,4 +1,5 @@
 import { CustomRequestOptions } from '@/interceptors/request'
+import { useUserStore } from '@/store'
 
 export const http = <T>(options: CustomRequestOptions) => {
   // 1. 返回 Promise 对象
@@ -17,7 +18,7 @@ export const http = <T>(options: CustomRequestOptions) => {
           resolve(res.data as IResData<T>)
         } else if (res.statusCode === 401) {
           // 401错误  -> 清理用户信息，跳转到登录页
-          // userStore.clearUserInfo()
+          useUserStore().wxLogin()
           // uni.navigateTo({ url: '/pages/login/login' })
           reject(res)
         } else {

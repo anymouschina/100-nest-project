@@ -8,5 +8,6 @@ import { CouponService } from 'src/coupon/coupon.service';
 @Module({
   controllers: [OrderController],
   providers: [OrderService, CartService, DatabaseService, CouponService],
+  exports: [OrderService],
 })
 export class OrderModule {}

@@ -7,6 +7,7 @@ import {
   ParseIntPipe,
   Post,
   Put,
+  Query,
 } from '@nestjs/common';
 import { OrderService } from './order.service';
 import { CreateOrderDto } from './dto/create-order.dto';
@@ -14,7 +15,7 @@ import { UpdateOrderDto } from './dto/update-order.dto';
 import { ApplyCouponDto } from 'src/coupon/dto/apply-coupon.dto';
 import { CouponService } from 'src/coupon/coupon.service';
 import { $Enums, Prisma } from '@prisma/client';
-import { ApiTags, ApiBody, ApiResponse } from '@nestjs/swagger';
+import { ApiTags, ApiBody, ApiResponse, ApiQuery } from '@nestjs/swagger';
 
 @ApiTags('Orders')
 @Controller('api/orders')
@@ -23,6 +24,102 @@ export class OrderController {
     private readonly orderService: OrderService,
     private readonly couponService: CouponService,
   ) {}
+
+  /**
+   * GET /api/orders
+   * 获取订单列表，可按状态筛选
+   * 
+   * @param query - 查询参数，包含status、userId、page、pageSize等
+   * @returns 订单列表和分页信息
+   */
+  @Get()
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    description: '订单状态，如 PENDING, ACCEPTED, PROCESSING, COMPLETED, CANCELLED, DELIVERED',
+  })
+  @ApiQuery({
+    name: 'status[name]',
+    required: false,
+    description: '订单状态名称（替代形式）',
+  })
+  @ApiQuery({
+    name: 'status[index]',
+    required: false,
+    description: '订单状态索引，0:PENDING, 1:ACCEPTED, 2:PROCESSING, 3:COMPLETED, 4:CANCELLED, 5:DELIVERED',
+  })
+  @ApiQuery({
+    name: 'userId',
+    required: false,
+    description: '用户ID',
+  })
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    description: '页码，默认为1',
+  })
+  @ApiQuery({
+    name: 'pageSize',
+    required: false,
+    description: '每页数量，默认为20',
+  })
+  @ApiResponse({
+    status: 200,
+    description: '订单列表',
+  })
+  async findAll(@Query() query: any) {
+    // 订单状态枚举映射
+    const statusMap = ['PENDING', 'ACCEPTED', 'PROCESSING', 'COMPLETED', 'CANCELLED', 'DELIVERED'];
+    
+    // 处理status参数，支持status[name]和status[index]格式
+    let status: string | undefined;
+    
+    if (query['status[name]']) {
+      // 处理status[name]参数
+      status = query['status[name]'].toUpperCase();
+    } else if (query['status[index]'] !== undefined) {
+      // 处理status[index]参数，转换为对应的状态名
+      const statusIndex = parseInt(query['status[index]']);
+      if (!isNaN(statusIndex) && statusIndex >= 0 && statusIndex < statusMap.length) {
+        status = statusMap[statusIndex];
+      }
+    } else if (query.status && typeof query.status === 'object') {
+      // 处理复杂的status对象
+      if (query.status.name) {
+        status = query.status.name.toUpperCase();
+      } else if (query.status.index !== undefined) {
+        const statusIndex = parseInt(query.status.index);
+        if (!isNaN(statusIndex) && statusIndex >= 0 && statusIndex < statusMap.length) {
+          status = statusMap[statusIndex];
+        }
+      }
+    } else if (query.status && typeof query.status === 'string') {
+      // 处理简单的status字符串
+      status = query.status.toUpperCase();
+    }
+    
+    // 处理userId参数
+    const userId = query.userId ? parseInt(query.userId) : undefined;
+    
+    // 处理分页参数
+    const page = query.page ? parseInt(query.page) : 1;
+    const pageSize = query.pageSize ? parseInt(query.pageSize) : 20;
+    if(status === 'ALL'){
+      status = ''
+    }
+    // 获取订单数据
+    const { orders, total } = await this.orderService.findAll(status, userId, page, pageSize);
+    
+    return {
+      data: orders,
+      pagination: {
+        page,
+        pageSize,
+        total,
+        pages: Math.ceil(total / pageSize)
+      }
+    };
+  }
 
   /**
    * GET /api/orders/:id

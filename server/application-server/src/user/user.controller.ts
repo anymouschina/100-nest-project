@@ -14,12 +14,16 @@ import { ApiTags, ApiResponse, ApiOperation, ApiHeader, ApiBearerAuth } from '@n
 import { WxLoginDto } from './dto/wx-login.dto';
 import { Public } from '../auth/decorators/public.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { AuthService } from '../auth/auth.service';
 
 @ApiTags('Users')
 @Controller('api/user')
 @ApiBearerAuth()
 export class UserController {
-  constructor(private readonly userService: UserService) {}
+  constructor(
+    private readonly userService: UserService,
+    private readonly authService: AuthService,
+  ) {}
 
   /**
    * GET /api/users/:id/orders
@@ -74,6 +78,47 @@ export class UserController {
   async wxLogin(@Body() wxLoginDto: WxLoginDto) {
     return this.userService.wxLogin(wxLoginDto);
   }
+
+  /**
+   * POST /api/users/logout
+   * Logs out a user by invalidating their JWT token
+   * 
+   * @param user - The current user from the JWT token
+   * @param authorization - The authorization header containing the JWT token
+   * @returns Success message if logout was successful
+   */
+  @Get('logout')
+  @ApiOperation({ summary: 'Logout user and invalidate token' })
+  @ApiHeader({
+    name: 'Authorization',
+    description: 'Bearer token for authentication',
+    required: true,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Successfully logged out',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized, invalid or missing token',
+  })
+  async logout(
+    @CurrentUser() user: any,
+    @Headers('authorization') authorization: string,
+  ) {
+    if (!authorization || !authorization.startsWith('Bearer ')) {
+      throw new UnauthorizedException('Invalid token format');
+    }
+
+    const token = authorization.split(' ')[1];
+    const success = await this.authService.blacklistToken(token, user.userId);
+
+    if (!success) {
+      throw new BadRequestException('Failed to logout');
+    }
+
+    return { message: 'Successfully logged out' };
+  }
 }
 
 // Additional controller for direct endpoint matching
@@ -81,7 +126,10 @@ export class UserController {
 @Controller('user')
 @ApiBearerAuth()
 export class WxUserController {
-  constructor(private readonly userService: UserService) {}
+  constructor(
+    private readonly userService: UserService,
+    private readonly authService: AuthService,
+  ) {}
 
   /**
    * POST /user/wxLogin
@@ -136,5 +184,46 @@ export class WxUserController {
   })
   async getUserInfo(@CurrentUser() user: any) {
     return this.userService.getUserInfo(user.userId);
+  }
+
+  /**
+   * POST /user/logout
+   * Logs out a user by invalidating their JWT token
+   * 
+   * @param user - The current user from the JWT token
+   * @param authorization - The authorization header containing the JWT token
+   * @returns Success message if logout was successful
+   */
+  @Post('logout')
+  @ApiOperation({ summary: 'Logout user and invalidate token (direct path)' })
+  @ApiHeader({
+    name: 'Authorization',
+    description: 'Bearer token for authentication',
+    required: true,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Successfully logged out',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized, invalid or missing token',
+  })
+  async logout(
+    @CurrentUser() user: any,
+    @Headers('authorization') authorization: string,
+  ) {
+    if (!authorization || !authorization.startsWith('Bearer ')) {
+      throw new UnauthorizedException('Invalid token format');
+    }
+
+    const token = authorization.split(' ')[1];
+    const success = await this.authService.blacklistToken(token, user.userId);
+
+    if (!success) {
+      throw new BadRequestException('Failed to logout');
+    }
+
+    return { message: 'Successfully logged out' };
   }
 }

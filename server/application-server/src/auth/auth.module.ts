@@ -6,8 +6,9 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { ConfigModule } from '../config/config.module';
 import { AppConfigService } from '../config/config.service';
 import { DatabaseService } from "../database/database.service";
-
+import { ScheduleModule } from '@nestjs/schedule';
 import { DatabaseModule } from "../database/database.module";
+
 @Module({
   imports: [
     DatabaseModule,
@@ -24,6 +25,7 @@ import { DatabaseModule } from "../database/database.module";
       }),
     }),
     ConfigModule,
+    ScheduleModule.forRoot(),
   ],
   providers: [AuthService, JwtStrategy, DatabaseService],
   exports: [AuthService],

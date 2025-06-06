@@ -8,16 +8,22 @@ import { DatabaseModule } from "./database/database.module";
 import { AuthModule } from './auth/auth.module';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
+import { ScheduleModule } from '@nestjs/schedule';
+import { AppointmentModule } from './appointment/appointment.module';
+import { MicroservicesModule } from './microservices/microservices.module';
 
 @Module({
   imports: [
     DatabaseModule,
     ConfigModule,
+    ScheduleModule.forRoot(),
     AuthModule,
     UserModule, 
     ProductModule, 
     CartModule, 
-    OrderModule
+    OrderModule,
+    AppointmentModule,
+    MicroservicesModule
   ],
   controllers: [],
   providers: [

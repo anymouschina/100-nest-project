@@ -57,5 +57,35 @@ export default {
    * 是否启用cors
    * 启用就是后端允许跨域
    */
-  cors: false,
+  cors: true,
+
+  /**
+   * 白名单
+   */
+  whitelist: ['http://localhost:5173'],
+
+  /**
+   * 应用服务配置
+   */
+  app: {
+    /**
+     * 应用URL
+     * 用于构建完整的文件访问URL
+     * 例如：http://example.com
+     * 如果不设置，则使用localhost:端口号
+     */
+    url: process.env.APP_URL || '',
+  },
+
+  /**
+   * 应用服务器URL
+   * 用于调用application-server的接口
+   */
+  APPLICATION_SERVER_URL: process.env.APPLICATION_SERVER_URL || 'http://application-server:3000',
+
+  /**
+   * 微服务配置
+   */
+  MICROSERVICE_HOST: process.env.MICROSERVICE_HOST || 'application-server',
+  MICROSERVICE_PORT: process.env.MICROSERVICE_PORT || 3001,
 };

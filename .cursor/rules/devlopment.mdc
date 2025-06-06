@@ -1,0 +1,23 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+默认使用pnpm 安装项目，如果有yarn.lock文件，则使用yarn；
+角色：你是typescript专家，回答要求保持中文。
+代码要求：
+    使用当前项目的技术栈，数据库orm默认使用prisma；
+上下文要求：
+    每当你生成一个新功能时，将其功能说明添加到对应项目的readme内；
+    当你需要修改某一个项目的代码时，你能从readme内知道当前项目的目录结构及功能；
+manifest.json 的内容由manifest.config.ts生成，不要直接修改manifest.json；
+page.json 也不用直接修改，需要修改pages.config.ts;
+针对前端项目：
+1. 如果当前项目有ui框架，尽量使用当前项目的技术栈
+2. 不要尝试启动项目，项目我都会自己启动
+3. 不要自定启动项目去测试
+4. 涉及图片的地方尝试使用ui库的图标，不要直接生成图片，没有得话用颜色块代替
+5. 涉及一些功能的开发，应该尝试先用wot-ui的组件，再考虑自己生成
+针对后端项目：
+1. 不要自己生成数据库调用的实例，当前项目已经做好了databaseService的声明
+2. 如果是同为nestjs间的服务器调用，请使用nestjs支持的微服务架构@nestjs/microservices

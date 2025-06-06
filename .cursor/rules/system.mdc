@@ -1,9 +1,12 @@
 ---
 description: 
 globs: 
-alwaysApply: false
+alwaysApply: true
 ---
 默认使用pnpm 安装项目，如果有yarn.lock文件，则使用yarn；
-角色：你是typescript专家；
+角色：你是typescript专家，回答要求保持中文。
 代码要求：
     使用当前项目的技术栈，数据库orm默认使用prisma；
+上下文要求：
+    每当你生成一个新功能时，将其功能说明添加到对应项目的readme内；
+    当你需要修改某一个项目的代码时，你能从readme内知道当前项目的目录结构及功能；

@@ -144,19 +144,92 @@ export class OrderService {
    * @returns A promise that resolves to the updated order or an error object.
    */
   async updateStatus(orderId: number, updateOrderDto: UpdateOrderDto) {
-    const order = await this.databaseService.order.findFirst({
-      where: { orderId },
+    // 使用事务确保订单和预约状态同步更新
+    return this.databaseService.$transaction(async (tx) => {
+      try {
+        // 获取订单详情，使用任意类型来避免类型冲突
+        const order = await tx.order.findFirst({
+          where: { orderId }
+        });
+
+        if (!order) return { error: { message: 'Order was not found' } };
+
+        // 尝试获取关联的预约
+        const orderWithAppointment = await tx.$queryRaw`
+          SELECT o.*, a.id as appointment_id 
+          FROM "Order" o
+          LEFT JOIN "Appointment" a ON o."appointmentId" = a.id
+          WHERE o."orderId" = ${orderId}
+        ` as any[];
+
+        // 只有未完成的订单才能更新状态
+        const orderStatus = String(order.status);
+        const newStatus = String(updateOrderDto.status);
+        const completedStatuses = ['DELIVERED', 'COMPLETED', 'CANCELLED'];
+        
+        if (completedStatuses.includes(orderStatus)) {
+          return { error: { message: `The order has already been ${orderStatus.toLowerCase()}, cannot change status` } };
+        }
+
+        // 检查状态转换是否有效
+        if (!this.isValidStatusTransition(orderStatus, newStatus)) {
+          return { error: { message: `Cannot change status from ${orderStatus} to ${newStatus}` } };
+        }
+
+        // 如果是CANCELLED状态且有原因，先更新appointmentInfo
+        if (newStatus === 'CANCELLED' && updateOrderDto.reason) {
+          // 直接使用SQL更新预约信息，避免类型问题
+          await tx.$queryRaw`
+            UPDATE "Order"
+            SET "appointmentInfo" = COALESCE("appointmentInfo", '{}'::jsonb) || 
+                ${JSON.stringify({
+                  cancelReason: updateOrderDto.reason,
+                  cancelledAt: new Date()
+                })}::jsonb
+            WHERE "orderId" = ${orderId}
+          `;
+        }
+
+        // 更新订单状态
+        const updatedOrder = await tx.order.update({
+          data: { status: updateOrderDto.status },
+          where: { orderId },
+          include: {
+            items: {
+              include: {
+                product: true
+              }
+            }
+          }
+        });
+
+        return updatedOrder;
+      } catch (error) {
+        console.error('更新订单状态时出错:', error);
+        // 发生错误时事务会自动回滚
+        throw error;
+      }
     });
+  }
 
-    if (!order) return { error: { message: 'Order was not found' } };
+  /**
+   * 检查状态转换是否有效
+   * @param currentStatus - 当前状态
+   * @param newStatus - 新状态
+   * @returns 状态转换是否有效
+   */
+  private isValidStatusTransition(currentStatus: string, newStatus: string): boolean {
+    // 定义状态转换规则
+    const validTransitions: Record<string, string[]> = {
+      'PENDING': ['ACCEPTED', 'CANCELLED'],
+      'ACCEPTED': ['PROCESSING', 'CANCELLED'],
+      'PROCESSING': ['COMPLETED', 'CANCELLED'],
+      'COMPLETED': [], // 已完成状态不能再改变
+      'CANCELLED': [], // 已取消状态不能再改变
+      'DELIVERED': []  // 已交付状态不能再改变
+    };
 
-    if (order.status === 'DELIVERED')
-      return { error: { message: 'The order has already been delivered' } };
-
-    return this.databaseService.order.update({
-      data: { status: updateOrderDto.status },
-      where: { orderId },
-    });
+    return validTransitions[currentStatus]?.includes(newStatus) || false;
   }
 
   /**
@@ -212,5 +285,112 @@ export class OrderService {
     });
 
     return updatedOrder;
+  }
+
+  /**
+   * 查找订单列表，可按状态和用户ID筛选，支持分页
+   * @param status 订单状态
+   * @param userId 用户ID
+   * @param page 页码，默认为1
+   * @param pageSize 每页数量，默认为20
+   * @returns 包含订单列表和总数的对象
+   */
+  async findAll(status?: string, userId?: number, page: number = 1, pageSize: number = 20) {
+    try {
+      // 计算偏移量
+      const offset = (page - 1) * pageSize;
+      
+      // 构建查询条件
+      let whereClause = `WHERE 1=1`;
+      const params = [];
+      
+      // 如果提供了状态，添加状态筛选（添加类型转换）
+      if (status) {
+        whereClause += ` AND o.status = $${params.length + 1}::"Status"`;
+        params.push(status.toUpperCase());
+      }
+      
+      // 如果提供了用户ID，添加用户筛选
+      if (userId) {
+        whereClause += ` AND o."userId" = $${params.length + 1}`;
+        params.push(userId);
+      }
+      
+      // 计算总记录数
+      const countQuery = `
+        SELECT COUNT(*) as total 
+        FROM "Order" o
+        ${whereClause}
+      `;
+      
+      const totalResult = await this.databaseService.$queryRawUnsafe(countQuery, ...params);
+      const total = parseInt(totalResult[0].total);
+      
+      // 查询订单数据
+      const dataQuery = `
+        SELECT o.*, 
+               jsonb_agg(
+                 jsonb_build_object(
+                   'orderItemId', oi."orderItemId",
+                   'quantity', oi.quantity,
+                   'productId', oi."productId",
+                   'product', jsonb_build_object(
+                     'productId', p."productId",
+                     'name', p.name,
+                     'price', p.price,
+                     'description', p.description,
+                     'stock', p.stock
+                   )
+                 )
+               ) as items,
+               jsonb_build_object(
+                 'userId', u."userId",
+                 'name', u.name,
+                 'email', u.email,
+                 'openId', u."openId"
+               ) as user,
+               jsonb_build_object(
+                 'id', a.id,
+                 'serviceType', a."serviceType",
+                 'name', a.name,
+                 'phone', a.phone,
+                 'region', a.region,
+                 'address', a.address,
+                 'sceneType', a."sceneType",
+                 'location', a.location,
+                 'createdAt', a."createdAt",
+                 'updatedAt', a."updatedAt",
+                 'userId', a."userId",
+                 'latitude', a.latitude,
+                 'longitude', a.longitude
+               ) as appointment
+        FROM "Order" o
+        LEFT JOIN "OrderItem" oi ON o."orderId" = oi."orderId"
+        LEFT JOIN "Product" p ON oi."productId" = p."productId"
+        LEFT JOIN "User" u ON o."userId" = u."userId"
+        LEFT JOIN "Appointment" a ON o."appointmentId" = a.id
+        ${whereClause}
+        GROUP BY o."orderId", a.id, u."userId"
+        ORDER BY o."createdAt" DESC
+        LIMIT $${params.length + 1} OFFSET $${params.length + 2}
+      `;
+      
+      // 添加分页参数
+      params.push(pageSize, offset);
+      
+      // 执行查询
+      const orders = await this.databaseService.$queryRawUnsafe(dataQuery, ...params);
+      
+      return {
+        orders,
+        total
+      };
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+      return {
+        orders: [],
+        total: 0
+      };
+    }
   }
 }

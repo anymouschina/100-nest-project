@@ -16,3 +16,22 @@ If the standalone TypeScript plugin doesn't feel fast enough to you, Volar has a
    1. Run `Extensions: Show Built-in Extensions` from VSCode's command palette
    2. Find `TypeScript and JavaScript Language Features`, right click and select `Disable (Workspace)`
 2. Reload the VSCode window by running `Developer: Reload Window` from the command palette.
+
+## 项目功能模块
+
+### 目录结构说明
+
+项目的主要功能模块都位于 `src/views/system` 目录下，遵循以下命名规范：
+- 每个功能模块放在独立目录下
+- 列表页面放在 `list` 子目录下
+- 详情页面放在 `detail` 子目录下
+
+### 订单管理
+
+- 路径：`src/views/system/order`
+- 订单列表：展示订单信息，包括订单状态、支付状态、服务类型等
+- 订单详情：查看订单的详细信息，包括用户信息、服务信息、地址信息等
+- 订单状态管理：支持订单的接单、施工、完成、取消等操作
+- 支持按订单状态、服务类型、支付状态、用户ID、手机号码、创建时间等条件筛选订单
+
+订单状态包括：待接单、已接单、施工中、已完成、已取消、已交付

@@ -31,16 +31,29 @@ async function bootstrap() {
   app.use(
     helmet({
       contentSecurityPolicy: false, //取消https强制转换
+      crossOriginResourcePolicy: { policy: 'cross-origin' }, // 允许跨域访问资源
     }),
   );
 
   /* 设置静态资源目录 */
-  app.useStaticAssets(join(__dirname, '../static'));
+  app.useStaticAssets(join(__dirname, '../static'), {
+    setHeaders: (res) => {
+      res.set('Access-Control-Allow-Origin', '*');
+      res.set('Access-Control-Allow-Methods', 'GET');
+      res.set('Cross-Origin-Resource-Policy', 'cross-origin');
+    },
+  });
 
   /* 读取配置文件是否有配置的上传文件目录，也设置为静态资源目录,方便前端加载 */
   const uploadPath = configService.get('uploadPath');
   if (uploadPath) {
-    app.useStaticAssets(uploadPath);
+    app.useStaticAssets(uploadPath, {
+      setHeaders: (res) => {
+        res.set('Access-Control-Allow-Origin', '*');
+        res.set('Access-Control-Allow-Methods', 'GET');
+        res.set('Cross-Origin-Resource-Policy', 'cross-origin');
+      },
+    });
   }
 
   /* 读取环境变量里的项目启动端口 */
