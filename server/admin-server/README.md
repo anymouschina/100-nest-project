@@ -64,6 +64,27 @@
    - 支持订单统计数据的微服务调用 `order.getStatistics`
    - 本地备份统计功能，确保微服务不可用时仍能获取统计数据
 
+### 推广引用功能
+
+1. 推广引用码管理接口
+   - 获取引用码列表：`GET /api/admin/referrals`
+   - 创建引用码：`POST /api/admin/referrals`
+   - 更新引用码状态：`PUT /api/admin/referrals/:id/status`
+   - 获取推广统计：`GET /api/admin/referrals/statistics`
+     - 支持按用户ID筛选: `?userId=123`
+     - 返回推广使用情况、转化率等统计数据
+2. 支持创建自定义引用码
+   - 可设置使用次数限制
+   - 可设置过期时间
+   - 可设置是否激活
+3. 微服务功能
+   - 提供Redis微服务接口，可供其他服务调用
+   - 支持引用码创建的微服务调用 `referral.createCode`
+   - 支持引用码查询的微服务调用 `referral.getAllCodes`
+   - 支持引用码状态更新的微服务调用 `referral.updateCodeStatus`
+   - 支持推广统计数据的微服务调用 `referral.getStats`
+   - 本地备份统计功能，确保微服务不可用时仍能获取统计数据
+
 ## Installation
 
 ```bash

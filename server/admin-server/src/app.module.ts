@@ -15,6 +15,7 @@ import { LoginModule } from './modules/login/login.module';
 import { MonitorModule } from './modules/monitor/monitor.module';
 import { CommonModule } from './modules/common/common.module';
 import { OrderModule } from './modules/order/order.module';
+import { ReferralModule } from './modules/referral/referral.module';
 import { MicroservicesModule } from './microservices/microservices.module';
 
 @Module({
@@ -25,6 +26,7 @@ import { MicroservicesModule } from './microservices/microservices.module';
     LoginModule, 
     MonitorModule,
     OrderModule,
+    ReferralModule,
     MicroservicesModule
   ],
   controllers: [AppController],

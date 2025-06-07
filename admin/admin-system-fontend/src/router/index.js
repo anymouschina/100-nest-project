@@ -147,6 +147,20 @@ export const dynamicRoutes = [
     ]
   },
   {
+    path: '/system/referral-detail',
+    component: Layout,
+    hidden: true,
+    permissions: ['system:referral:list'],
+    children: [
+      {
+        path: 'index/:id(\\d+)',
+        component: () => import('@/views/referral/detail/index'),
+        name: 'ReferralDetail',
+        meta: { title: '推广引用详情', activeMenu: '/system/referral/list' }
+      }
+    ]
+  },
+  {
     path: '/system/dict-data',
     component: Layout,
     hidden: true,
