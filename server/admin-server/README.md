@@ -44,6 +44,26 @@
    - 所有静态资源目录添加了CORS头，允许从任何域名访问
    - 支持通过配置文件中的`app.url`设置返回完整的访问URL
 
+### 订单管理功能
+
+1. 订单微服务接口
+   - 获取订单列表：`GET /api/admin/orders`
+   - 获取订单详情：`GET /api/admin/orders/:id`
+   - 更新订单状态：`PUT /api/admin/orders/:id/status`
+   - 获取订单统计：`GET /api/admin/orders/statistics`
+     - 支持按日、周、月、年维度统计: `?timeRange=day|week|month|year`
+     - 支持自定义时间范围: `?startDate=2023-01-01&endDate=2023-12-31`
+     - 返回数据格式适配echarts图表展示，包含坐标轴数据和多个数据系列
+2. 支持根据状态和用户ID筛选订单
+3. 提供订单状态统计分析
+   - 按支付状态（已支付、未支付、已退款）统计
+   - 按订单状态（待处理、已接受、处理中、已完成、已取消、已交付）统计
+   - 支持组合查询统计
+4. 微服务功能
+   - 提供Redis微服务接口，可供其他服务调用
+   - 支持订单统计数据的微服务调用 `order.getStatistics`
+   - 本地备份统计功能，确保微服务不可用时仍能获取统计数据
+
 ## Installation
 
 ```bash

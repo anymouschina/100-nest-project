@@ -86,6 +86,12 @@ Here are the additional features that has been added to the application:
   - 提交预约申请: `POST /api/appointment/submit`
   - 获取用户所有预约: `GET /api/appointment/user`
   - 获取预约详情: `GET /api/appointment/:id`
+- 订单取消与退款: `POST /api/orders/:id/cancel`
+- 订单统计功能: 
+  - 微服务模式: `order.getStatistics`
+  - 支持按日、周、月、年维度统计: `timeRange` 参数可选值为 `day`, `week`, `month`, `year`
+  - 支持自定义时间范围: `startDate` 和 `endDate` 参数
+  - 返回数据格式适配echarts图表展示
 
 ## Dummy Data
 

@@ -27,4 +27,20 @@ export class OrderMicroserviceController {
       reason 
     });
   }
+
+  @MessagePattern(OrderMicroservicePatterns.GET_STATISTICS)
+  async getStatistics(
+    @Payload()
+    data: {
+      timeRange?: 'day' | 'week' | 'month' | 'year';
+      startDate?: string;
+      endDate?: string;
+    },
+  ) {
+    return this.orderService.getStatistics(
+      data.timeRange,
+      data.startDate,
+      data.endDate,
+    );
+  }
 }

@@ -146,23 +146,23 @@
     <!-- 底部操作按钮 -->
     <view class="bottom-actions">
       <template v-if="orderDetail.status === 'pending'">
-        <wd-button type="info" @click="contactCustomerService">联系客服</wd-button>
-        <wd-button type="danger" @click="showCancelDialog">取消订单</wd-button>
+        <wd-button type="info" @click="handleButtonClick($event, 'contact')">联系客服</wd-button>
+        <wd-button type="danger" @click="handleButtonClick($event, 'cancel')">取消订单</wd-button>
       </template>
       
       <template v-if="orderDetail.status === 'accepted'">
-        <wd-button type="info" @click="contactCustomerService">联系客服</wd-button>
-        <wd-button type="primary" @click="checkEngineerLocation">查看位置</wd-button>
+        <wd-button type="info" @click="handleButtonClick($event, 'contact')">联系客服</wd-button>
+        <wd-button type="primary" @click="handleButtonClick($event, 'location')">查看位置</wd-button>
       </template>
       
       <template v-if="orderDetail.status === 'processing'">
-        <wd-button type="info" @click="contactCustomerService">联系客服</wd-button>
-        <wd-button type="primary" @click="checkProgress">查看进度</wd-button>
+        <wd-button type="info" @click="handleButtonClick($event, 'contact')">联系客服</wd-button>
+        <wd-button type="primary" @click="handleButtonClick($event, 'progress')">查看进度</wd-button>
       </template>
       
       <template v-if="orderDetail.status === 'completed'">
-        <wd-button type="info" @click="contactCustomerService">联系客服</wd-button>
-        <wd-button type="success" @click="reviewOrder">评价服务</wd-button>
+        <wd-button type="info" @click="handleButtonClick($event, 'contact')">联系客服</wd-button>
+        <wd-button type="success" @click="handleButtonClick($event, 'review')">评价服务</wd-button>
       </template>
     </view>
     </template>
@@ -369,6 +369,32 @@ const reviewOrder = () => {
   uni.navigateTo({
     url: `/pages/orders/review?id=${orderDetail.value.id}`
   })
+}
+
+// 处理按钮点击，统一处理事件
+const handleButtonClick = (event: Event, action: string) => {
+  // 阻止事件冒泡和默认行为
+  event.stopPropagation()
+  event.preventDefault()
+  
+  // 根据action类型调用对应的处理函数
+  switch(action) {
+    case 'contact':
+      contactCustomerService()
+      break
+    case 'cancel':
+      showCancelDialog()
+      break
+    case 'location':
+      checkEngineerLocation()
+      break
+    case 'progress':
+      checkProgress()
+      break
+    case 'review':
+      reviewOrder()
+      break
+  }
 }
 
 // 获取订单详情

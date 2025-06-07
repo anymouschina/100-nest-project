@@ -10,7 +10,9 @@ export class OrderService implements OnModuleInit {
   private readonly logger = new Logger(OrderService.name);
   private readonly TIMEOUT_MS = 5000; // 请求超时时间
 
-  constructor(private readonly configService: ConfigService) {}
+  constructor(
+    private readonly configService: ConfigService,
+  ) {}
 
   async onModuleInit() {
     // 初始化微服务客户端
@@ -103,6 +105,42 @@ export class OrderService implements OnModuleInit {
     } catch (error) {
       this.logger.error(`Failed to update order status for id=${id}: ${error.message}`);
       throw error;
+    }
+  }
+
+  /**
+   * 获取订单统计数据
+   * @param timeRange 时间维度：day(日)、week(周)、month(月)、year(年)
+   * @param startDate 开始日期（可选）
+   * @param endDate 结束日期（可选）
+   * @returns 订单统计数据，包括按支付状态、订单状态的分类统计，支持echarts展示
+   */
+  async getStatistics(
+    timeRange?: 'day' | 'week' | 'month' | 'year',
+    startDate?: string,
+    endDate?: string
+  ) {
+    try {
+      this.logger.debug(`Fetching order statistics from microservice: timeRange=${timeRange}, startDate=${startDate}, endDate=${endDate}`);
+      const result = await firstValueFrom(
+        this.client.send(OrderMicroservicePatterns.GET_STATISTICS, {
+          timeRange,
+          startDate,
+          endDate
+        }).pipe(timeout(this.TIMEOUT_MS))
+      );
+      return {
+        ...result,
+        source: 'microservice' // 标记数据来源
+      };
+    } catch (error) {
+      this.logger.warn(`Failed to fetch order statistics from microservice: ${error.message}`);
+      this.logger.log('Falling back to local statistics service');
+      return {
+        error: '获取统计数据失败',
+        message: error.message,
+        source: 'error'
+      };
     }
   }
 }
