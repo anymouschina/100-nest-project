@@ -13,6 +13,7 @@ import helmet from 'helmet';
 import { ConfigService } from '@nestjs/config';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
+import { Transport, MicroserviceOptions } from '@nestjs/microservices';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -55,6 +56,22 @@ async function bootstrap() {
       },
     });
   }
+
+  /* 创建微服务 */
+  app.connectMicroservice<MicroserviceOptions>({
+    transport: Transport.REDIS,
+    options: {
+      host: configService.get('REDIS_HOST') || 'localhost',
+      port: configService.get('REDIS_PORT') ? parseInt(configService.get('REDIS_PORT')) : 6379,
+      password: configService.get('REDIS_PASSWORD') || '123456',
+      retryAttempts: 2, // 最大重试次数
+      retryDelay: 1000, // 重试间隔（毫秒）
+    },
+  });
+  
+  /* 启动微服务 */
+  await app.startAllMicroservices();
+  console.log(`Admin microservice is running on Redis at ${configService.get('REDIS_HOST') || 'localhost'}:${configService.get('REDIS_PORT') || 6379}`);
 
   /* 读取环境变量里的项目启动端口 */
   const port = configService.get('port');

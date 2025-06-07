@@ -44,6 +44,52 @@
    - 所有静态资源目录添加了CORS头，允许从任何域名访问
    - 支持通过配置文件中的`app.url`设置返回完整的访问URL
 
+### 订单管理功能
+
+1. 订单微服务接口
+   - 获取订单列表：`GET /api/admin/orders`
+   - 获取订单详情：`GET /api/admin/orders/:id`
+   - 更新订单状态：`PUT /api/admin/orders/:id/status`
+   - 获取订单统计：`GET /api/admin/orders/statistics`
+     - 支持按日、周、月、年维度统计: `?timeRange=day|week|month|year`
+     - 支持自定义时间范围: `?startDate=2023-01-01&endDate=2023-12-31`
+     - 返回数据格式适配echarts图表展示，包含坐标轴数据和多个数据系列
+2. 支持根据状态和用户ID筛选订单
+3. 提供订单状态统计分析
+   - 按支付状态（已支付、未支付、已退款）统计
+   - 按订单状态（待处理、已接受、处理中、已完成、已取消、已交付）统计
+   - 支持组合查询统计
+4. 微服务功能
+   - 提供Redis微服务接口，可供其他服务调用
+   - 支持订单统计数据的微服务调用 `order.getStatistics`
+   - 本地备份统计功能，确保微服务不可用时仍能获取统计数据
+
+### 推广引用功能
+
+1. 推广引用码管理接口
+   - 获取引用码列表：`GET /api/admin/referrals`
+   - 创建引用码：`POST /api/admin/referrals`
+   - 更新引用码状态：`PUT /api/admin/referrals/:id/status`
+   - 获取推广统计：`GET /api/admin/referrals/statistics`
+     - 支持按用户ID筛选: `?userId=123`
+     - 返回推广使用情况、转化率等统计数据
+   - 生成推广二维码：`POST /api/admin/referrals/qrcode`
+     - 支持生成小程序码，可携带引用码参数
+     - 可指定二维码尺寸和保存方式
+     - 支持指定环境版本(develop/trial/release)
+2. 支持创建自定义引用码
+   - 可设置使用次数限制
+   - 可设置过期时间
+   - 可设置是否激活
+3. 微服务功能
+   - 提供Redis微服务接口，可供其他服务调用
+   - 支持引用码创建的微服务调用 `referral.createCode`
+   - 支持引用码查询的微服务调用 `referral.getAllCodes`
+   - 支持引用码状态更新的微服务调用 `referral.updateCodeStatus`
+   - 支持推广统计数据的微服务调用 `referral.getStats`
+   - 支持生成推广二维码的微服务调用 `referral.generateQrcode`
+   - 本地备份统计功能，确保微服务不可用时仍能获取统计数据
+
 ## Installation
 
 ```bash

@@ -16,6 +16,8 @@ import { ApplyCouponDto } from 'src/coupon/dto/apply-coupon.dto';
 import { CouponService } from 'src/coupon/coupon.service';
 import { $Enums, Prisma } from '@prisma/client';
 import { ApiTags, ApiBody, ApiResponse, ApiQuery } from '@nestjs/swagger';
+import { CancelOrderDto } from './dto/cancel-order.dto';
+import { Public } from 'src/auth/decorators/public.decorator';
 
 @ApiTags('Orders')
 @Controller('api/orders')
@@ -24,6 +26,45 @@ export class OrderController {
     private readonly orderService: OrderService,
     private readonly couponService: CouponService,
   ) {}
+
+  /**
+   * GET /api/orders/stats
+   * 获取订单统计数据，支持按不同时间维度进行统计
+   * 
+   * @param timeRange 时间维度：day(日)、week(周)、month(月)、year(年)
+   * @param startDate 开始日期
+   * @param endDate 结束日期
+   * @returns 订单统计数据
+   */
+  @Get('stats')
+  @Public()
+  @ApiQuery({
+    name: 'timeRange',
+    required: false,
+    description: '时间维度：day(日)、week(周)、month(月)、year(年)',
+    enum: ['day', 'week', 'month', 'year'],
+  })
+  @ApiQuery({
+    name: 'startDate',
+    required: false,
+    description: '开始日期，格式：YYYY-MM-DD',
+  })
+  @ApiQuery({
+    name: 'endDate',
+    required: false,
+    description: '结束日期，格式：YYYY-MM-DD',
+  })
+  @ApiResponse({
+    status: 200,
+    description: '订单统计数据',
+  })
+  async getStatistics(
+    @Query('timeRange') timeRange?: 'day' | 'week' | 'month' | 'year',
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    return this.orderService.getStatistics(timeRange, startDate, endDate);
+  }
 
   /**
    * GET /api/orders
@@ -258,5 +299,37 @@ export class OrderController {
     return {
       message: `Applied ${(coupon as any).discount}% of`,
     };
+  }
+
+  /**
+   * POST /api/orders/:id/cancel
+   * 取消订单，并根据需要处理退款
+   * 
+   * @param id - 要取消的订单ID
+   * @param cancelOrderDto - 包含取消原因和是否需要退款的DTO
+   * @returns 取消后的订单信息
+   * @throws BadRequestException 如果订单取消失败
+   */
+  @Post(':id/cancel')
+  @ApiBody({ type: CancelOrderDto })
+  @ApiResponse({
+    status: 200,
+    description: '订单已成功取消',
+  })
+  @ApiResponse({
+    status: 400,
+    description: '取消订单失败，可能因为订单不存在、状态不允许取消等原因',
+  })
+  async cancelOrder(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() cancelOrderDto: CancelOrderDto,
+  ) {
+    const result = await this.orderService.cancelOrder(id, cancelOrderDto);
+
+    if (Object.keys(result).includes('error')) {
+      throw new BadRequestException((result as any).error.message);
+    }
+
+    return result;
   }
 }

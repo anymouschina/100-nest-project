@@ -35,6 +35,23 @@ export class OrderController {
   }
 
   /**
+   * 获取订单统计数据
+   * @param timeRange 时间维度：day(日)、week(周)、month(月)、year(年)
+   * @param startDate 开始日期（可选）
+   * @param endDate 结束日期（可选）
+   * @returns 按支付状态和订单状态分类的统计数据，支持echarts展示
+   */
+  @Get('statistics')
+  @Public()
+  async getStatistics(
+    @Query('timeRange') timeRange?: 'day' | 'week' | 'month' | 'year',
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    return this.orderService.getStatistics(timeRange, startDate, endDate);
+  }
+
+  /**
    * 获取订单列表
    * @param status 订单状态
    * @param userId 用户ID

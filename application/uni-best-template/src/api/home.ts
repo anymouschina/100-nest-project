@@ -34,22 +34,31 @@ export interface IHomeStatistics {
 }
 
 /**
+ * 关联用户引荐关系
+ * @param refCode 引荐码
+ * @returns Promise 包含引荐关联结果
+ */
+export const associateUserReferral = (refCode: string) => {
+  return http.post<{ success: boolean; message: string }>('/user/referral', { refCode })
+}
+
+/**
  * 获取首页轮播图
  */
 export const getHomeBanners = () => {
-  return http.get<IBanner[]>('/api/home/banners')
+  // return http.get<IBanner[]>('/home/banners')
 }
 
 /**
  * 获取首页服务列表
  */
 export const getHomeServices = () => {
-  return http.get<IHomeService[]>('/api/home/services')
+  // return http.get<IHomeService[]>('/home/services')
 }
 
 /**
  * 获取首页统计数据
  */
 export const getHomeStatistics = () => {
-  return http.get<IHomeStatistics>('/api/home/statistics')
-} 
+  // return http.get<IHomeStatistics>('/home/statistics')
+}

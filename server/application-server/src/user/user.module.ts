@@ -1,16 +1,17 @@
 import { Module } from '@nestjs/common';
 import { UserService } from './user.service';
-import { UserController } from './user.controller';
-import { WxUserController } from './user.controller';
-import { DatabaseService } from 'src/database/database.service';
-import { CartService } from 'src/cart/cart.service';
-import { OrderService } from 'src/order/order.service';
-import { ConfigModule } from '../config/config.module';
-import { AuthModule } from '../auth/auth.module';
+import { UserController, WxUserController } from './user.controller';
+import { AdminReferralController } from './user.controller';
+import { DatabaseModule } from 'src/database/database.module';
+import { OrderModule } from 'src/order/order.module';
+import { ConfigModule as NestConfigModule } from '@nestjs/config';
+import { AuthModule } from 'src/auth/auth.module';
+import { ConfigModule } from 'src/config/config.module';
 
 @Module({
-  imports: [ConfigModule, AuthModule],
-  controllers: [UserController, WxUserController],
-  providers: [UserService, OrderService, CartService, DatabaseService],
+  imports: [DatabaseModule, OrderModule, ConfigModule, AuthModule],
+  controllers: [UserController, WxUserController, AdminReferralController],
+  providers: [UserService],
+  exports: [UserService],
 })
 export class UserModule {}

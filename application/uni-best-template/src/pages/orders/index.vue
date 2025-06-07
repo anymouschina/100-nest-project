@@ -2,7 +2,7 @@
 {
   style: {
     navigationBarTitleText: '我的订单',
-    navigationStyle:'custom'
+    navigationStyle: 'custom',
   },
 }
 </route>
@@ -17,13 +17,13 @@
       <wd-tab title="施工中" name="processing"></wd-tab>
       <wd-tab title="已完成" name="completed"></wd-tab>
     </wd-tabs>
-    
+
     <!-- 加载中状态 -->
     <view class="loading-container" v-if="loading && filteredOrders.length === 0">
       <wd-loading color="#2c722c" />
       <text class="loading-text">加载订单数据中...</text>
     </view>
-    
+
     <!-- 下拉刷新区域 -->
     <scroll-view
       scroll-y
@@ -32,23 +32,20 @@
       refresher-background="#f7f8fa"
       @refresherrefresh="onRefresh"
       @scrolltolower="onLoadMore"
-      style="height: calc(100% - 104rpx);"
+      style="height: calc(100% - 104rpx)"
       v-else
     >
       <!-- 订单列表 -->
       <view class="orders-list" v-if="filteredOrders.length > 0">
-        <view 
-          class="order-card" 
-          v-for="(order, index) in filteredOrders" 
-          :key="index"
-          @click="goToOrderDetail(order.id)"
-        >
-          <view class="order-header">
+        <view class="order-card" v-for="(order, index) in filteredOrders" :key="index">
+          <view class="order-header" @click="goToOrderDetail(order.id)">
             <view class="order-type">{{ showServiceTypeText(order.serviceType) }}</view>
-            <view class="order-status" :class="'status-' + order.status">{{ getStatusText(order) }}</view>
+            <view class="order-status" :class="'status-' + order.status">
+              {{ getStatusText(order) }}
+            </view>
           </view>
-          
-          <view class="order-info">
+
+          <view class="order-info" @click="goToOrderDetail(order.id)">
             <view class="info-item">
               <text class="label">订单编号：</text>
               <text class="value">{{ order.orderNo }}</text>
@@ -62,42 +59,54 @@
               <text class="value">{{ order.address }}</text>
             </view>
           </view>
-          
+
           <view class="order-footer">
             <view class="price-info">
               <text class="price-label">实付款</text>
               <text class="price-value">¥ {{ order.price.toFixed(2) }}</text>
             </view>
-            
+
             <view class="action-buttons">
               <template v-if="order.status === 'pending'">
-                <wd-button size="small" @click.stop="cancelOrderAction(order.id)">取消订单</wd-button>
+                <wd-button size="small" @click="handleButtonClick($event, 'cancel', order.id)">
+                  取消订单
+                </wd-button>
               </template>
               <template v-if="order.status === 'accepted'">
-                <wd-button size="small" @click.stop="contactService(order.id)">联系客服</wd-button>
+                <wd-button size="small" @click="handleButtonClick($event, 'contact', order.id)">
+                  联系客服
+                </wd-button>
               </template>
-              <template v-if="order.status === 'processing'">
-                <wd-button size="small" @click.stop="checkProgress(order.id)">查看进度</wd-button>
+              <!-- <template v-if="order.status === 'processing'">
+                <wd-button size="small" @click="handleButtonClick($event, 'progress', order.id)">
+                  查看进度
+                </wd-button>
               </template>
               <template v-if="order.status === 'completed'">
-                <wd-button size="small" type="success" @click.stop="reviewOrder(order.id)">评价服务</wd-button>
-              </template>
+                <wd-button
+                  size="small"
+                  type="success"
+                  @click="handleButtonClick($event, 'review', order.id)"
+                >
+                  评价服务
+                </wd-button>
+              </template> -->
             </view>
           </view>
         </view>
-        
+
         <!-- 加载更多状态 -->
         <view class="load-more" v-if="pagination.loadingMore">
           <wd-loading color="#2c722c" size="24px" />
           <text class="load-more-text">加载更多...</text>
         </view>
-        
+
         <!-- 没有更多数据提示 -->
         <view class="no-more" v-if="!pagination.hasMore && filteredOrders.length > 0">
           <text class="no-more-text">- 没有更多订单了 -</text>
         </view>
       </view>
-      
+
       <!-- 空状态 -->
       <view class="empty-state" v-else>
         <view class="empty-icon">
@@ -122,14 +131,14 @@ const toast = useToast()
 const { statusBarHeight } = uni.getSystemInfoSync()
 // 活动选项卡
 const activeTab = ref('all')
-const height = computed(()=>{
+const height = computed(() => {
   return `calc(100% - ${statusBarHeight + 44}px)`
 })
 // 查询参数
 const queryParams = ref({
   status: '',
   page: 1,
-  pageSize: 10
+  pageSize: 10,
 })
 
 // 订单数据 - 改为接口获取
@@ -145,37 +154,40 @@ const refreshing = ref(false)
 const pagination = ref({
   total: 0,
   hasMore: true,
-  loadingMore: false
+  loadingMore: false,
 })
 
 // 服务类型字典
 const serviceTypeDict = ref<Record<string, string>>({})
 const showServiceTypeText = (serviceType: string) => {
-  console.log(serviceTypeDict.value,'serviceTypeDict',serviceType)
+  console.log(serviceTypeDict.value, 'serviceTypeDict', serviceType)
   return serviceTypeDict.value[serviceType] || serviceType
 }
 // 获取服务类型字典
 const loadServiceTypes = async () => {
   try {
     const { data } = await getServiceTypes('bussiness_type')
-    console.log(data,'response111')
+    console.log(data, 'response111')
     if (data && Array.isArray(data)) {
-      serviceTypeDict.value = data.reduce((acc, item) => {
-        acc[item.dictValue] = item.dictLabel
-        return acc
-      }, {} as Record<string, string>)
+      serviceTypeDict.value = data.reduce(
+        (acc, item) => {
+          acc[item.dictValue] = item.dictLabel
+          return acc
+        },
+        {} as Record<string, string>,
+      )
       // 构建服务类型字典，key为dictValue，value为dictLabel
-      
+
       console.log('服务类型字典:', serviceTypeDict.value)
     }
   } catch (error) {
     console.error('获取服务类型字典失败:', error)
     // 如果接口失败，使用默认数据
     serviceTypeDict.value = {
-      'repair': '防水补漏',
-      'new': '新房防水施工',
-      'drain': '疏通管道',
-      'unsure': '上门勘测'
+      repair: '防水补漏',
+      new: '新房防水施工',
+      drain: '疏通管道',
+      unsure: '上门勘测',
     }
   }
 }
@@ -188,30 +200,30 @@ const loadOrders = async (isLoadMore = false) => {
   } else {
     loading.value = true
   }
-  
+
   try {
     // 设置查询参数
-    queryParams.value.status = activeTab.value === 'all' ? 'all' : activeTab.value as any
-    
+    queryParams.value.status = activeTab.value === 'all' ? 'all' : (activeTab.value as any)
+
     // 如果是加载更多，增加页码
     if (isLoadMore) {
       queryParams.value.page++
     }
-    
+
     // 调用订单列表接口
     const response = await getOrderList(queryParams.value)
-    
+
     // 处理后端返回的数据结构
     const responseData = response.data || {}
     const ordersList = responseData.data || []
     const paginationInfo = responseData.pagination || { total: 0, pages: 0 }
-    
+
     // 更新分页信息
     pagination.value.total = paginationInfo.total || 0
     pagination.value.hasMore = queryParams.value.page < (paginationInfo.pages || 0)
-    
+
     // 格式化订单数据
-    const formattedOrders = ordersList.map(order => {
+    const formattedOrders = ordersList.map((order) => {
       const serviceType = order.serviceType || order.appointmentInfo?.serviceType || 'unsure'
       return {
         id: order.id?.toString() || order.orderId?.toString() || '',
@@ -224,18 +236,25 @@ const loadOrders = async (isLoadMore = false) => {
         address: order.location || `${order.region || ''} ${order.address || ''}`,
         price: order.total || 0,
         createTime: order.createdAt ? formatDate(order.createdAt) : '',
-        updateTime: order.updatedAt ? formatDate(order.updatedAt) : ''
+        updateTime: order.updatedAt ? formatDate(order.updatedAt) : '',
       }
     })
-    
+
     // 如果是加载更多，追加数据，否则替换数据
     if (isLoadMore) {
       orders.value = [...orders.value, ...formattedOrders]
     } else {
       orders.value = formattedOrders
     }
-    
-    console.log('获取订单列表成功:', orders.value, '总数:', pagination.value.total, '是否有更多:', pagination.value.hasMore)
+
+    console.log(
+      '获取订单列表成功:',
+      orders.value,
+      '总数:',
+      pagination.value.total,
+      '是否有更多:',
+      pagination.value.hasMore,
+    )
   } catch (error) {
     console.error('获取订单列表失败', error)
     // 如果接口失败，使用模拟数据作为降级方案
@@ -249,9 +268,9 @@ const loadOrders = async (isLoadMore = false) => {
         statusName: '待接单',
         appointmentTime: '2023-06-01 14:00',
         address: '广州市天河区天河路385号',
-        price: 280.00,
+        price: 280.0,
         createTime: '2023-06-01 09:12:33',
-        updateTime: '2023-06-01 09:12:33'
+        updateTime: '2023-06-01 09:12:33',
       },
       {
         id: '1002',
@@ -262,9 +281,9 @@ const loadOrders = async (isLoadMore = false) => {
         statusName: '已接单',
         appointmentTime: '2023-06-02 10:00',
         address: '广州市海珠区新港中路122号',
-        price: 3800.00,
+        price: 3800.0,
         createTime: '2023-05-30 16:28:45',
-        updateTime: '2023-05-30 16:28:45'
+        updateTime: '2023-05-30 16:28:45',
       },
       {
         id: '1003',
@@ -275,9 +294,9 @@ const loadOrders = async (isLoadMore = false) => {
         statusName: '施工中',
         appointmentTime: '2023-05-28 15:30',
         address: '广州市越秀区建设大马路12号',
-        price: 560.00,
+        price: 560.0,
         createTime: '2023-05-27 14:22:10',
-        updateTime: '2023-05-27 14:22:10'
+        updateTime: '2023-05-27 14:22:10',
       },
       {
         id: '1004',
@@ -288,17 +307,17 @@ const loadOrders = async (isLoadMore = false) => {
         statusName: '已完成',
         appointmentTime: '2023-05-20 09:00',
         address: '广州市白云区机场路788号',
-        price: 420.00,
+        price: 420.0,
         createTime: '2023-05-19 18:33:42',
-        updateTime: '2023-05-19 18:33:42'
-      }
+        updateTime: '2023-05-19 18:33:42',
+      },
     ]
-    
+
     // 如果有选中特定标签，过滤模拟数据
     if (activeTab.value !== 'all') {
-      mockData = mockData.filter(order => order.status === activeTab.value)
+      mockData = mockData.filter((order) => order.status === activeTab.value)
     }
-    
+
     // 根据是否是加载更多，处理模拟数据
     if (isLoadMore) {
       // 模拟加载更多，但实际上已经没有更多数据了
@@ -321,27 +340,6 @@ const getServiceTypeName = (serviceType: string) => {
   return serviceTypeDict.value[serviceType] || serviceType
 }
 
-// 取消订单请求
-const { loading: cancelLoading, run: cancelOrderRequest } = useRequest(
-  (orderId: string, reason: string) => cancelOrder(orderId, { reason }),
-  {
-    immediate: false,
-    onSuccess: (result) => {
-      if (result.success) {
-        toast.success(result.message || '订单已取消')
-        // 重新加载订单列表
-        loadOrders()
-      } else {
-        toast.error(result.message || '取消订单失败')
-      }
-    },
-    onError: (error) => {
-      console.error('取消订单失败', error)
-      toast.error('取消订单失败，请重试')
-    }
-  }
-)
-
 // 根据tab筛选订单 - 现在直接从接口获取对应状态的订单，不需要前端过滤
 const filteredOrders = computed(() => {
   return orders.value
@@ -356,11 +354,11 @@ const getStatusText = (order: IOrderItem) => {
 const handleTabChange = (tab: string) => {
   console.log('切换订单状态标签:', tab)
   activeTab.value = tab
-  
+
   // 重置分页
   queryParams.value.page = 1
   pagination.value.hasMore = true
-  
+
   // 重新加载数据
   loadOrders()
 }
@@ -368,21 +366,42 @@ const handleTabChange = (tab: string) => {
 // 跳转到订单详情
 const goToOrderDetail = (orderId: string) => {
   uni.navigateTo({
-    url: `/pages/orders/detail?id=${orderId}`
+    url: `/pages/orders/detail?id=${orderId}`,
   })
 }
 
 // 取消订单
 const cancelOrderAction = (orderId: string) => {
+  // 取消订单请求
+  const { loading: cancelLoading, run: cancelOrderRequest } = useRequest(
+    () => cancelOrder(orderId, { reason: '用户主动取消' }),
+    {
+      immediate: false,
+      onSuccess: (result) => {
+        console.log(result, 'result')
+        if (result.status === 'CANCELLED') {
+          toast.success('订单已取消')
+          // 重新加载订单列表
+          loadOrders()
+        } else {
+          toast.error('取消订单失败')
+        }
+      },
+      onError: (error) => {
+        console.error('取消订单失败', error)
+        toast.error('取消订单失败，请重试')
+      },
+    },
+  )
   uni.showModal({
     title: '提示',
     content: '确定要取消该订单吗？',
     success: (res) => {
       if (res.confirm) {
         // 调用取消订单接口
-        cancelOrderRequest(orderId, '用户主动取消')
+        cancelOrderRequest()
       }
-    }
+    },
   })
 }
 
@@ -392,7 +411,7 @@ const contactService = (orderId: string) => {
     phoneNumber: '400-123-4567',
     fail: () => {
       toast.error('拨打电话失败')
-    }
+    },
   })
 }
 
@@ -400,34 +419,57 @@ const contactService = (orderId: string) => {
 const checkProgress = (orderId: string) => {
   // 跳转到进度页面
   uni.navigateTo({
-    url: `/pages/orders/progress?id=${orderId}`
+    url: `/pages/orders/progress?id=${orderId}`,
   })
 }
 
 // 评价服务
 const reviewOrder = (orderId: string) => {
   uni.navigateTo({
-    url: `/pages/orders/review?id=${orderId}`
+    url: `/pages/orders/review?id=${orderId}`,
   })
+}
+
+// 处理按钮点击，统一处理事件
+const handleButtonClick = (event: Event, action: string, orderId: string) => {
+  // 阻止事件冒泡和默认行为
+  event.stopPropagation()
+  event.preventDefault()
+  console.log(orderId, 'orderId')
+  // 根据action类型调用对应的处理函数
+  switch (action) {
+    case 'cancel':
+      cancelOrderAction(orderId)
+      break
+    case 'contact':
+      contactService(orderId)
+      break
+    case 'progress':
+      checkProgress(orderId)
+      break
+    case 'review':
+      reviewOrder(orderId)
+      break
+  }
 }
 
 // 跳转到预约页面
 const goToAppointment = () => {
   console.log('订单页面跳转到预约页面')
-  
+
   // 构建预约参数
   const appointmentParams = {
     serviceType: 'unsure',
     // 可以根据需要添加其他默认参数
   }
-  
+
   // 将参数转换为URL查询字符串
   const queryString = Object.entries(appointmentParams)
     .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
     .join('&')
-  
+
   uni.navigateTo({
-    url: '/pages/appointment/index?' + queryString
+    url: '/pages/appointment/index?' + queryString,
   })
 }
 
@@ -436,7 +478,7 @@ onLoad((options) => {
   if (options && options.status) {
     activeTab.value = options.status
   }
-  
+
   // 先加载服务类型字典
   loadServiceTypes().then(() => {
     // 加载订单列表
@@ -457,7 +499,7 @@ const onRefresh = async () => {
     // 重置页码和分页状态
     queryParams.value.page = 1
     pagination.value.hasMore = true
-    
+
     // 重新加载数据
     await loadOrders()
   } finally {
@@ -478,11 +520,11 @@ const onLoadMore = async () => {
 // 根据状态码获取状态名称
 const getStatusNameByCode = (status: string) => {
   const statusMap: Record<string, string> = {
-    'PENDING': '待接单',
-    'ACCEPTED': '已接单',
-    'PROCESSING': '施工中',
-    'COMPLETED': '已完成',
-    'CANCELLED': '已取消'
+    PENDING: '待接单',
+    ACCEPTED: '已接单',
+    PROCESSING: '施工中',
+    COMPLETED: '已完成',
+    CANCELLED: '已取消',
   }
   return statusMap[status] || status
 }
@@ -502,18 +544,18 @@ const formatDate = (dateString: string) => {
 .orders-container {
   height: calc(100vh - var(--wot-navbar-height, 44px));
   background-color: #f7f8fa;
-  
+
   :deep(.wd-tabs__nav) {
     background-color: #fff;
-    
+
     .wd-tab {
       font-size: 28rpx;
-      
+
       &.is-active {
         color: #2c722c;
       }
     }
-    
+
     .wd-tabs__line {
       background-color: #2c722c;
     }
@@ -538,28 +580,28 @@ const formatDate = (dateString: string) => {
   align-items: center;
   padding: 24rpx;
   border-bottom: 1rpx solid #eee;
-  
+
   .order-type {
     font-size: 30rpx;
     font-weight: 500;
     color: #333;
   }
-  
+
   .order-status {
     font-size: 26rpx;
-    
+
     &.status-pending {
       color: #faad14;
     }
-    
+
     &.status-accepted {
       color: #1890ff;
     }
-    
+
     &.status-processing {
       color: #52c41a;
     }
-    
+
     &.status-completed {
       color: #2c722c;
     }
@@ -568,21 +610,21 @@ const formatDate = (dateString: string) => {
 
 .order-info {
   padding: 24rpx;
-  
+
   .info-item {
     display: flex;
     margin-bottom: 16rpx;
-    
+
     &:last-child {
       margin-bottom: 0;
     }
-    
+
     .label {
       width: 160rpx;
       font-size: 26rpx;
       color: #999;
     }
-    
+
     .value {
       flex: 1;
       font-size: 26rpx;
@@ -598,31 +640,31 @@ const formatDate = (dateString: string) => {
   padding: 24rpx;
   border-top: 1rpx solid #eee;
   background-color: #f9f9f9;
-  
+
   .price-info {
     .price-label {
       font-size: 24rpx;
       color: #999;
       margin-right: 10rpx;
     }
-    
+
     .price-value {
       font-size: 32rpx;
       font-weight: 500;
       color: #ff4d4f;
     }
   }
-  
+
   .action-buttons {
     :deep(.wd-button) {
       margin-left: 16rpx;
     }
-    
+
     :deep(.wd-button--primary) {
       background-color: #2c722c;
       border-color: #2c722c;
     }
-    
+
     :deep(.wd-button--success) {
       background-color: #52c41a;
       border-color: #52c41a;
@@ -636,17 +678,17 @@ const formatDate = (dateString: string) => {
   align-items: center;
   justify-content: center;
   padding: 100rpx 0;
-  
+
   .empty-icon {
     margin-bottom: 20rpx;
   }
-  
+
   .empty-text {
     margin-bottom: 30rpx;
     font-size: 28rpx;
     color: #999;
   }
-  
+
   :deep(.wd-button--primary) {
     background-color: #2c722c;
     border-color: #2c722c;
@@ -659,7 +701,7 @@ const formatDate = (dateString: string) => {
   align-items: center;
   justify-content: center;
   padding: 100rpx 0;
-  
+
   .loading-text {
     margin-top: 20rpx;
     font-size: 28rpx;
@@ -674,7 +716,7 @@ const formatDate = (dateString: string) => {
   padding: 20rpx 0;
   border-top: 1rpx solid #eee;
   background-color: #f9f9f9;
-  
+
   .load-more-text {
     margin-left: 10rpx;
     font-size: 28rpx;
@@ -689,10 +731,10 @@ const formatDate = (dateString: string) => {
   padding: 20rpx 0;
   border-top: 1rpx solid #eee;
   background-color: #f9f9f9;
-  
+
   .no-more-text {
     font-size: 28rpx;
     color: #999;
   }
 }
-</style> 
+</style>

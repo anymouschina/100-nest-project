@@ -1,6 +1,30 @@
 <template>
   <div class="app-container">
-    <el-form :model="queryParams" ref="queryRef" :inline="true" v-show="showSearch" label-width="68px">
+    <!-- 统计图表 -->
+    <el-card class="box-card mb8">
+      <template #header>
+        <div class="card-header">
+          <span>订单统计</span>
+          <div>
+            <el-radio-group v-model="timeRange" size="small" @change="getStatisticsData">
+              <el-radio-button label="week">本周</el-radio-button>
+              <el-radio-button label="month">本月</el-radio-button>
+              <el-radio-button label="year">本年</el-radio-button>
+            </el-radio-group>
+          </div>
+        </div>
+      </template>
+      <el-row :gutter="20">
+        <!-- <el-col :span="12">
+          <div ref="orderChartRef" style="width: 100%; height: 400px;"></div>
+        </el-col> -->
+        <el-col :span="12">
+          <div ref="pieChartRef" style="width: 100%; height: 400px;"></div>
+        </el-col>
+      </el-row>
+    </el-card>
+
+    <el-form :model="queryParams" ref="queryRef" :inline="true" v-show="showSearch" label-width="90px">
       <el-form-item label="订单状态" prop="status">
         <el-select v-model="queryParams.status" placeholder="请选择订单状态" clearable>
           <el-option
@@ -210,10 +234,21 @@
 </template>
 
 <script setup name="OrderList">
-import { listOrders, updateOrderStatus, cancelOrder } from "@/api/order";
+import { listOrders, updateOrderStatus, cancelOrder, getOrderStatistics } from "@/api/order";
 import { parseTime } from '@/utils/mei-mei';
 import { Picture } from '@element-plus/icons-vue';
 import { ElImageViewer } from 'element-plus';
+import * as echarts from 'echarts/core';
+import { BarChart, PieChart } from 'echarts/charts';
+import { 
+  TitleComponent, 
+  TooltipComponent, 
+  GridComponent,
+  LegendComponent,
+  ToolboxComponent,
+  DataZoomComponent
+} from 'echarts/components';
+import { CanvasRenderer } from 'echarts/renderers';
 import { 
   ORDER_STATUS, 
   ORDER_STATUS_MAP, 
@@ -224,6 +259,19 @@ import {
   SERVICE_TYPE,
   SERVICE_TYPE_MAP
 } from '@/constants/orderStatus';
+
+// 注册 ECharts 必须的组件
+echarts.use([
+  TitleComponent,
+  TooltipComponent,
+  GridComponent,
+  LegendComponent,
+  BarChart,
+  PieChart,
+  CanvasRenderer,
+  ToolboxComponent,
+  DataZoomComponent
+]);
 
 const router = useRouter();
 const { proxy } = getCurrentInstance();
@@ -238,6 +286,20 @@ const cancelDialogVisible = ref(false);
 // 图片预览相关
 const showViewer = ref(false);
 const previewImages = ref([]);
+
+// 图表相关
+const orderChartRef = ref(null);
+const pieChartRef = ref(null);
+let orderChart = null;
+let pieChart = null;
+const timeRange = ref('week');
+const statisticsData = ref({
+  dates: [],
+  counts: [],
+  ordersByStatus: {},
+  totalAmount: 0,
+  totalOrders: 0
+});
 
 const queryParams = ref({
   page: 1,
@@ -363,8 +425,303 @@ function closeViewer() {
   showViewer.value = false;
 }
 
+/** 获取订单统计数据 */
+function getStatisticsData() {
+  getOrderStatistics({ timeRange: timeRange.value }).then(response => {
+    console.log('统计数据响应:', response);
+    
+    if (response && response.code === 200) {
+      // 处理订单数据 - 根据实际响应结构调整
+      
+      // 创建新的统计数据对象
+      const newStatsData = {
+        dates: [],
+        counts: [],
+        ordersByStatus: {},
+        totalAmount: 0,
+        totalOrders: response.totalOrders || 0
+      };
+      
+      // 处理订单状态统计数据
+      if (response.orderStatusStats && Array.isArray(response.orderStatusStats)) {
+        response.orderStatusStats.forEach(item => {
+          if (item.status && typeof item.count === 'number') {
+            newStatsData.ordersByStatus[item.status] = item.count;
+          }
+        });
+      }
+      
+      // 生成每日订单数量的模拟数据（因为API未提供）
+      const today = new Date();
+      const dates = [];
+      const counts = [];
+      
+      // 根据选择的时间范围生成不同的日期范围
+      let days = 7; // 默认一周
+      if (timeRange.value === 'month') {
+        days = 30;
+      } else if (timeRange.value === 'year') {
+        days = 12; // 按月显示
+      }
+      
+      for (let i = 0; i < days; i++) {
+        let date;
+        if (timeRange.value === 'year') {
+          // 年视图显示月份
+          const month = new Date();
+          month.setMonth(month.getMonth() - i);
+          date = month.getFullYear() + '-' + (month.getMonth() + 1).toString().padStart(2, '0');
+        } else {
+          // 周和月视图显示日期
+          const day = new Date();
+          day.setDate(day.getDate() - i);
+          date = day.getFullYear() + '-' + 
+                (day.getMonth() + 1).toString().padStart(2, '0') + '-' + 
+                day.getDate().toString().padStart(2, '0');
+        }
+        
+        dates.unshift(date);
+        
+        // 生成随机数量，实际项目中应该使用API提供的数据
+        const randomCount = Math.floor(Math.random() * 5) + (newStatsData.totalOrders > 20 ? 2 : 0);
+        counts.unshift(randomCount);
+      }
+      
+      newStatsData.dates = dates;
+      newStatsData.counts = counts;
+      
+      // 更新统计数据
+      statisticsData.value = newStatsData;
+      
+      // 渲染图表
+      setTimeout(() => {
+        renderChart();
+        renderPieChart();
+      }, 0);
+    }
+  });
+}
+
+/** 渲染图表 */
+function renderChart() {
+  if (!orderChartRef.value) return;
+  
+  // 销毁旧图表实例
+  if (orderChart) {
+    orderChart.dispose();
+  }
+  
+  // 初始化图表
+  orderChart = echarts.init(orderChartRef.value);
+  
+  // 格式化金额
+  let amountDisplay = '0.00';
+  if (statisticsData.value.totalAmount) {
+    const amount = parseFloat(String(statisticsData.value.totalAmount));
+    if (!isNaN(amount)) {
+      amountDisplay = amount.toFixed(2);
+    }
+  }
+  
+  // 获取总订单数
+  const totalOrdersDisplay = statisticsData.value.totalOrders || 0;
+  
+  // 图表配置
+  const option = {
+    title: {
+      text: '订单数量趋势',
+      left: 'center',
+      subtext: '总订单数: ' + totalOrdersDisplay,
+      subtextStyle: {
+        color: '#666',
+        fontSize: 14
+      }
+    },
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: {
+        type: 'shadow'
+      }
+    },
+    grid: {
+      left: '3%',
+      right: '4%',
+      bottom: '3%',
+      top: '80px',
+      containLabel: true
+    },
+    toolbox: {
+      feature: {
+        saveAsImage: {}
+      }
+    },
+    xAxis: {
+      type: 'category',
+      data: statisticsData.value.dates || [],
+      axisTick: {
+        alignWithLabel: true
+      }
+    },
+    yAxis: {
+      type: 'value',
+      name: '订单数量',
+      minInterval: 1
+    },
+    series: [
+      {
+        name: '订单数量',
+        type: 'bar',
+        data: statisticsData.value.counts || [],
+        barWidth: '60%',
+        itemStyle: {
+          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+            { offset: 0, color: '#83bff6' },
+            { offset: 0.5, color: '#188df0' },
+            { offset: 1, color: '#188df0' }
+          ])
+        },
+        emphasis: {
+          itemStyle: {
+            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+              { offset: 0, color: '#2378f7' },
+              { offset: 0.7, color: '#2378f7' },
+              { offset: 1, color: '#83bff6' }
+            ])
+          }
+        }
+      }
+    ]
+  };
+  
+  // 设置图表选项
+  orderChart.setOption(option);
+}
+
+/** 渲染饼图 */
+function renderPieChart() {
+  if (!pieChartRef.value) return;
+  
+  // 销毁旧图表实例
+  if (pieChart) {
+    pieChart.dispose();
+  }
+  
+  // 初始化图表
+  pieChart = echarts.init(pieChartRef.value);
+  
+  // 从API数据中生成饼图数据
+  const statusData = [];
+  
+  if (statisticsData.value.ordersByStatus) {
+    // 遍历状态数据
+    Object.keys(statisticsData.value.ordersByStatus).forEach(status => {
+      statusData.push({
+        name: ORDER_STATUS_MAP[status] || status,
+        value: statisticsData.value.ordersByStatus[status]
+      });
+    });
+  }
+  
+  // 如果没有数据，添加一个默认项
+  if (statusData.length === 0) {
+    statusData.push({ name: '暂无数据', value: 0 });
+  }
+  
+  const pieOption = {
+    title: {
+      text: '订单状态分布',
+      left: 'center',
+      subtext: timeRange.value === 'week' ? '本周' : (timeRange.value === 'month' ? '本月' : '本年'),
+      subtextStyle: {
+        color: '#666',
+        fontSize: 14
+      }
+    },
+    tooltip: {
+      trigger: 'item',
+      formatter: '{a} <br/>{b}: {c} ({d}%)'
+    },
+    legend: {
+      orient: 'vertical',
+      left: 'left',
+      top: '15%'
+    },
+    series: [
+      {
+        name: '订单状态',
+        type: 'pie',
+        radius: ['50%', '70%'],
+        avoidLabelOverlap: false,
+        itemStyle: {
+          borderRadius: 10,
+          borderColor: '#fff',
+          borderWidth: 2
+        },
+        label: {
+          show: false,
+          position: 'center'
+        },
+        emphasis: {
+          label: {
+            show: true,
+            fontSize: '18',
+            fontWeight: 'bold'
+          }
+        },
+        labelLine: {
+          show: false
+        },
+        data: statusData,
+        color: ['#409EFF', '#67C23A', '#E6A23C', '#909399', '#F56C6C', '#C71585', '#20B2AA', '#B8860B']
+      }
+    ]
+  };
+  
+  pieChart.setOption(pieOption);
+}
+
+/** 处理窗口大小变化 */
+function handleResize() {
+  if (orderChart) {
+    orderChart.resize();
+  }
+  if (pieChart) {
+    pieChart.resize();
+  }
+}
+
 onMounted(() => {
   getList();
+  
+  // 延迟执行，确保DOM已经渲染
+  setTimeout(() => {
+    // 初始化图表
+    if (orderChartRef.value && !orderChart) {
+      orderChart = echarts.init(orderChartRef.value);
+    }
+    
+    if (pieChartRef.value && !pieChart) {
+      pieChart = echarts.init(pieChartRef.value);
+      renderPieChart();
+    }
+    
+    // 获取统计数据并渲染图表
+    getStatisticsData();
+  }, 300);
+  
+  window.addEventListener('resize', handleResize);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('resize', handleResize);
+  if (orderChart) {
+    orderChart.dispose();
+    orderChart = null;
+  }
+  if (pieChart) {
+    pieChart.dispose();
+    pieChart = null;
+  }
 });
 </script>
 
@@ -411,6 +768,25 @@ onMounted(() => {
   font-size: 20px;
 }
 
+/* 搜索表单样式 */
+:deep(.el-form-item) {
+  margin-bottom: 16px;
+  margin-right: 16px;
+}
+
+:deep(.el-select),
+:deep(.el-input) {
+  width: 220px !important;
+}
+
+:deep(.el-date-editor.el-date-editor--daterange) {
+  width: 380px !important;
+}
+
+:deep(.el-form-item__label) {
+  font-weight: 500;
+}
+
 /* 提高图片预览的层级 */
 :deep(.el-image-viewer__wrapper) {
   z-index: 9999 !important;
@@ -440,5 +816,25 @@ onMounted(() => {
 /* 修改图片预览样式 */
 :deep(.el-image) {
   --el-image-viewer-z-index: 9999;
+}
+
+.mb8 {
+  margin-bottom: 18px;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.chart-container {
+  width: 100%;
+  height: 400px;
+}
+
+.chart {
+  width: 100%;
+  height: 100%;
 }
 </style> 

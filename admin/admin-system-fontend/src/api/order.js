@@ -41,4 +41,13 @@ export function completeOrder(orderId) {
     url: `/api/admin/orders/${orderId}/complete`,
     method: 'put'
   })
+}
+
+// 获取订单统计数据
+export function getOrderStatistics(params) {
+  return request({
+    url: '/api/admin/orders/statistics',
+    method: 'get',
+    params
+  })
 } 

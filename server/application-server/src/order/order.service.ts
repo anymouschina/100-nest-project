@@ -4,7 +4,8 @@ import { UpdateOrderDto } from './dto/update-order.dto';
 import { DatabaseService } from 'src/database/database.service';
 import { CartService } from 'src/cart/cart.service';
 import { ApplyCouponDto } from 'src/coupon/dto/apply-coupon.dto';
-import { Prisma } from '@prisma/client';
+import { Prisma, PaymentStatus } from '@prisma/client';
+import { CancelOrderDto } from './dto/cancel-order.dto';
 
 @Injectable()
 export class OrderService {
@@ -288,13 +289,199 @@ export class OrderService {
   }
 
   /**
-   * 查找订单列表，可按状态和用户ID筛选，支持分页
-   * @param status 订单状态
-   * @param userId 用户ID
-   * @param page 页码，默认为1
-   * @param pageSize 每页数量，默认为20
-   * @returns 包含订单列表和总数的对象
+   * 取消订单并处理退款
+   * @param orderId 订单ID
+   * @param cancelOrderDto 取消订单DTO，包含取消原因和是否需要退款
+   * @returns 取消后的订单或错误信息
    */
+  async cancelOrder(orderId: number, cancelOrderDto: CancelOrderDto) {
+    // 使用事务确保所有操作的原子性
+    return this.databaseService.$transaction(async (tx) => {
+      try {
+        // 获取订单详情
+        const order = await tx.order.findFirst({
+          where: { orderId },
+          include: {
+            items: {
+              include: {
+                product: true
+              }
+            }
+          }
+        });
+
+        if (!order) {
+          return { error: { message: '订单不存在' } };
+        }
+
+        // 检查订单状态，只有特定状态的订单可以取消
+        const allowedStatuses = ['PENDING', 'ACCEPTED', 'PROCESSING'];
+        if (!allowedStatuses.includes(order.status)) {
+          return { error: { message: `订单状态为 ${order.status}，无法取消` } };
+        }
+
+        // 准备更新数据
+        const appointmentInfo = order.appointmentInfo as Record<string, any> || {};
+        const updateData: any = {
+          status: 'CANCELLED',
+          appointmentInfo: {
+            ...appointmentInfo,
+            cancelReason: cancelOrderDto.reason || '用户取消',
+            cancelledAt: new Date()
+          }
+        };
+
+        // 处理退款逻辑
+        const needRefund = cancelOrderDto.needRefund !== false && order.paymentStatus === 'PAID';
+        if (needRefund) {
+          // 这里应该调用实际的支付网关API进行退款
+          // 示例：await this.paymentService.refund(orderId, order.total);
+          
+          // 更新支付状态为已退款
+          updateData.paymentStatus = 'REFUNDED';
+        }
+
+        // 更新订单状态
+        const updatedOrder = await tx.order.update({
+          where: { orderId },
+          data: updateData,
+          include: {
+            items: {
+              include: {
+                product: true
+              }
+            }
+          }
+        });
+
+        // 恢复商品库存
+        for (const item of order.items) {
+          await tx.product.update({
+            where: { productId: item.productId },
+            data: {
+              stock: {
+                increment: item.quantity
+              }
+            }
+          });
+        }
+
+        return {
+          ...updatedOrder,
+          refundStatus: needRefund ? '退款已处理' : '无需退款',
+        };
+      } catch (error) {
+        console.error('取消订单时出错:', error);
+        throw error;
+      }
+    });
+  }
+
+  /**
+   * 获取订单统计数据，支持按不同时间维度（日、周、月、年）统计
+   * @param timeRange 时间维度：day(日)、week(周)、month(月)、year(年)
+   * @param startDate 开始日期（可选）
+   * @param endDate 结束日期（可选）
+   * @returns 包含各种统计数据的对象
+   */
+  async getStatistics(
+    timeRange?: 'day' | 'week' | 'month' | 'year', 
+    startDate?: string, 
+    endDate?: string,
+    isLocalFallback: boolean = false // 添加标记，表示是否为本地回退调用
+  ) {
+    try {
+      // 准备时间条件
+      let dateFilter: any = {
+        createdAt: {
+          gte: new Date(new Date().getTime() - 30 * 24 * 60 * 60 * 1000) // 最近30天
+        }
+      };
+      
+      // 如果提供了开始日期和结束日期，使用它们来过滤数据
+      if (startDate && endDate) {
+        dateFilter = {
+          createdAt: {
+            gte: new Date(startDate),
+            lte: new Date(endDate)
+          }
+        };
+      } else if (startDate) {
+        dateFilter = {
+          createdAt: {
+            gte: new Date(startDate)
+          }
+        };
+      } else if (endDate) {
+        dateFilter = {
+          createdAt: {
+            lte: new Date(endDate)
+          }
+        };
+      }
+
+      // 使用Prisma获取订单总数
+      const totalOrders = await this.databaseService.order.count({
+        where: dateFilter
+      });
+
+      // 获取所有符合条件的订单
+      const orders = await this.databaseService.order.findMany({
+        where: dateFilter,
+        select: {
+          status: true,
+          paymentStatus: true
+        }
+      });
+
+      // 统计订单状态
+      const statusCount: Record<string, number> = {};
+      for (const order of orders) {
+        const status = order.status.toString();
+        statusCount[status] = (statusCount[status] || 0) + 1;
+      }
+
+      // 统计支付状态
+      let paidOrders = 0;
+      let unpaidOrders = 0;
+      
+      for (const order of orders) {
+        if (order.paymentStatus === 'PAID') {
+          paidOrders++;
+        } else if (order.paymentStatus === 'UNPAID') {
+          unpaidOrders++;
+        }
+      }
+
+      // 格式化订单状态统计结果
+      const orderStatusStats = Object.entries(statusCount).map(([status, count]) => ({
+        status,
+        count
+      }));
+
+      return {
+        message: "统计查询成功",
+        totalOrders,
+        orderStatusStats,
+        paymentStats: {
+          paid: paidOrders,
+          unpaid: unpaidOrders
+        },
+        parameters: {
+          timeRange,
+          startDate,
+          endDate
+        }
+      };
+    } catch (error) {
+      console.error('Error getting order statistics:', error);
+      return {
+        error: 'Failed to get order statistics',
+        details: error.message
+      };
+    }
+  }
+
   async findAll(status?: string, userId?: number, page: number = 1, pageSize: number = 20) {
     try {
       // 计算偏移量

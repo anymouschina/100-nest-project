@@ -22,10 +22,28 @@ model User {
   province        String?
   city            String?
   language        String?
+  ref             String?           // 引荐码，用于记录用户是被谁引荐的
   appointments    Appointment[]
   cart            Cart?
   CoupunOrderUser CoupunOrderUser[]
   orders          Order[]
+  referredUsers   UserReferral[]    @relation("ReferredUsers")
+  referredBy      UserReferral?     @relation("ReferredBy")
+}
+
+// 用户引荐关联记录表
+model UserReferral {
+  id                Int           @id @default(autoincrement())
+  userId            Int           @unique // 被引荐的用户ID
+  refCode           String        // 引荐码
+  referrerOpenId    String?       // 引荐人的OpenID，设为可选
+  createdAt         DateTime      @default(now())
+  source            String?       // 引荐来源
+  metadata          Json?         // 额外元数据
+  user              User          @relation("ReferredBy", fields: [userId], references: [userId])
+  referrer          User?         @relation("ReferredUsers", fields: [referrerOpenId], references: [openId])
+  referralCodeId    Int?          // 关联的引荐码ID，可为空（兼容老数据）
+  referralCode      ReferralCode? @relation(fields: [referralCodeId], references: [id])
 }
 
 model Order {
@@ -157,4 +175,15 @@ enum AppointmentStatus {
   PROCESSING
   COMPLETED
   CANCELLED
+}
+
+// 引荐码表
+model ReferralCode {
+  id            Int             @id @default(autoincrement())
+  code          String          @unique  // 引荐码，唯一
+  description   String?         // 引荐码描述
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  isActive      Boolean         @default(true) // 是否激活
+  referrals     UserReferral[]  // 关联的引荐记录
 }

@@ -86,6 +86,34 @@ Here are the additional features that has been added to the application:
   - 提交预约申请: `POST /api/appointment/submit`
   - 获取用户所有预约: `GET /api/appointment/user`
   - 获取预约详情: `GET /api/appointment/:id`
+- 订单取消与退款: `POST /api/orders/:id/cancel`
+- 订单统计功能: 
+  - 微服务模式: `order.getStatistics`
+  - 支持按日、周、月、年维度统计: `timeRange` 参数可选值为 `day`, `week`, `month`, `year`
+  - 支持自定义时间范围: `startDate` 和 `endDate` 参数
+  - 返回数据格式适配echarts图表展示
+- 小程序跳转二维码生成功能:
+  - 生成二维码图片流: `GET /wechat/qrcode?page=pages/index/index&scene=ref%3D123456`
+  - 生成二维码并返回URL: `POST /wechat/qrcode/url`
+  - 支持携带ref参数作为场景，方便用于推广、分享、数据追踪等场景
+- 用户引荐功能:
+  - 关联引荐用户: `POST /api/user/referral`
+  - 获取引荐用户统计: `GET /api/user/referral/stats?onlySelf=true`
+  - 支持引荐码关联，记录引荐关系
+  - 防止重复关联，避免关联自己
+  - 通过UserReferral表记录完整引荐关系数据
+  - 提供引荐数据统计，包括每个引荐码关联的用户数及下单用户数
+  - 支持记录引荐来源和元数据，便于营销分析
+  - 三表关联设计:
+    - User: 用户基本信息，通过ref字段记录引荐码
+    - ReferralCode: 系统管理的引荐码，支持描述和激活状态管理
+    - UserReferral: 引荐关系记录，关联用户与引荐码，支持来源和元数据
+  - 后台管理引荐码: `POST /admin/referral/code`
+  - 引荐码微服务:
+    - 创建引荐码: `referral.createCode`
+    - 获取所有引荐码: `referral.getAllCodes`
+    - 更新引荐码状态: `referral.updateCodeStatus`
+    - 获取引荐统计数据: `referral.getStats`
 
 ## Dummy Data
 
