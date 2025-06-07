@@ -35,12 +35,14 @@ export class OrderMicroserviceController {
       timeRange?: 'day' | 'week' | 'month' | 'year';
       startDate?: string;
       endDate?: string;
+      isLocalFallback?: boolean;
     },
   ) {
     return this.orderService.getStatistics(
       data.timeRange,
       data.startDate,
       data.endDate,
+      true // 确保微服务内部调用不会形成循环依赖
     );
   }
 }

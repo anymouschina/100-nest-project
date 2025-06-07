@@ -387,7 +387,8 @@ export class OrderService {
   async getStatistics(
     timeRange?: 'day' | 'week' | 'month' | 'year', 
     startDate?: string, 
-    endDate?: string
+    endDate?: string,
+    isLocalFallback: boolean = false // 添加标记，表示是否为本地回退调用
   ) {
     try {
       // 准备时间条件

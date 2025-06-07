@@ -120,27 +120,78 @@ export class OrderService implements OnModuleInit {
     startDate?: string,
     endDate?: string
   ) {
+    // 添加静态缓存，避免短时间内多次调用微服务
+    const cacheKey = `stats:${timeRange || 'all'}:${startDate || ''}:${endDate || ''}`;
+    const now = Date.now();
+    
+    // 缓存5分钟，避免频繁请求
+    if (this._statsCache[cacheKey] && (now - this._statsCache[cacheKey].timestamp) < 5 * 60 * 1000) {
+      this.logger.debug('Returning cached statistics data');
+      return this._statsCache[cacheKey].data;
+    }
+    
+    // 记录此次调用时间，防止频繁重试
+    if (this._lastRetryTime && (now - this._lastRetryTime) < 10000) {
+      this.logger.warn('Too many retries in a short time, returning fallback data');
+      return this._getFallbackStatistics(timeRange, startDate, endDate);
+    }
+    
     try {
+      this._lastRetryTime = now;
       this.logger.debug(`Fetching order statistics from microservice: timeRange=${timeRange}, startDate=${startDate}, endDate=${endDate}`);
       const result = await firstValueFrom(
         this.client.send(OrderMicroservicePatterns.GET_STATISTICS, {
           timeRange,
           startDate,
-          endDate
+          endDate,
+          isLocalFallback: false
         }).pipe(timeout(this.TIMEOUT_MS))
       );
-      return {
-        ...result,
-        source: 'microservice' // 标记数据来源
+      
+      // 更新缓存
+      this._statsCache[cacheKey] = {
+        timestamp: now,
+        data: {
+          ...result,
+          source: 'microservice', // 标记数据来源
+          cached: false
+        }
       };
+      
+      return this._statsCache[cacheKey].data;
     } catch (error) {
       this.logger.warn(`Failed to fetch order statistics from microservice: ${error.message}`);
       this.logger.log('Falling back to local statistics service');
-      return {
-        error: '获取统计数据失败',
-        message: error.message,
-        source: 'error'
-      };
+      return this._getFallbackStatistics(timeRange, startDate, endDate);
     }
+  }
+  
+  // 用于存储统计数据缓存
+  private _statsCache: Record<string, {timestamp: number, data: any}> = {};
+  
+  // 记录上次重试时间，避免频繁重试
+  private _lastRetryTime: number = 0;
+  
+  // 获取备用统计数据
+  private _getFallbackStatistics(
+    timeRange?: 'day' | 'week' | 'month' | 'year',
+    startDate?: string,
+    endDate?: string
+  ) {
+    return {
+      message: '使用备用统计数据',
+      totalOrders: 0,
+      orderStatusStats: [],
+      paymentStats: {
+        paid: 0,
+        unpaid: 0
+      },
+      parameters: {
+        timeRange,
+        startDate,
+        endDate
+      },
+      source: 'fallback'
+    };
   }
 }
