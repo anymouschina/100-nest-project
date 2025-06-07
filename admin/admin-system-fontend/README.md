@@ -39,7 +39,7 @@ If the standalone TypeScript plugin doesn't feel fast enough to you, Volar has a
 ### 推广管理
 
 - 路径：`src/views/referral`
-- 推广引用码列表：展示推广引用码信息，包括引用码状态、使用次数、创建时间等
+- 推广引用码列表：展示推广引用码(refCode)信息，包括引用码状态、使用次数、创建时间等
 - 推广统计数据：查看推广引用码的使用情况、转化率等统计数据
 - 推广引用码状态管理：支持引用码的激活、停用等操作
 - 支持按引用码状态、用户ID、创建时间等条件筛选引用码

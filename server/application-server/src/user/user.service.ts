@@ -470,6 +470,14 @@ export class UserService {
    */
   async createReferralCode(createReferralCodeDto: CreateReferralCodeDto) {
     try {
+      // 验证DTO字段
+      if (!createReferralCodeDto.refCode) {
+        throw new HttpException(
+          '引荐码不能为空',
+          HttpStatus.BAD_REQUEST
+        );
+      }
+
       // 检查引荐码是否已存在
       const existingCode = await this.databaseService.referralCode.findUnique({
         where: {
@@ -513,22 +521,77 @@ export class UserService {
    * 获取所有引荐码（管理员操作）
    * 
    * @param activeOnly - 是否只返回激活的引荐码
-   * @returns 引荐码列表
+   * @returns 引荐码列表，包含统计信息
    */
   async getAllReferralCodes(activeOnly = false) {
     try {
       const whereCondition = activeOnly ? { isActive: true } : {};
       
+      // 获取所有引荐码
       const referralCodes = await this.databaseService.referralCode.findMany({
         where: whereCondition,
         orderBy: {
           createdAt: 'desc'
+        },
+        include: {
+          // 预加载关联的引荐记录，用于后续统计
+          referrals: {
+            include: {
+              user: true
+            }
+          }
         }
       });
       
+      // 获取所有订单用户信息
+      const orderUsers = await this.databaseService.order.groupBy({
+        by: ['userId'],
+        _count: {
+          orderId: true
+        }
+      });
+      
+      // 将订单用户ID集合为Set，便于快速查询
+      const orderedUserIds = new Set(orderUsers.map(item => item.userId));
+      
+      // 处理并组装统计数据
+      const referralCodesWithStats = await Promise.all(
+        referralCodes.map(async (code) => {
+          // 绑定该引荐码的用户ID列表
+          const bindUserIds = code.referrals.map(ref => ref.userId);
+          // 总用户数
+          const totalUsers = bindUserIds.length;
+          
+          // 下单用户数（检查引荐用户ID是否在订单用户集合中）
+          const orderedUsers = bindUserIds.filter(userId => orderedUserIds.has(userId)).length;
+          
+          // 下单率
+          const orderRate = totalUsers > 0 ? 
+            Math.round((orderedUsers / totalUsers) * 100) / 100 : 0;
+          
+          return {
+            id: code.id,
+            code: code.code,
+            description: code.description,
+            isActive: code.isActive,
+            createdAt: code.createdAt,
+            updatedAt: code.updatedAt,
+            stats: {
+              totalUsers,
+              orderedUsers,
+              orderRate
+            }
+          };
+        })
+      );
+      
       return {
         success: true,
-        data: referralCodes
+        data: referralCodesWithStats?.map((item:any)=>{
+          item.refCode = item.code;
+          item as any
+          return item
+        }) || []
       };
     } catch (error) {
       if (error instanceof HttpException) {

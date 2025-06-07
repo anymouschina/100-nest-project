@@ -2,7 +2,7 @@
 export const KEEP_KEY = 'common:keep';
 
 /* 开发接口，无需登录,不进行 jwt 校验 */
-export const PUBLIC_KEY = 'common:publuc';
+export const PUBLIC_KEY = 'common:public';
 
 /* 操作权限标识 */
 export const PERMISSION_KEY_METADATA = 'common:permission';

@@ -47,13 +47,26 @@
 
       <el-table v-loading="loading" :data="referralList">
         <el-table-column label="引用码ID" align="center" prop="id" />
-        <el-table-column label="引用码" align="center" prop="code" />
-        <el-table-column label="创建用户" align="center" prop="createdBy" />
-        <el-table-column label="使用次数" align="center" prop="usageCount" />
+        <el-table-column label="引用码" align="center" prop="refCode" />
+        <el-table-column label="使用人数" align="center">
+          <template #default="scope">
+            {{ scope.row.stats?.totalUsers || 0 }}
+          </template>
+        </el-table-column>
+        <el-table-column label="下单人数" align="center">
+          <template #default="scope">
+            {{ scope.row.stats?.orderedUsers || 0 }}
+          </template>
+        </el-table-column>
+        <el-table-column label="下单转化率" align="center">
+          <template #default="scope">
+            {{ (scope.row.stats?.orderRate || 0) * 100 }}%
+          </template>
+        </el-table-column>
         <el-table-column label="状态" align="center">
           <template #default="scope">
-            <el-tag :type="REFERRAL_STATUS_TAG_TYPE[scope.row.status]">
-              {{ REFERRAL_STATUS_MAP[scope.row.status] }}
+            <el-tag :type="scope.row.isActive ? 'success' : 'info'">
+              {{ scope.row.isActive ? '活跃' : '未激活' }}
             </el-tag>
           </template>
         </el-table-column>
@@ -62,25 +75,25 @@
             <span>{{ parseTime(scope.row.createdAt) }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="过期时间" align="center" prop="expiresAt" width="180">
+        <el-table-column label="更新时间" align="center" prop="updatedAt" width="180">
           <template #default="scope">
-            <span>{{ parseTime(scope.row.expiresAt) }}</span>
+            <span>{{ parseTime(scope.row.updatedAt) }}</span>
           </template>
         </el-table-column>
         <el-table-column label="操作" align="center" width="200" class-name="small-padding fixed-width">
           <template #default="scope">
             <el-link 
-              v-if="scope.row.status === REFERRAL_STATUS.INACTIVE" 
+              v-if="!scope.row.isActive" 
               type="success" 
               :underline="false" 
-              @click="handleUpdateStatus(scope.row, REFERRAL_STATUS.ACTIVE)" 
+              @click="handleUpdateStatus(scope.row, true)" 
               style="margin-right: 10px"
             >激活</el-link>
             <el-link 
-              v-if="scope.row.status === REFERRAL_STATUS.ACTIVE" 
+              v-if="scope.row.isActive" 
               type="info" 
               :underline="false" 
-              @click="handleUpdateStatus(scope.row, REFERRAL_STATUS.INACTIVE)" 
+              @click="handleUpdateStatus(scope.row, false)" 
               style="margin-right: 10px"
             >停用</el-link>
           </template>
@@ -99,25 +112,27 @@
     <!-- 新增引用码对话框 -->
     <el-dialog title="新增引用码" v-model="addDialogVisible" width="500px" append-to-body>
       <el-form ref="addFormRef" :model="addForm" :rules="addRules" label-width="100px">
-        <el-form-item label="引用码" prop="code">
-          <el-input v-model="addForm.code" placeholder="请输入引用码" />
+        <el-form-item label="引用码" prop="refCode">
+          <el-input v-model="addForm.refCode" placeholder="请输入引用码" />
         </el-form-item>
-        <el-form-item label="初始状态" prop="status">
-          <el-select v-model="addForm.status" placeholder="请选择状态">
+        <el-form-item label="状态" prop="isActive">
+          <el-select v-model="addForm.isActive" placeholder="请选择状态">
             <el-option
-              v-for="(value, key) in REFERRAL_STATUS"
-              :key="key"
-              :label="REFERRAL_STATUS_MAP[value]"
-              :value="value"
+              label="活跃"
+              :value="true"
+            />
+            <el-option
+              label="未激活"
+              :value="false"
             />
           </el-select>
         </el-form-item>
-        <el-form-item label="过期时间" prop="expiresAt">
-          <el-date-picker
-            v-model="addForm.expiresAt"
-            type="datetime"
-            placeholder="选择过期时间"
-            value-format="YYYY-MM-DD HH:mm:ss"
+        <el-form-item label="描述" prop="description">
+          <el-input
+            v-model="addForm.description"
+            type="textarea"
+            placeholder="请输入描述信息"
+            :rows="3"
           />
         </el-form-item>
       </el-form>
@@ -132,11 +147,6 @@
 <script setup name="ReferralList">
 import { listReferrals, createReferral, updateReferralStatus } from "@/api/referral";
 import { parseTime } from '@/utils/mei-mei';
-import { 
-  REFERRAL_STATUS, 
-  REFERRAL_STATUS_MAP, 
-  REFERRAL_STATUS_TAG_TYPE
-} from '@/constants/referralStatus';
 
 const { proxy } = getCurrentInstance();
 
@@ -155,16 +165,16 @@ const queryParams = ref({
 });
 
 const addForm = ref({
-  code: '',
-  status: REFERRAL_STATUS.ACTIVE,
-  expiresAt: ''
+  refCode: '',
+  isActive: true,
+  description: ''
 });
 
 const addRules = {
-  code: [
+  refCode: [
     { required: true, message: "引用码不能为空", trigger: "blur" }
   ],
-  status: [
+  isActive: [
     { required: true, message: "状态不能为空", trigger: "change" }
   ]
 };
@@ -179,8 +189,13 @@ function getList() {
   };
   
   listReferrals(query).then(response => {
-    referralList.value = response.referrals || [];
-    total.value = response.total || 0;
+    if (response && response.data) {
+      referralList.value = response.data || [];
+      total.value = response.data.length || 0;
+    } else {
+      referralList.value = [];
+      total.value = 0;
+    }
     loading.value = false;
   });
 }
@@ -201,9 +216,9 @@ function resetQuery() {
 /** 打开新增对话框 */
 function openAddDialog() {
   addForm.value = {
-    code: '',
-    status: REFERRAL_STATUS.ACTIVE,
-    expiresAt: ''
+    refCode: '',
+    isActive: true,
+    description: ''
   };
   addDialogVisible.value = true;
 }
@@ -222,11 +237,11 @@ function submitAdd() {
 }
 
 /** 更新引用码状态 */
-function handleUpdateStatus(row, status) {
-  const statusText = REFERRAL_STATUS_MAP[status];
+function handleUpdateStatus(row, isActive) {
+  const statusText = isActive ? '活跃' : '未激活';
   
   proxy.$modal.confirm(`确认将引用码状态修改为"${statusText}"吗？`).then(() => {
-    updateReferralStatus(row.id, { status }).then(res => {
+    updateReferralStatus(row.id, { isActive }).then(res => {
       proxy.$modal.msgSuccess("操作成功");
       getList();
     });

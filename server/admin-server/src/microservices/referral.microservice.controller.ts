@@ -24,8 +24,8 @@ export class ReferralMicroserviceController {
    * @returns 引用码列表
    */
   @MessagePattern(ReferralMicroservicePatterns.GET_ALL_CODES)
-  async getAllReferralCodes(@Payload() data: { activeOnly?: boolean }) {
-    return this.referralService.getAllReferralCodes(data.activeOnly);
+  async getAllReferralCodes(@Payload() data: { activeOnly?: boolean, page?: number, pageSize?: number }) {
+    return this.referralService.getAllReferralCodes(data.activeOnly, data.page, data.pageSize);
   }
 
   /**

@@ -64,6 +64,8 @@ async function bootstrap() {
       host: configService.get('REDIS_HOST') || 'localhost',
       port: configService.get('REDIS_PORT') ? parseInt(configService.get('REDIS_PORT')) : 6379,
       password: configService.get('REDIS_PASSWORD') || '123456',
+      retryAttempts: 2, // 最大重试次数
+      retryDelay: 1000, // 重试间隔（毫秒）
     },
   });
   

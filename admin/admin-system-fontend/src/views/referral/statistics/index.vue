@@ -99,7 +99,7 @@
             <span>{{ scope.$index + 1 }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="code" label="引用码" />
+        <el-table-column prop="refCode" label="引用码" />
         <el-table-column prop="createdBy" label="创建用户" />
         <el-table-column prop="usageCount" label="使用次数" />
         <el-table-column prop="conversionCount" label="转化用户数" />
@@ -174,17 +174,31 @@ function getStatisticsData() {
   };
   
   getReferralStatistics(query).then(response => {
-    statisticsData.value = response.statistics || {
-      dates: [],
-      usageCounts: [],
-      conversionCounts: [],
-      totalReferrals: 0,
-      totalUsage: 0,
-      conversionCount: 0,
-      conversionRate: '0%'
-    };
-    
-    rankingList.value = response.rankings || [];
+    if (response && response.data) {
+      statisticsData.value = response.data.statistics || {
+        dates: [],
+        usageCounts: [],
+        conversionCounts: [],
+        totalReferrals: 0,
+        totalUsage: 0,
+        conversionCount: 0,
+        conversionRate: '0%'
+      };
+      
+      rankingList.value = response.data.rankings || [];
+    } else {
+      statisticsData.value = {
+        dates: [],
+        usageCounts: [],
+        conversionCounts: [],
+        totalReferrals: 0,
+        totalUsage: 0,
+        conversionCount: 0,
+        conversionRate: '0%'
+      };
+      
+      rankingList.value = [];
+    }
     
     loading.value = false;
     

@@ -10,6 +10,7 @@ import {
   UnauthorizedException,
   Query,
   Put,
+  Logger,
 } from '@nestjs/common';
 import { UserService } from './user.service';
 import { ApiTags, ApiResponse, ApiOperation, ApiHeader, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
@@ -308,6 +309,8 @@ export class WxUserController {
 @Controller('admin/referral')
 @ApiBearerAuth()
 export class AdminReferralController {
+  private readonly logger = new Logger(AdminReferralController.name);
+
   constructor(
     private readonly userService: UserService,
   ) {}
@@ -335,6 +338,7 @@ export class AdminReferralController {
     description: '未授权，无效或缺失令牌',
   })
   async createReferralCode(@Body() createReferralCodeDto: CreateReferralCodeDto) {
+    this.logger.debug(`收到创建引荐码请求: ${JSON.stringify(createReferralCodeDto)}`);
     return this.userService.createReferralCode(createReferralCodeDto);
   }
 

@@ -73,6 +73,10 @@
    - 获取推广统计：`GET /api/admin/referrals/statistics`
      - 支持按用户ID筛选: `?userId=123`
      - 返回推广使用情况、转化率等统计数据
+   - 生成推广二维码：`POST /api/admin/referrals/qrcode`
+     - 支持生成小程序码，可携带引用码参数
+     - 可指定二维码尺寸和保存方式
+     - 支持指定环境版本(develop/trial/release)
 2. 支持创建自定义引用码
    - 可设置使用次数限制
    - 可设置过期时间
@@ -83,6 +87,7 @@
    - 支持引用码查询的微服务调用 `referral.getAllCodes`
    - 支持引用码状态更新的微服务调用 `referral.updateCodeStatus`
    - 支持推广统计数据的微服务调用 `referral.getStats`
+   - 支持生成推广二维码的微服务调用 `referral.generateQrcode`
    - 本地备份统计功能，确保微服务不可用时仍能获取统计数据
 
 ## Installation
