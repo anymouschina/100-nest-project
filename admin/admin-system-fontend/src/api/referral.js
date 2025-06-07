@@ -67,3 +67,54 @@ export function getReferralStatistics(params) {
     return response;
   })
 }
+
+// 生成推广二维码
+export function generateQrcode(data) {
+  const apiData = { ...data };
+  
+  // 设置默认值
+  if (!apiData.page) {
+    apiData.page = 'pages/index/index';
+  }
+  
+  if (!apiData.width) {
+    apiData.width = 280;
+  }
+  
+  if (!apiData.envVersion) {
+    apiData.envVersion = 'release';
+  }
+  
+  return request({
+    url: '/api/admin/referrals/qrcode',
+    method: 'post',
+    data: apiData,
+    responseType: apiData.saveToFile ? 'blob' : 'json'
+  }).then(response => {
+    // 校验返回的base64数据
+    if (response.data && response.data.base64) {
+      // 如果base64数据解码后包含错误信息，转换为错误对象抛出
+      try {
+        // 从base64中提取内容部分
+        const base64Content = response.data.base64.split(',')[1];
+        if (base64Content) {
+          const decodedData = atob(base64Content);
+          // 尝试解析为JSON，检查是否包含错误信息
+          try {
+            const jsonData = JSON.parse(decodedData);
+            if (jsonData.errcode && jsonData.errmsg) {
+              return Promise.reject({
+                message: `生成二维码失败: ${jsonData.errmsg}`
+              });
+            }
+          } catch (e) {
+            // 不是JSON格式，可能是正常的图片数据
+          }
+        }
+      } catch (e) {
+        console.warn('解析二维码数据时出错', e);
+      }
+    }
+    return response;
+  });
+}

@@ -94,10 +94,7 @@ export class WechatService {
       const data = {
         page,
         scene,
-        width,
-        auto_color: false,
-        line_color: { r: 0, g: 0, b: 0 },
-        is_hyaline: false,
+        check_path: false,
         env_version: envVersion,
       };
       

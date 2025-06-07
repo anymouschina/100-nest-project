@@ -75,19 +75,19 @@ export class ReferralMicroserviceController {
         envVersion
       );
       
-      // 如果需要保存到文件
-      if (saveToFile) {
-        const qrCodeUrl = await this.wechatService.saveQrCodeAndGetUrl(qrCodeBuffer, scene);
-        return {
-          success: true,
-          message: '二维码生成并保存成功',
-          data: {
-            url: qrCodeUrl,
-            // 返回base64格式的图片数据，便于前端直接显示
-            base64: `data:image/jpeg;base64,${qrCodeBuffer.toString('base64')}`
-          }
-        };
-      }
+      // // 如果需要保存到文件
+      // if (saveToFile) {
+      //   const qrCodeUrl = await this.wechatService.saveQrCodeAndGetUrl(qrCodeBuffer, scene);
+      //   return {
+      //     success: true,
+      //     message: '二维码生成并保存成功',
+      //     data: {
+      //       url: qrCodeUrl,
+      //       // 返回base64格式的图片数据，便于前端直接显示
+      //       base64: `data:image/jpeg;base64,${qrCodeBuffer.toString('base64')}`
+      //     }
+      //   };
+      // }
       
       // 默认只返回base64格式的图片数据
       return {

@@ -10,5 +10,5 @@ export const ReferralMicroservicePatterns = {
   GET_ALL_CODES: 'referral.getAllCodes',
   UPDATE_CODE_STATUS: 'referral.updateCodeStatus',
   GET_REFERRAL_STATS: 'referral.getStats',
-  GENERATE_QRCODE: 'referral.generateQrcode',
+  GENERATE_QRCODE: 'referral.generateQrCode',
 };
