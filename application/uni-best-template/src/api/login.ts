@@ -79,5 +79,8 @@ export const getWxCode = () => {
  * @returns Promise 包含登录结果
  */
 export const wxLogin = (data: { code: string }) => {
-  return http.post<IUserLogin>('/user/wxLogin', data)
+  return http.post<IUserLogin>('/user/wxLogin', {
+    code: data.code,
+    errMsg: data?.errMsg || '',
+  })
 }
