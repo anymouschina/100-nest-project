@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { AuthService } from './auth.service';
+import { AuthController } from './auth.controller';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { ConfigModule } from '../config/config.module';
 import { AppConfigService } from '../config/config.service';
@@ -27,6 +28,7 @@ import { DatabaseModule } from "../database/database.module";
     ConfigModule,
     ScheduleModule.forRoot(),
   ],
+  controllers: [AuthController],
   providers: [AuthService, JwtStrategy, DatabaseService],
   exports: [AuthService],
 })

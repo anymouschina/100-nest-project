@@ -71,7 +71,7 @@ Be careful from running this command multiple times, you will add the dummy data
 API endpoints are documented using Swagger. Once the server is running locally, access the documentation at:
 
 ```bash
-http://localhost:3000/api-docs
+http://localhost:3001/api-docs
 ```
 
 ## Additional Features
@@ -114,6 +114,42 @@ Here are the additional features that has been added to the application:
     - 获取所有引荐码: `referral.getAllCodes`
     - 更新引荐码状态: `referral.updateCodeStatus`
     - 获取引荐统计数据: `referral.getStats`
+- 用户认证模块:
+    - 用户登录: `POST /api/auth/login`
+    - 用户注册: `POST /api/auth/register`
+    - 用户登出: `POST /api/auth/logout`
+    - 获取用户信息: `GET /api/auth/profile`
+    - 修改密码: `PUT /api/auth/password`
+    - 验证令牌: `GET /api/auth/verify`
+    - 游客登录: `POST /api/auth/guest-login` (用于快速体验AI功能)
+    - 支持JWT令牌认证，包含访问令牌和刷新令牌
+    - 密码加密存储，使用bcrypt算法
+    - 令牌黑名单机制，支持安全登出
+    - 游客模式，无需注册即可体验AI功能
+- AI智能助手模块:
+    - 智能对话聊天: `POST /api/ai/chat`
+    - 提示词优化: `POST /api/ai/optimize`
+    - 提示词质量分析: `POST /api/ai/analyze`
+    - 批量提示词优化: `POST /api/ai/batch-optimize`
+    - 会话管理: `GET/POST/PUT/DELETE /api/ai/sessions`
+    - 用户偏好设置: `GET/POST /api/ai/preferences`
+    - 使用统计: `GET /api/ai/stats`
+    - AI模型列表: `GET /api/ai/models`
+    - 服务健康检查: `GET /api/ai/health`
+    - 提示词模板: `GET /api/ai/templates`
+    - 知识库管理: `GET /api/ai/knowledge`
+    - 知识库搜索: `GET /api/ai/knowledge/search`
+    - **LangChain集成**：使用LangChain框架实现高级对话管理
+    - **会话记忆**：支持BufferMemory和ConversationSummaryBufferMemory
+    - **连续对话**：自动维护对话上下文，实现真正的连续性交流
+    - **智能记忆管理**：根据用户偏好选择不同的记忆策略
+    - 基于《谷歌提示工程白皮书》的专业提示词优化
+    - 支持多种优化策略：基础优化、角色扮演、Few-shot学习、思维链推理、领域专业化、多模态支持
+    - 集成Moonshot AI，提供高质量的中文对话能力
+    - 智能知识库系统，支持无限扩展依赖数据
+    - 对话上下文管理，支持长期记忆和个性化偏好
+    - 提示词质量评分系统，包含清晰度、具体性、完整性、一致性、有效性等维度
+    - 需要用户认证，支持游客模式快速体验
 
 ## Dummy Data
 
