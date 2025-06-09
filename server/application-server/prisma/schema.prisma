@@ -32,6 +32,8 @@ model User {
   chatSessions    ChatSession[]
   chatMessages    ChatMessage[]
   userPreference  UserPreference?
+  logAnalysisTasks LogAnalysisTask[]
+  createdWhitelistRules IssueWhitelistRule[]
 }
 
 // 用户引荐关联记录表
@@ -230,4 +232,243 @@ model UserPreference {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   user        User     @relation(fields: [userId], references: [userId])
+}
+
+// 日志分析相关模型
+model LogAnalysisTask {
+  id            String              @id @default(cuid())
+  taskId        String              @unique
+  userId        Int                 // 发起分析的开发人员ID
+  userFeedback  String              // 用户反馈内容
+  status        LogAnalysisStatus   @default(PENDING)
+  priority      LogPriority         @default(MEDIUM)
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  completedAt   DateTime?
+  
+  // 分析配置
+  timeRange     Json                // 时间范围配置
+  logSources    String[]            // 日志来源
+  keywords      String[]            // 关键词
+  
+  // 分析结果
+  summary       String?             // 分析摘要
+  findings      Json?               // 详细发现
+  recommendations Json?             // 建议
+  
+  user          User                @relation(fields: [userId], references: [userId])
+  logEntries    LogEntry[]
+  agentResults  AgentAnalysisResult[]
+  userLogIssues UserLogIssue[]
+  
+  @@map("log_analysis_tasks")
+}
+
+model LogEntry {
+  id            String              @id @default(cuid())
+  taskId        String
+  timestamp     DateTime
+  level         LogLevel
+  source        String              // 日志来源 (backend, frontend, mobile)
+  service       String?             // 服务名称
+  message       String
+  stackTrace    String?
+  userId        Int?                // 关联的用户ID
+  sessionId     String?             // 会话ID
+  requestId     String?             // 请求ID
+  metadata      Json?               // 额外元数据
+  
+  // 归一化后的字段
+  normalizedType    String?         // 归一化的错误类型
+  severity         Int              @default(1) // 严重程度 1-5
+  category         String?          // 错误分类
+  
+  task          LogAnalysisTask     @relation(fields: [taskId], references: [taskId])
+  userLogIssues UserLogIssue[]
+  
+  @@index([taskId, timestamp])
+  @@index([userId, timestamp])
+  @@index([normalizedType])
+  @@map("log_entries")
+}
+
+model AgentAnalysisResult {
+  id            String              @id @default(cuid())
+  taskId        String
+  agentType     AgentType
+  status        AgentStatus         @default(RUNNING)
+  startedAt     DateTime            @default(now())
+  completedAt   DateTime?
+  
+  // 分析结果
+  findings      Json                // Agent的发现
+  confidence    Float               @default(0.0) // 置信度 0-1
+  recommendations Json?             // 建议
+  
+  task          LogAnalysisTask     @relation(fields: [taskId], references: [taskId])
+  
+  @@map("agent_analysis_results")
+}
+
+// 用户日志问题模型
+model UserLogIssue {
+  id              String              @id @default(cuid())
+  taskId          String
+  logEntryId      String?             // 关联的日志条目
+  issueType       UserLogIssueType
+  title           String              // 问题标题
+  description     String              // 问题描述
+  severity        IssueSeverity       @default(MEDIUM)
+  status          IssueStatus         @default(DETECTED)
+  
+  // 问题特征数据
+  apiEndpoint     String?             // 接口名
+  inputParams     Json?               // 入参数据
+  paramSource     String?             // 参数来源
+  retCode         Int?                // 后端返回码
+  errorMessage    String?             // 错误信息
+  pageUrl         String?             // 页面URL
+  isBlocking      Boolean             @default(false) // 是否阻塞流程
+  affectsKeyFlow  Boolean             @default(false) // 是否影响关键流程
+  
+  // 业务相关
+  vehicleModel    String?             // 车型
+  specification   Json?               // 规格参数
+  
+  // 分析结果
+  rootCause       String?             // 根因分析
+  solution        String?             // 解决方案
+  confidence      Float               @default(0.0) // 置信度
+  
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  
+  task            LogAnalysisTask     @relation(fields: [taskId], references: [taskId])
+  logEntry        LogEntry?           @relation(fields: [logEntryId], references: [id])
+  whitelistRules  IssueWhitelistRule[]
+  
+  @@index([taskId, issueType])
+  @@index([apiEndpoint, retCode])
+  @@map("user_log_issues")
+}
+
+// 问题白名单规则
+model IssueWhitelistRule {
+  id            String              @id @default(cuid())
+  issueId       String?             // 关联的问题ID（可选）
+  ruleType      WhitelistRuleType
+  ruleName      String              // 规则名称
+  description   String?             // 规则描述
+  
+  // 匹配条件
+  conditions    Json                // 匹配条件JSON
+  // 例如: {"retCode": 1001, "apiEndpoint": "/api/user/check", "reason": "用户手机号注销"}
+  
+  isActive      Boolean             @default(true)
+  createdBy     Int                 // 创建人
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  
+  creator       User                @relation(fields: [createdBy], references: [userId])
+  issue         UserLogIssue?       @relation(fields: [issueId], references: [id])
+  
+  @@index([ruleType, isActive])
+  @@map("issue_whitelist_rules")
+}
+
+// 业务参数特征模型
+model BusinessParamFeature {
+  id              String              @id @default(cuid())
+  featureName     String              // 特征名称
+  apiEndpoint     String              // 接口名
+  paramPath       String              // 参数路径 (如: "vehicle.model")
+  paramSource     String?             // 参数来源
+  
+  // 统计数据
+  totalCount      Int                 @default(0)  // 总出现次数
+  errorCount      Int                 @default(0)  // 错误次数
+  uniqueValues    Json?               // 唯一值统计
+  
+  // 异常检测
+  expectedValues  Json?               // 期望值范围
+  isAnomalous     Boolean             @default(false)
+  anomalyScore    Float?              // 异常分数
+  
+  lastUpdated     DateTime            @default(now())
+  createdAt       DateTime            @default(now())
+  
+  @@unique([apiEndpoint, paramPath])
+  @@index([apiEndpoint])
+  @@index([isAnomalous])
+  @@map("business_param_features")
+}
+
+enum LogAnalysisStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum LogPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum LogLevel {
+  DEBUG
+  INFO
+  WARN
+  ERROR
+  FATAL
+}
+
+enum AgentType {
+  NORMALIZATION     // 日志归一化Agent
+  ERROR_ANALYSIS    // 错误分析Agent
+  FEATURE_EXTRACTION // 特征提取Agent
+  ANOMALY_DETECTION  // 异常检测Agent
+  BEHAVIOR_ANALYSIS  // 行为分析Agent
+  REPORT_GENERATION  // 报告生成Agent
+  USER_LOG_ISSUE     // 用户日志问题Agent
+}
+
+enum AgentStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+enum UserLogIssueType {
+  BACKEND_RET_ERROR     // 后端返回码非0
+  FRONTEND_JS_ERROR     // 前端JS错误
+  BLOCKING_ERROR        // 阻塞性错误
+  KEY_FLOW_ERROR        // 关键流程错误
+  PAGE_UNLOAD_ERROR     // 页面卸载错误
+  BUSINESS_PARAM_ERROR  // 业务参数异常
+  VEHICLE_SPEC_ERROR    // 车型规格异常
+}
+
+enum IssueSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum IssueStatus {
+  DETECTED     // 已检测
+  CONFIRMED    // 已确认
+  IGNORED      // 已忽略
+  RESOLVED     // 已解决
+}
+
+enum WhitelistRuleType {
+  RET_CODE_IGNORE      // 返回码忽略
+  JS_ERROR_IGNORE      // JS错误忽略
+  PARAM_VALUE_IGNORE   // 参数值忽略
+  API_ENDPOINT_IGNORE  // 接口忽略
 }

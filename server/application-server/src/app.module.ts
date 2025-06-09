@@ -14,6 +14,7 @@ import { MicroservicesModule } from './microservices/microservices.module';
 import { WechatModule } from './wechat/wechat.module';
 import { LoggerModule } from './common/logger/logger.module';
 import { AiModule } from './ai/ai.module';
+import { LogAnalysisModule } from './log-analysis/log-analysis.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { AiModule } from './ai/ai.module';
     MicroservicesModule,
     WechatModule,
     AiModule,
+    LogAnalysisModule,
   ],
   controllers: [],
   providers: [

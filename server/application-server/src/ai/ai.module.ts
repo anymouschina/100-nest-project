@@ -7,6 +7,9 @@ import { MoonshotService } from './services/moonshot.service';
 import { PromptOptimizationService } from './services/prompt-optimization.service';
 import { ChatService } from './services/chat.service';
 import { KnowledgeBaseService } from './services/knowledge-base.service';
+import { QdrantService } from './services/qdrant.service';
+import { EmbeddingService } from './services/embedding.service';
+import { VectorKnowledgeService } from './services/vector-knowledge.service';
 
 @Module({
   imports: [ConfigModule, DatabaseModule, ScheduleModule.forRoot()],
@@ -16,12 +19,18 @@ import { KnowledgeBaseService } from './services/knowledge-base.service';
     PromptOptimizationService,
     ChatService,
     KnowledgeBaseService,
+    QdrantService,
+    EmbeddingService,
+    VectorKnowledgeService,
   ],
   exports: [
     MoonshotService,
     PromptOptimizationService,
     ChatService,
     KnowledgeBaseService,
+    QdrantService,
+    EmbeddingService,
+    VectorKnowledgeService,
   ],
 })
 export class AiModule {}
