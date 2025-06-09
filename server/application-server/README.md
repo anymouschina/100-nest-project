@@ -66,6 +66,53 @@ npm run start:all
 
 Be careful from running this command multiple times, you will add the dummy data more than once.
 
+### 向量数据库设置
+
+本项目集成了Qdrant向量数据库，用于AI智能日志分析和语义搜索功能。
+
+#### 启动向量数据库
+
+使用Docker启动Qdrant（推荐）：
+
+```bash
+docker-compose up -d qdrant
+```
+
+或单独启动Qdrant：
+
+```bash
+docker run -p 6333:6333 -p 6334:6334 -v qdrant_data:/qdrant/storage qdrant/qdrant:latest
+```
+
+#### 初始化向量数据库
+
+在项目首次启动前，需要初始化向量数据库：
+
+```bash
+# 确保Qdrant正在运行
+npm run vector:init
+```
+
+此命令会：
+- 创建必要的向量集合
+- 添加日志分析的初始知识数据
+- 设置问题分类数据
+
+#### 环境变量配置
+
+在`.env`文件中添加以下配置：
+
+```bash
+# Qdrant向量数据库配置
+QDRANT_HOST=localhost
+QDRANT_PORT=6333
+QDRANT_API_KEY=
+
+# AI服务配置
+OPENAI_API_KEY=your_openai_api_key_here
+MOONSHOT_API_KEY=your_moonshot_api_key_here
+```
+
 ## API Documentation
 
 API endpoints are documented using Swagger. Once the server is running locally, access the documentation at:
@@ -143,6 +190,8 @@ Here are the additional features that has been added to the application:
     - **会话记忆**：支持BufferMemory和ConversationSummaryBufferMemory
     - **连续对话**：自动维护对话上下文，实现真正的连续性交流
     - **智能记忆管理**：根据用户偏好选择不同的记忆策略
+    - **向量数据库集成**：使用Qdrant向量数据库支持语义搜索和相似性匹配
+    - **AI日志分析**：结合向量搜索和机器学习技术进行智能日志分析
     - 基于《谷歌提示工程白皮书》的专业提示词优化
     - 支持多种优化策略：基础优化、角色扮演、Few-shot学习、思维链推理、领域专业化、多模态支持
     - 集成Moonshot AI，提供高质量的中文对话能力

@@ -19,6 +19,7 @@ import {
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { LogAnalysisService } from '../services/log-analysis.service';
 import { LogAnalysisSimplifiedService } from '../services/log-analysis-simplified.service';
+import { LogAnalysisImprovedService } from '../services/log-analysis-improved.service';
 import { VectorKnowledgeService } from '../../ai/services/vector-knowledge.service';
 
 // DTO定义
@@ -95,6 +96,7 @@ export class LogAnalysisController {
   constructor(
     private readonly logAnalysisService: LogAnalysisService,
     private readonly logAnalysisSimplifiedService: LogAnalysisSimplifiedService,
+    private readonly improvedService: LogAnalysisImprovedService,
     private readonly vectorService: VectorKnowledgeService,
   ) {}
 
@@ -570,6 +572,51 @@ export class LogAnalysisController {
     },
   ) {
     return await this.logAnalysisSimplifiedService.analyzeManualLog(body);
+  }
+
+  /**
+   * 改进版手动输入日志分析
+   */
+  @Post('analyze/manual-improved')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: '改进版手动输入日志分析，提供更精准的问题检测和建议' })
+  @ApiResponse({
+    status: 200,
+    description: '分析完成',
+    schema: {
+      type: 'object',
+      properties: {
+        analysisResult: { type: 'object', description: '分析结果' },
+        suggestions: { type: 'array', description: '针对性建议措施' },
+        similarIssues: { type: 'array', description: '相似历史问题' },
+        riskLevel: { type: 'string', description: '风险等级' },
+        context: { type: 'object', description: '分析上下文' },
+      },
+    },
+  })
+  async analyzeManualLogImproved(
+    @Body()
+    body: {
+      userFeedback: string;
+      logData:
+        | string[]
+        | {
+            timestamp?: Date;
+            level: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR' | 'FATAL';
+            source: string;
+            service?: string;
+            message: string;
+            stackTrace?: string;
+            metadata?: Record<string, any>;
+          };
+      analysisOptions?: {
+        enableFeatureExtraction?: boolean;
+        enableSimilarSearch?: boolean;
+        enableAnomalyDetection?: boolean;
+      };
+    },
+  ) {
+    return await this.improvedService.analyzeManualLog(body);
   }
 
   /**

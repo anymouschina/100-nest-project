@@ -147,7 +147,7 @@ export class LogAnalysisSimplifiedService {
       const riskLevel = this.analyzeSeverity(normalizedLog, issueType);
 
       // 4. 生成基础分析结果
-      let analysisResult: any = {
+      const analysisResult: any = {
         issueType,
         severity: riskLevel,
         timestamp: normalizedLog.timestamp,
@@ -155,7 +155,7 @@ export class LogAnalysisSimplifiedService {
         detectedPatterns: this.detectErrorPatterns(parsedLogData.message),
       };
 
-      let suggestions: string[] = [];
+      const suggestions: string[] = [];
       let similarIssues: any[] = [];
 
       // 5. 可选功能处理
@@ -211,10 +211,40 @@ export class LogAnalysisSimplifiedService {
     // 将所有日志字符串合并
     const combinedLogs = logStrings.join('\n');
 
-    // 尝试从日志字符串中提取信息
+    // 尝试解析JSON格式的日志
+    const parsedLogs: any[] = [];
+    try {
+      // 尝试解析为JSON数组
+      const jsonString = combinedLogs.replace(/[\[\]]/g, '').replace(/,\s*}/g, '}');
+      const lines = jsonString.split('\n').filter(line => line.trim());
+      let currentObject = '';
+      
+      for (const line of lines) {
+        currentObject += line.trim();
+        if (line.trim().endsWith('},') || line.trim().endsWith('}')) {
+          try {
+            const cleanObj = currentObject.replace(/,$/, '');
+            const parsed = JSON.parse(cleanObj);
+            parsedLogs.push(parsed);
+            currentObject = '';
+          } catch (e) {
+            // 继续累积行
+          }
+        }
+      }
+    } catch (e) {
+      // JSON解析失败，使用文本解析
+    }
+
+    // 如果成功解析JSON，分析所有日志条目
+    if (parsedLogs.length > 0) {
+      return this.analyzeStructuredLogs(parsedLogs);
+    }
+
+    // 回退到原始的文本解析逻辑
     const result = {
       timestamp: new Date(),
-      level: 'ERROR', // 默认级别
+      level: 'INFO', // 改为更合理的默认值
       source: 'unknown',
       service: 'unknown',
       message: combinedLogs,
@@ -303,6 +333,91 @@ export class LogAnalysisSimplifiedService {
     result.message = cleanMessage || combinedLogs;
 
     return result;
+  }
+
+  /**
+   * 分析结构化日志数据
+   */
+  private analyzeStructuredLogs(parsedLogs: any[]): {
+    timestamp: Date;
+    level: string;
+    source: string;
+    service: string;
+    message: string;
+    stackTrace?: string;
+    metadata: Record<string, any>;
+  } {
+    // 找到最严重的日志级别
+    const severityOrder = { DEBUG: 1, INFO: 2, WARN: 3, ERROR: 4, FATAL: 5 };
+    
+    let mostSevereLog = parsedLogs[0];
+    let maxSeverity = 0;
+
+    // 收集所有重要信息
+    const errorLogs: any[] = [];
+    const allMessages: string[] = [];
+    let combinedStackTrace = '';
+
+    for (const log of parsedLogs) {
+      const logLevel = (log.log_level || log.level || 'INFO').toUpperCase();
+      const severity = severityOrder[logLevel] || 2;
+      
+      allMessages.push(`[${logLevel}] ${log.module || log.service || 'unknown'}: ${log.message}`);
+
+      if (severity >= maxSeverity) {
+        maxSeverity = severity;
+        mostSevereLog = log;
+      }
+
+      if (logLevel === 'ERROR') {
+        errorLogs.push(log);
+        if (log.metadata?.stacktrace) {
+          combinedStackTrace += log.metadata.stacktrace + '\n';
+        }
+      }
+    }
+
+    // 构建综合分析结果
+    const result = {
+      timestamp: new Date(mostSevereLog.timestamp || new Date()),
+      level: (mostSevereLog.log_level || mostSevereLog.level || 'INFO').toUpperCase(),
+      source: this.determineLogSource(mostSevereLog),
+      service: mostSevereLog.module || mostSevereLog.service || 'unknown',
+      message: errorLogs.length > 0 
+        ? errorLogs.map(log => log.message).join('; ')
+        : allMessages.join('; '),
+      stackTrace: combinedStackTrace || undefined,
+      metadata: {
+        totalLogs: parsedLogs.length,
+        errorCount: errorLogs.length,
+        logSummary: allMessages,
+        mostSevereLog: mostSevereLog,
+        ...mostSevereLog.metadata,
+      },
+    };
+
+    return result;
+  }
+
+  /**
+   * 确定日志来源
+   */
+  private determineLogSource(log: any): string {
+    const module = (log.module || log.service || '').toLowerCase();
+    
+    if (module.includes('auth') || module.includes('user')) {
+      return 'auth-service';
+    } else if (module.includes('order') || module.includes('payment')) {
+      return 'order-service';
+    } else if (module.includes('product') || module.includes('catalog')) {
+      return 'product-service';
+    } else if (module.includes('cart')) {
+      return 'cart-service';
+    } else if (module.includes('db') || module.includes('database')) {
+      return 'database';
+    }
+    
+    return 'backend';
   }
 
   /**
@@ -503,22 +618,53 @@ export class LogAnalysisSimplifiedService {
   }
 
   private detectIssueType(logEntry: any): string {
-    const { message, level, source, metadata } = logEntry;
+    const { message, level, source, metadata, service } = logEntry;
+    const lowerMessage = message.toLowerCase();
 
-    if (source === 'backend' && metadata?.retCode && metadata.retCode !== 0) {
-      return 'BACKEND_RET_ERROR';
+    // 数据库相关错误
+    if (lowerMessage.includes('database') || lowerMessage.includes('connection') || 
+        lowerMessage.includes('timeout') || metadata?.error_code?.includes('DB_')) {
+      return 'DATABASE_ERROR';
     }
 
-    if (source === 'frontend' && level === 'ERROR') {
-      return 'FRONTEND_JS_ERROR';
+    // 订单服务错误
+    if (service === 'order-service' || lowerMessage.includes('order') || lowerMessage.includes('订单')) {
+      return 'ORDER_SERVICE_ERROR';
     }
 
-    if (level === 'ERROR' && message.toLowerCase().includes('payment')) {
+    // 支付相关错误
+    if (lowerMessage.includes('payment') || lowerMessage.includes('支付')) {
       return 'PAYMENT_ERROR';
     }
 
+    // 认证服务错误
+    if (service === 'auth-service' || lowerMessage.includes('auth') || lowerMessage.includes('login')) {
+      return 'AUTH_SERVICE_ERROR';
+    }
+
+    // 网络/连接错误
+    if (lowerMessage.includes('connection') || lowerMessage.includes('network') || 
+        lowerMessage.includes('econnrefused') || lowerMessage.includes('timeout')) {
+      return 'CONNECTION_ERROR';
+    }
+
+    // 前端错误
+    if (source === 'frontend' || source.includes('frontend')) {
+      return 'FRONTEND_ERROR';
+    }
+
+    // 后端API错误
+    if (source === 'backend' && metadata?.retCode && metadata.retCode !== 0) {
+      return 'BACKEND_API_ERROR';
+    }
+
+    // 基于错误级别的分类
     if (level === 'ERROR') {
       return 'GENERIC_ERROR';
+    }
+
+    if (level === 'WARN') {
+      return 'WARNING_LOG';
     }
 
     return 'INFO_LOG';
@@ -603,25 +749,72 @@ export class LogAnalysisSimplifiedService {
 
     // 基于问题类型的建议
     const typeSuggestions: Record<string, string[]> = {
-      BACKEND_RET_ERROR: [
-        '检查API返回码的业务逻辑',
-        '验证服务依赖是否正常',
-        '查看相关服务的健康状态',
+      DATABASE_ERROR: [
+        '🔍 检查数据库连接配置',
+        '📊 查看数据库连接池状态',
+        '⚡ 检查数据库服务器负载',
+        '🔧 验证数据库访问权限',
+        '📈 监控数据库性能指标',
       ],
-      FRONTEND_JS_ERROR: [
-        '检查前端代码的错误处理',
-        '验证组件的生命周期管理',
-        '确认数据格式是否正确',
+      ORDER_SERVICE_ERROR: [
+        '📦 检查订单服务依赖状态',
+        '💾 验证数据库连接和事务',
+        '🔄 检查订单处理流程',
+        '📝 查看订单服务日志',
+        '⚡ 检查服务器资源使用情况',
+      ],
+      CONNECTION_ERROR: [
+        '🌐 检查网络连接状态',
+        '🔗 验证服务间通信配置',
+        '⏱️ 检查连接超时设置',
+        '🔄 考虑增加重试机制',
+        '📡 检查防火墙和代理设置',
       ],
       PAYMENT_ERROR: [
-        '检查支付网关状态',
-        '验证用户账户余额',
-        '确认支付参数正确性',
+        '💳 检查支付网关状态',
+        '💰 验证用户账户余额',
+        '🔐 确认支付参数正确性',
+        '🏦 检查支付接口配置',
+        '📋 查看支付流程日志',
+      ],
+      AUTH_SERVICE_ERROR: [
+        '🔐 检查认证服务状态',
+        '🔑 验证用户凭证',
+        '⏰ 检查Token有效期',
+        '🛡️ 查看权限配置',
+        '📱 验证登录流程',
+      ],
+      FRONTEND_ERROR: [
+        '🐛 检查前端错误处理',
+        '📱 验证组件状态管理',
+        '🔄 确认API调用逻辑',
+        '📊 检查数据格式验证',
+        '🎨 查看UI组件错误',
+      ],
+      BACKEND_API_ERROR: [
+        '🔧 检查API返回码逻辑',
+        '🔗 验证服务依赖状态',
+        '📈 查看API性能指标',
+        '🛡️ 检查请求参数验证',
+        '📋 查看API访问日志',
       ],
       GENERIC_ERROR: [
-        '查看完整的错误堆栈',
-        '检查相关的系统资源',
-        '确认操作的前置条件',
+        '📋 查看完整错误堆栈',
+        '🔍 检查系统资源状态',
+        '⚡ 确认操作前置条件',
+        '📊 监控系统性能指标',
+        '🔄 尝试重现问题场景',
+      ],
+      WARNING_LOG: [
+        '⚠️ 关注警告信息趋势',
+        '📊 监控相关性能指标',
+        '🔍 预防性检查相关组件',
+        '📈 分析警告出现频率',
+      ],
+      INFO_LOG: [
+        '✅ 系统运行正常',
+        '📊 可继续监控系统状态',
+        '📈 关注业务指标变化',
       ],
     };
 

@@ -20,7 +20,8 @@
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "db:init": "prisma db push",
     "db:seed": "node dist/prisma/seed.js",
-    "start:all": "npm run db:init && npm run build && npm run db:seed && npm run start:dev"
+    "vector:init": "npm run build && node dist/src/ai/scripts/init-vector-db.js",
+    "start:all": "npm run db:init && npm run build && npm run db:seed && npm run vector:init && npm run start:dev"
   },
   "dependencies": {
     "@langchain/community": "^0.3.45",

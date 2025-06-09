@@ -40,6 +40,8 @@ export class VectorKnowledgeService {
   constructor(
     private readonly databaseService: DatabaseService,
     private readonly configService: ConfigService,
+    private readonly qdrantService: QdrantService,
+    private readonly embeddingService: EmbeddingService,
   ) {
     this.initializeVectorStore();
   }
@@ -279,12 +281,13 @@ export class VectorKnowledgeService {
    */
   private async generateEmbedding(text: string): Promise<number[]> {
     try {
-      // 这里可以集成不同的嵌入模型
-      // 1. OpenAI Embeddings
-      // 2. 本地模型 (sentence-transformers)
-      // 3. 百度文心、智谱GLM等中文模型
-
-      // 模拟向量生成（实际应该调用真正的嵌入API）
+      // 使用真实的embedding服务
+      const embeddingResult = await this.embeddingService.generateEmbedding(text);
+      return embeddingResult.vector;
+    } catch (error) {
+      this.logger.warn('使用embedding服务失败，降级到简单向量生成', error.message);
+      
+      // 降级到简单的hash-based embedding
       const hash = this.simpleHash(text);
       const vector = new Array(384)
         .fill(0)
@@ -293,12 +296,6 @@ export class VectorKnowledgeService {
         );
 
       return this.normalizeVector(vector);
-    } catch (error) {
-      this.logger.error(
-        `生成嵌入向量失败: ${text.substring(0, 50)}...`,
-        error.stack,
-      );
-      throw error;
     }
   }
 
@@ -463,7 +460,12 @@ export class VectorKnowledgeService {
 
   private async checkQdrant(): Promise<boolean> {
     // 检查Qdrant是否可用
-    return false;
+    try {
+      return this.qdrantService.isReady();
+    } catch (error) {
+      this.logger.warn('Qdrant检查失败', error.message);
+      return false;
+    }
   }
 
   private async initializeMemoryVectorStore(): Promise<void> {
@@ -472,8 +474,27 @@ export class VectorKnowledgeService {
   }
 
   private async addToQdrant(document: VectorDocument): Promise<void> {
-    // 添加到Qdrant
-    throw new Error('Qdrant integration not implemented');
+    try {
+      const COLLECTION_NAME = 'log_analysis_knowledge';
+      
+      // 确保集合存在
+      if (!(await this.qdrantService.collectionExists(COLLECTION_NAME))) {
+        await this.qdrantService.createCollection(COLLECTION_NAME, document.vector!.length);
+      }
+
+      // 添加向量点
+      await this.qdrantService.upsertPoints(COLLECTION_NAME, [{
+        id: document.id,
+        vector: document.vector!,
+        payload: {
+          content: document.content,
+          metadata: document.metadata,
+        }
+      }]);
+    } catch (error) {
+      this.logger.error(`添加文档到Qdrant失败: ${document.id}`, error.message);
+      throw error;
+    }
   }
 
   private async addToRedisVector(document: VectorDocument): Promise<void> {
@@ -485,8 +506,30 @@ export class VectorKnowledgeService {
     vector: number[],
     options: any,
   ): Promise<VectorDocument[]> {
-    // 在Qdrant中搜索
-    throw new Error('Qdrant search not implemented');
+    try {
+      const COLLECTION_NAME = 'log_analysis_knowledge';
+      const searchResults = await this.qdrantService.searchVectors(
+        COLLECTION_NAME,
+        vector,
+        {
+          limit: options.limit || 10,
+          scoreThreshold: options.threshold || 0.7,
+          filter: options.filters,
+          withPayload: true,
+        },
+      );
+
+      return searchResults.map((result) => ({
+        id: String(result.id),
+        content: result.payload.content,
+        metadata: result.payload.metadata,
+        vector: result.vector,
+        similarity: result.score,
+      }));
+    } catch (error) {
+      this.logger.error('Qdrant搜索失败', error.message);
+      return [];
+    }
   }
 
   private async searchInRedisVector(
@@ -501,8 +544,7 @@ export class VectorKnowledgeService {
     vector: number[],
     limit: number,
   ): Promise<VectorDocument[]> {
-    // 在Qdrant中查找相似文档
-    throw new Error('Qdrant similarity search not implemented');
+    return this.searchInQdrant(vector, { limit, threshold: 0.5 });
   }
 
   private async findSimilarInRedisVector(
