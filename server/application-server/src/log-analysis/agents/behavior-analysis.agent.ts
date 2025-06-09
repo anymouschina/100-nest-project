@@ -8,4 +8,4 @@ export class BehaviorAnalysisAgent {
     this.logger.debug('分析用户行为');
     return {};
   }
-} 
+}

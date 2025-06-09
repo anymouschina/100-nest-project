@@ -52,12 +52,10 @@ export class EmbeddingService {
    */
   async generateEmbedding(
     text: string,
-    options: EmbeddingOptions = {}
+    options: EmbeddingOptions = {},
   ): Promise<EmbeddingResult> {
-    const {
-      model = this.defaultModel,
-      dimensions = this.defaultDimensions,
-    } = options;
+    const { model = this.defaultModel, dimensions = this.defaultDimensions } =
+      options;
 
     try {
       if (this.openaiClient) {
@@ -66,7 +64,10 @@ export class EmbeddingService {
         return await this.generateSimulatedEmbedding(text, dimensions);
       }
     } catch (error) {
-      this.logger.error(`生成嵌入向量失败: ${text.substring(0, 50)}...`, error.message);
+      this.logger.error(
+        `生成嵌入向量失败: ${text.substring(0, 50)}...`,
+        error.message,
+      );
       // 降级到模拟向量
       return await this.generateSimulatedEmbedding(text, dimensions);
     }
@@ -77,7 +78,7 @@ export class EmbeddingService {
    */
   async generateBatchEmbeddings(
     texts: string[],
-    options: EmbeddingOptions = {}
+    options: EmbeddingOptions = {},
   ): Promise<EmbeddingResult[]> {
     const batchSize = 100; // OpenAI批量限制
     const results: EmbeddingResult[] = [];
@@ -85,7 +86,7 @@ export class EmbeddingService {
     for (let i = 0; i < texts.length; i += batchSize) {
       const batch = texts.slice(i, i + batchSize);
       const batchResults = await Promise.all(
-        batch.map(text => this.generateEmbedding(text, options))
+        batch.map((text) => this.generateEmbedding(text, options)),
       );
       results.push(...batchResults);
     }
@@ -99,7 +100,7 @@ export class EmbeddingService {
   private async generateOpenAIEmbedding(
     text: string,
     model: string,
-    dimensions: number
+    dimensions: number,
   ): Promise<EmbeddingResult> {
     if (!this.openaiClient) {
       throw new Error('OpenAI客户端未初始化');
@@ -113,7 +114,7 @@ export class EmbeddingService {
     });
 
     const embedding = response.data[0];
-    
+
     return {
       vector: embedding.embedding,
       tokenCount: response.usage.total_tokens,
@@ -126,7 +127,7 @@ export class EmbeddingService {
    */
   private async generateSimulatedEmbedding(
     text: string,
-    dimensions: number
+    dimensions: number,
   ): Promise<EmbeddingResult> {
     // 基于文本内容生成稳定的伪随机向量
     const hash = this.stringToHash(text);
@@ -134,7 +135,8 @@ export class EmbeddingService {
 
     for (let i = 0; i < dimensions; i++) {
       const seed = hash + i;
-      const value = Math.sin(seed) * Math.cos(seed * 0.5) / Math.sqrt(dimensions);
+      const value =
+        (Math.sin(seed) * Math.cos(seed * 0.5)) / Math.sqrt(dimensions);
       vector.push(value);
     }
 
@@ -155,7 +157,7 @@ export class EmbeddingService {
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
       const char = str.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
+      hash = (hash << 5) - hash + char;
       hash = hash & hash; // 转换为32位整数
     }
     return Math.abs(hash);
@@ -167,7 +169,7 @@ export class EmbeddingService {
   private normalizeVector(vector: number[]): number[] {
     const norm = Math.sqrt(vector.reduce((sum, val) => sum + val * val, 0));
     if (norm === 0) return vector;
-    return vector.map(val => val / norm);
+    return vector.map((val) => val / norm);
   }
 
   /**
@@ -229,11 +231,13 @@ export class EmbeddingService {
       },
     };
 
-    return modelInfo[model] || {
-      dimensions: 384,
-      maxTokens: 4096,
-      description: '未知模型',
-    };
+    return (
+      modelInfo[model] || {
+        dimensions: 384,
+        maxTokens: 4096,
+        description: '未知模型',
+      }
+    );
   }
 
   /**
@@ -250,7 +254,11 @@ export class EmbeddingService {
   /**
    * 分块处理长文本
    */
-  chunkText(text: string, maxChunkSize: number = 1000, overlap: number = 100): string[] {
+  chunkText(
+    text: string,
+    maxChunkSize: number = 1000,
+    overlap: number = 100,
+  ): string[] {
     const chunks: string[] = [];
     const sentences = text.split(/[.!?。！？]/);
     let currentChunk = '';
@@ -274,11 +282,13 @@ export class EmbeddingService {
     if (overlap > 0 && chunks.length > 1) {
       for (let i = 1; i < chunks.length; i++) {
         const prevChunk = chunks[i - 1];
-        const overlapText = prevChunk.substring(Math.max(0, prevChunk.length - overlap));
+        const overlapText = prevChunk.substring(
+          Math.max(0, prevChunk.length - overlap),
+        );
         chunks[i] = overlapText + ' ' + chunks[i];
       }
     }
 
-    return chunks.filter(chunk => chunk.length > 0);
+    return chunks.filter((chunk) => chunk.length > 0);
   }
-} 
+}

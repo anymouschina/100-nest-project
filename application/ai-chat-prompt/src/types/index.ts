@@ -189,6 +189,126 @@ export interface KnowledgeSearchRequest {
   limit?: number
 }
 
+// 日志分析相关类型
+export interface LogEntry {
+  timestamp: string
+  level: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR' | 'FATAL'
+  source: 'backend' | 'frontend' | 'mobile'
+  service?: string
+  message: string
+  stackTrace?: string
+  metadata?: Record<string, any>
+}
+
+export interface ManualLogAnalysisRequest {
+  userFeedback: string
+  logData: LogEntry | string[]
+  analysisOptions?: {
+    enableFeatureExtraction?: boolean
+    enableSimilarSearch?: boolean
+    enableAnomalyDetection?: boolean
+  }
+}
+
+export interface UserLogAnalysisRequest {
+  userId: number
+  timeRange: {
+    startTime: string
+    endTime: string
+  }
+  logSources?: string[]
+  priority?: 'LOW' | 'MEDIUM' | 'HIGH'
+  userFeedback?: string
+}
+
+export interface QuickLogCheckRequest {
+  logEntries: Array<{
+    level: string
+    source: string
+    message: string
+    metadata?: Record<string, any>
+  }>
+  checkOptions?: {
+    checkSeverity?: boolean
+    checkPatterns?: boolean
+    checkAnomalies?: boolean
+  }
+}
+
+export interface LogAnalysisResponse {
+  taskId: string
+  message: string
+  logCount?: number
+  analysis?: {
+    issues: Array<{
+      type: string
+      severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'
+      count: number
+      examples: string[]
+      description: string
+    }>
+    recommendations: string[]
+    patterns: Array<{
+      pattern: string
+      frequency: number
+      severity: string
+    }>
+    anomalies: Array<{
+      type: string
+      description: string
+      severity: string
+    }>
+  }
+}
+
+export interface QuickLogCheckResponse {
+  overallHealth: 'HEALTHY' | 'WARNING' | 'CRITICAL'
+  summary: {
+    totalLogs: number
+    errorCount: number
+    warningCount: number
+    criticalIssues: number
+  }
+  issues: Array<{
+    type: string
+    severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'
+    count: number
+    examples: string[]
+  }>
+  recommendations: string[]
+}
+
+export interface UserLogEntry {
+  id: string
+  userId: number
+  timestamp: string
+  level: string
+  source: string
+  service?: string
+  message: string
+  metadata?: Record<string, any>
+  createdAt: string
+}
+
+export interface UserLogsResponse {
+  logs: UserLogEntry[]
+  total: number
+  page: number
+  pageSize: number
+  hasMore: boolean
+}
+
+export interface LogAnalysisTask {
+  taskId: string
+  status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED'
+  userId?: number
+  userFeedback?: string
+  logCount: number
+  result?: LogAnalysisResponse['analysis']
+  createdAt: string
+  updatedAt: string
+}
+
 // API响应类型
 export interface ApiResponse<T = any> {
   code: number

@@ -35,9 +35,12 @@ src/
 │   ├── SessionsPage.tsx # 会话历史
 │   ├── SettingsPage.tsx # 设置
 │   ├── LoginPage.tsx   # 登录页面
-│   └── RegisterPage.tsx # 注册页面
+│   ├── RegisterPage.tsx # 注册页面
+│   ├── LogAnalysisPage.tsx # 日志分析中心
+│   └── UserLogsPage.tsx # 用户历史日志
 ├── services/           # API服务
-│   └── aiService.ts    # AI相关API
+│   ├── aiService.ts    # AI相关API
+│   └── logAnalysisService.ts # 日志分析API
 ├── types/              # TypeScript类型定义
 │   └── index.ts        # 类型定义
 ├── utils/              # 工具函数
@@ -92,10 +95,43 @@ src/
 - 🔄 策略推荐：基于分析结果推荐适合的优化策略
 - 📄 报告导出：生成完整的分析报告并支持复制
 
+### 日志分析 ✅
+智能日志分析系统，帮助快速发现问题和识别异常模式：
+
+**手动日志分析**
+- 支持结构化对象(JSON)和字符串数组两种格式
+- 可配置分析选项：特征提取、相似性搜索、异常检测
+- 实时分析用户反馈和日志数据
+
+**用户日志分析**
+- 基于用户ID的历史日志分析
+- 支持时间范围筛选和日志来源选择
+- 可设置分析优先级和用户反馈
+
+**快速日志健康检查**
+- 批量日志条目的健康状态评估
+- 实时显示整体健康状况：健康/警告/严重
+- 统计错误数、警告数和严重问题数
+- 提供具体的问题分析和改进建议
+
+**用户历史日志查看**
+- 支持多维度筛选：时间、级别、来源
+- 实时搜索日志内容、服务名称和元数据
+- 分页显示和CSV导出功能
+- 直观的日志级别和来源标识
+
+功能特性：
+- 📊 智能分析：AI驱动的日志模式识别和异常检测
+- 🔍 多维筛选：按时间、级别、来源等条件精确筛选
+- 📈 可视化展示：健康状态指示器和严重程度标签
+- 📄 导出功能：支持CSV格式导出分析结果
+- ⚡ 实时处理：快速响应和实时状态更新
+- 🎯 任务管理：分析任务的创建、跟踪和历史查看
+
 ### 用户系统 ✅
 - **游客模式**: 无需注册，一键体验所有AI功能
   - 快速登录，立即开始使用
-  - 支持所有核心功能（聊天、优化、分析）
+  - 支持所有核心功能（聊天、优化、分析、日志分析）
   - 数据临时存储，适合快速体验
   - 可随时升级为正式账户
 - **正式用户**: 完整的账户管理功能
@@ -128,14 +164,22 @@ src/
 ## 🔌 API接口说明
 
 ### 接口路径
-所有AI相关接口都以 `/api/ai/` 为前缀：
-
+**AI相关接口** (前缀: `/api/ai/`)：
 - **智能对话**: `POST /api/ai/chat`
 - **提示词优化**: `POST /api/ai/optimize`
 - **批量优化**: `POST /api/ai/batch-optimize`
 - **质量分析**: `POST /api/ai/analyze`
 - **知识库搜索**: `GET /api/ai/knowledge/search`
 - **获取模板**: `GET /api/ai/templates`
+
+**日志分析接口** (前缀: `/api/log-analysis/`)：
+- **手动日志分析**: `POST /api/log-analysis/analyze/manual`
+- **用户日志分析**: `POST /api/log-analysis/analyze/user-logs`
+- **快速健康检查**: `POST /api/log-analysis/analyze/quick-check`
+- **获取用户历史日志**: `GET /api/log-analysis/logs/user/{userId}`
+- **获取分析任务**: `GET /api/log-analysis/tasks/{taskId}`
+- **获取所有任务**: `GET /api/log-analysis/tasks`
+- **获取日志统计**: `GET /api/log-analysis/stats`
 
 ### 优化策略类型
 - `basic`: 基础优化

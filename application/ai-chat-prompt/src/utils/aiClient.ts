@@ -11,7 +11,14 @@ import type {
   UserPreferences,
   KnowledgeSearchRequest,
   KnowledgeItem,
-  ChatSession
+  ChatSession,
+  ManualLogAnalysisRequest,
+  LogAnalysisResponse,
+  UserLogAnalysisRequest,
+  QuickLogCheckRequest,
+  QuickLogCheckResponse,
+  UserLogsResponse,
+  LogAnalysisTask
 } from '@/types'
 
 /**
@@ -150,6 +157,110 @@ export class AIClient {
   static async getStats(): Promise<any> {
     return await aiRequest.get('/ai/stats')
   }
+
+  // =================== 日志分析相关方法 ===================
+
+  /**
+   * 手动日志分析
+   */
+  static async analyzeManualLogs(data: ManualLogAnalysisRequest): Promise<LogAnalysisResponse> {
+    return await aiRequest.post<LogAnalysisResponse>('/log-analysis/analyze/manual', data)
+  }
+
+  /**
+   * 用户ID日志分析
+   */
+  static async analyzeUserLogs(data: UserLogAnalysisRequest): Promise<LogAnalysisResponse> {
+    return await aiRequest.post<LogAnalysisResponse>('/log-analysis/analyze/user-logs', data)
+  }
+
+  /**
+   * 快速日志健康检查
+   */
+  static async quickLogCheck(data: QuickLogCheckRequest): Promise<QuickLogCheckResponse> {
+    return await aiRequest.post<QuickLogCheckResponse>('/log-analysis/analyze/quick-check', data)
+  }
+
+  /**
+   * 获取用户历史日志
+   */
+  static async getUserLogs(
+    userId: number, 
+    params?: {
+      startDate?: string
+      endDate?: string
+      level?: string
+      source?: string
+      limit?: number
+      offset?: number
+    }
+  ): Promise<UserLogsResponse> {
+    const queryParams = new URLSearchParams()
+    if (params?.startDate) queryParams.append('startDate', params.startDate)
+    if (params?.endDate) queryParams.append('endDate', params.endDate)
+    if (params?.level) queryParams.append('level', params.level)
+    if (params?.source) queryParams.append('source', params.source)
+    if (params?.limit) queryParams.append('limit', params.limit.toString())
+    if (params?.offset) queryParams.append('offset', params.offset.toString())
+    
+    const queryString = queryParams.toString()
+    return await aiRequest.get<UserLogsResponse>(`/log-analysis/logs/user/${userId}${queryString ? `?${queryString}` : ''}`)
+  }
+
+  /**
+   * 获取分析任务状态
+   */
+  static async getLogAnalysisTask(taskId: string): Promise<LogAnalysisTask> {
+    return await aiRequest.get<LogAnalysisTask>(`/log-analysis/tasks/${taskId}`)
+  }
+
+  /**
+   * 获取所有分析任务
+   */
+  static async getAllLogAnalysisTasks(params?: {
+    status?: string
+    limit?: number
+    offset?: number
+  }): Promise<{ tasks: LogAnalysisTask[], total: number }> {
+    const queryParams = new URLSearchParams()
+    if (params?.status) queryParams.append('status', params.status)
+    if (params?.limit) queryParams.append('limit', params.limit.toString())
+    if (params?.offset) queryParams.append('offset', params.offset.toString())
+    
+    const queryString = queryParams.toString()
+    return await aiRequest.get(`/log-analysis/tasks${queryString ? `?${queryString}` : ''}`)
+  }
+
+  /**
+   * 删除分析任务
+   */
+  static async deleteLogAnalysisTask(taskId: string): Promise<void> {
+    await aiRequest.delete(`/log-analysis/tasks/${taskId}`)
+  }
+
+  /**
+   * 获取日志统计信息
+   */
+  static async getLogStats(params?: {
+    startDate?: string
+    endDate?: string
+    userId?: number
+  }): Promise<{
+    totalLogs: number
+    errorCount: number
+    warningCount: number
+    criticalCount: number
+    sourcesBreakdown: Record<string, number>
+    levelsBreakdown: Record<string, number>
+  }> {
+    const queryParams = new URLSearchParams()
+    if (params?.startDate) queryParams.append('startDate', params.startDate)
+    if (params?.endDate) queryParams.append('endDate', params.endDate)
+    if (params?.userId) queryParams.append('userId', params.userId.toString())
+    
+    const queryString = queryParams.toString()
+    return await aiRequest.get(`/log-analysis/stats${queryString ? `?${queryString}` : ''}`)
+  }
 }
 
 /**
@@ -181,6 +292,16 @@ export const aiClient = {
     models: AIClient.getModels,
     templates: AIClient.getTemplates,
     stats: AIClient.getStats,
+  },
+  logAnalysis: {
+    analyzeManual: AIClient.analyzeManualLogs,
+    analyzeUserLogs: AIClient.analyzeUserLogs,
+    quickCheck: AIClient.quickLogCheck,
+    getUserLogs: AIClient.getUserLogs,
+    getTask: AIClient.getLogAnalysisTask,
+    getAllTasks: AIClient.getAllLogAnalysisTasks,
+    deleteTask: AIClient.deleteLogAnalysisTask,
+    getStats: AIClient.getLogStats,
   },
 }
 

@@ -172,23 +172,34 @@ export class VectorKnowledgeService {
       semanticWeight?: number;
       limit?: number;
       filters?: Record<string, any>;
-    }
+    },
   ): Promise<SearchResult> {
-    const { keywordWeight = 0.3, semanticWeight = 0.7, limit = 10, filters = {} } = options || {};
+    const {
+      keywordWeight = 0.3,
+      semanticWeight = 0.7,
+      limit = 10,
+      filters = {},
+    } = options || {};
 
     try {
       // 关键词搜索
-      const keywordResults = await this.keywordSearch(query, { limit: limit * 2, filters });
-      
+      const keywordResults = await this.keywordSearch(query, {
+        limit: limit * 2,
+        filters,
+      });
+
       // 语义搜索
-      const semanticResults = await this.semanticSearch(query, { limit: limit * 2, filters });
+      const semanticResults = await this.semanticSearch(query, {
+        limit: limit * 2,
+        filters,
+      });
 
       // 合并和重新排序结果
       const hybridResults = this.combineSearchResults(
         keywordResults.documents,
         semanticResults.documents,
         keywordWeight,
-        semanticWeight
+        semanticWeight,
       );
 
       return {
@@ -207,7 +218,7 @@ export class VectorKnowledgeService {
    */
   async findSimilarDocuments(
     documentId: string,
-    limit: number = 5
+    limit: number = 5,
   ): Promise<VectorDocument[]> {
     try {
       const document = await this.getDocument(documentId);
@@ -233,7 +244,7 @@ export class VectorKnowledgeService {
    */
   async clusterDocuments(
     filters?: Record<string, any>,
-    numClusters: number = 5
+    numClusters: number = 5,
   ): Promise<{
     clusters: Array<{
       id: string;
@@ -245,14 +256,17 @@ export class VectorKnowledgeService {
     try {
       // 获取所有符合条件的文档
       const documents = await this.getDocuments(filters);
-      
+
       if (documents.length < numClusters) {
         return { clusters: [] };
       }
 
       // 执行K-means聚类
-      const clusters = await this.performKMeansClustering(documents, numClusters);
-      
+      const clusters = await this.performKMeansClustering(
+        documents,
+        numClusters,
+      );
+
       return { clusters };
     } catch (error) {
       this.logger.error('文档聚类分析失败', error.stack);
@@ -272,13 +286,18 @@ export class VectorKnowledgeService {
 
       // 模拟向量生成（实际应该调用真正的嵌入API）
       const hash = this.simpleHash(text);
-      const vector = new Array(384).fill(0).map((_, i) => 
-        Math.sin(hash + i) * Math.cos(hash * i) / Math.sqrt(384)
-      );
-      
+      const vector = new Array(384)
+        .fill(0)
+        .map(
+          (_, i) => (Math.sin(hash + i) * Math.cos(hash * i)) / Math.sqrt(384),
+        );
+
       return this.normalizeVector(vector);
     } catch (error) {
-      this.logger.error(`生成嵌入向量失败: ${text.substring(0, 50)}...`, error.stack);
+      this.logger.error(
+        `生成嵌入向量失败: ${text.substring(0, 50)}...`,
+        error.stack,
+      );
       throw error;
     }
   }
@@ -286,7 +305,10 @@ export class VectorKnowledgeService {
   /**
    * 计算余弦相似度
    */
-  private calculateCosineSimilarity(vectorA: number[], vectorB: number[]): number {
+  private calculateCosineSimilarity(
+    vectorA: number[],
+    vectorB: number[],
+  ): number {
     if (vectorA.length !== vectorB.length) {
       throw new Error('向量维度不匹配');
     }
@@ -309,7 +331,7 @@ export class VectorKnowledgeService {
    */
   private normalizeVector(vector: number[]): number[] {
     const norm = Math.sqrt(vector.reduce((sum, val) => sum + val * val, 0));
-    return vector.map(val => val / norm);
+    return vector.map((val) => val / norm);
   }
 
   /**
@@ -319,7 +341,7 @@ export class VectorKnowledgeService {
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
       const char = str.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
+      hash = (hash << 5) - hash + char;
       hash = hash & hash; // Convert to 32-bit integer
     }
     return Math.abs(hash);
@@ -330,7 +352,7 @@ export class VectorKnowledgeService {
    */
   private async searchInMemory(
     queryVector: number[],
-    options: { limit: number; threshold: number; filters: Record<string, any> }
+    options: { limit: number; threshold: number; filters: Record<string, any> },
   ): Promise<VectorDocument[]> {
     const results: Array<VectorDocument & { similarity: number }> = [];
 
@@ -340,8 +362,11 @@ export class VectorKnowledgeService {
       // 应用过滤器
       if (!this.matchesFilters(document, options.filters)) continue;
 
-      const similarity = this.calculateCosineSimilarity(queryVector, document.vector);
-      
+      const similarity = this.calculateCosineSimilarity(
+        queryVector,
+        document.vector,
+      );
+
       if (similarity >= options.threshold) {
         results.push({ ...document, similarity });
       }
@@ -349,7 +374,7 @@ export class VectorKnowledgeService {
 
     // 按相似度排序
     results.sort((a, b) => b.similarity - a.similarity);
-    
+
     return results.slice(0, options.limit);
   }
 
@@ -358,7 +383,7 @@ export class VectorKnowledgeService {
    */
   private async keywordSearch(
     query: string,
-    options: { limit: number; filters: Record<string, any> }
+    options: { limit: number; filters: Record<string, any> },
   ): Promise<SearchResult> {
     const results: VectorDocument[] = [];
     const queryLower = query.toLowerCase();
@@ -381,7 +406,10 @@ export class VectorKnowledgeService {
   /**
    * 过滤器匹配
    */
-  private matchesFilters(document: VectorDocument, filters: Record<string, any>): boolean {
+  private matchesFilters(
+    document: VectorDocument,
+    filters: Record<string, any>,
+  ): boolean {
     for (const [key, value] of Object.entries(filters)) {
       if (document.metadata[key] !== value) {
         return false;
@@ -397,13 +425,15 @@ export class VectorKnowledgeService {
     keywordResults: VectorDocument[],
     semanticResults: VectorDocument[],
     keywordWeight: number,
-    semanticWeight: number
+    semanticWeight: number,
   ): VectorDocument[] {
     const combined = new Map<string, VectorDocument & { score: number }>();
 
     // 处理关键词结果
     keywordResults.forEach((doc, index) => {
-      const score = (keywordResults.length - index) / keywordResults.length * keywordWeight;
+      const score =
+        ((keywordResults.length - index) / keywordResults.length) *
+        keywordWeight;
       combined.set(doc.id, { ...doc, score });
     });
 
@@ -411,7 +441,7 @@ export class VectorKnowledgeService {
     semanticResults.forEach((doc, index) => {
       const semanticScore = (doc.similarity || 0) * semanticWeight;
       const existing = combined.get(doc.id);
-      
+
       if (existing) {
         existing.score += semanticScore;
       } else {
@@ -451,65 +481,85 @@ export class VectorKnowledgeService {
     throw new Error('Redis Vector integration not implemented');
   }
 
-  private async searchInQdrant(vector: number[], options: any): Promise<VectorDocument[]> {
+  private async searchInQdrant(
+    vector: number[],
+    options: any,
+  ): Promise<VectorDocument[]> {
     // 在Qdrant中搜索
     throw new Error('Qdrant search not implemented');
   }
 
-  private async searchInRedisVector(vector: number[], options: any): Promise<VectorDocument[]> {
+  private async searchInRedisVector(
+    vector: number[],
+    options: any,
+  ): Promise<VectorDocument[]> {
     // 在Redis Vector中搜索
     throw new Error('Redis Vector search not implemented');
   }
 
-  private async findSimilarInQdrant(vector: number[], limit: number): Promise<VectorDocument[]> {
+  private async findSimilarInQdrant(
+    vector: number[],
+    limit: number,
+  ): Promise<VectorDocument[]> {
     // 在Qdrant中查找相似文档
     throw new Error('Qdrant similarity search not implemented');
   }
 
-  private async findSimilarInRedisVector(vector: number[], limit: number): Promise<VectorDocument[]> {
+  private async findSimilarInRedisVector(
+    vector: number[],
+    limit: number,
+  ): Promise<VectorDocument[]> {
     // 在Redis Vector中查找相似文档
     throw new Error('Redis Vector similarity search not implemented');
   }
 
-  private async findSimilarInMemory(vector: number[], limit: number): Promise<VectorDocument[]> {
+  private async findSimilarInMemory(
+    vector: number[],
+    limit: number,
+  ): Promise<VectorDocument[]> {
     // 在内存中查找相似文档
     const results: Array<VectorDocument & { similarity: number }> = [];
 
     for (const [id, document] of this.vectorStore) {
       if (!document.vector) continue;
-      
-      const similarity = this.calculateCosineSimilarity(vector, document.vector);
+
+      const similarity = this.calculateCosineSimilarity(
+        vector,
+        document.vector,
+      );
       results.push({ ...document, similarity });
     }
 
-    return results
-      .sort((a, b) => b.similarity - a.similarity)
-      .slice(0, limit);
+    return results.sort((a, b) => b.similarity - a.similarity).slice(0, limit);
   }
 
   private async getDocument(id: string): Promise<VectorDocument | null> {
     return this.vectorStore.get(id) || null;
   }
 
-  private async getDocuments(filters?: Record<string, any>): Promise<VectorDocument[]> {
+  private async getDocuments(
+    filters?: Record<string, any>,
+  ): Promise<VectorDocument[]> {
     const documents = Array.from(this.vectorStore.values());
-    
+
     if (!filters) return documents;
-    
-    return documents.filter(doc => this.matchesFilters(doc, filters));
+
+    return documents.filter((doc) => this.matchesFilters(doc, filters));
   }
 
   private async performKMeansClustering(
     documents: VectorDocument[],
-    numClusters: number
-  ): Promise<Array<{
-    id: string;
-    center: number[];
-    documents: VectorDocument[];
-    keywords: string[];
-  }>> {
+    numClusters: number,
+  ): Promise<
+    Array<{
+      id: string;
+      center: number[];
+      documents: VectorDocument[];
+      keywords: string[];
+    }>
+  > {
     // K-means聚类实现
     // 这里是简化版实现，实际应该使用专业的机器学习库
     return [];
   }
-} 
+}

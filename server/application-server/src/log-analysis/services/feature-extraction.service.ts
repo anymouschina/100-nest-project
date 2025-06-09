@@ -26,10 +26,10 @@ export interface PatternAnalysisResult {
 @Injectable()
 export class FeatureExtractionService {
   private readonly logger = new Logger(FeatureExtractionService.name);
-  
+
   // 已知问题类型的特征向量缓存
   private knownPatternVectors: Map<string, number[]> = new Map();
-  
+
   constructor(
     private readonly databaseService: DatabaseService,
     private readonly vectorService: VectorKnowledgeService,
@@ -50,30 +50,35 @@ export class FeatureExtractionService {
     try {
       // 1. 提取基础特征
       const basicFeatures = await this.extractBasicFeatures(logEntry);
-      
+
       // 2. 提取文本特征
       const textFeatures = await this.extractTextFeatures(logEntry);
-      
+
       // 3. 提取结构化特征
       const structuredFeatures = await this.extractStructuredFeatures(logEntry);
-      
+
       // 4. 合并所有特征
-      const allFeatures = [...basicFeatures, ...textFeatures, ...structuredFeatures];
-      
+      const allFeatures = [
+        ...basicFeatures,
+        ...textFeatures,
+        ...structuredFeatures,
+      ];
+
       // 5. 分析是否为新模式
       const patternAnalysis = await this.analyzePatterns(logEntry, allFeatures);
-      
+
       // 6. 分离已知和未知特征
-      const knownFeatures = allFeatures.filter(f => !patternAnalysis.some(p => p.isNewPattern));
-      const unknownPatterns = patternAnalysis.filter(p => p.isNewPattern);
-      
+      const knownFeatures = allFeatures.filter(
+        (f) => !patternAnalysis.some((p) => p.isNewPattern),
+      );
+      const unknownPatterns = patternAnalysis.filter((p) => p.isNewPattern);
+
       // 7. 学习新模式
       if (unknownPatterns.length > 0) {
         await this.learnNewPatterns(logEntry, unknownPatterns);
       }
 
       return { knownFeatures, unknownPatterns };
-      
     } catch (error) {
       this.logger.error(`特征提取失败: ${logEntry.id}`, error.stack);
       return { knownFeatures: [], unknownPatterns: [] };
@@ -83,9 +88,11 @@ export class FeatureExtractionService {
   /**
    * 基础特征提取
    */
-  private async extractBasicFeatures(logEntry: any): Promise<ExtractedFeature[]> {
+  private async extractBasicFeatures(
+    logEntry: any,
+  ): Promise<ExtractedFeature[]> {
     const features: ExtractedFeature[] = [];
-    
+
     // 1. 错误级别特征
     if (logEntry.level) {
       features.push({
@@ -96,7 +103,7 @@ export class FeatureExtractionService {
         confidence: 1.0,
         examples: [logEntry.level],
         pattern: `level === "${logEntry.level}"`,
-        metadata: { level: logEntry.level }
+        metadata: { level: logEntry.level },
       });
     }
 
@@ -110,7 +117,7 @@ export class FeatureExtractionService {
         confidence: 1.0,
         examples: [logEntry.source],
         pattern: `source === "${logEntry.source}"`,
-        metadata: { source: logEntry.source }
+        metadata: { source: logEntry.source },
       });
     }
 
@@ -118,7 +125,7 @@ export class FeatureExtractionService {
     if (logEntry.timestamp) {
       const hour = new Date(logEntry.timestamp).getHours();
       const timeRange = this.getTimeRange(hour);
-      
+
       features.push({
         featureType: 'TIME_PATTERN',
         featureName: `TIME_${timeRange}`,
@@ -127,7 +134,7 @@ export class FeatureExtractionService {
         confidence: 0.8,
         examples: [timeRange],
         pattern: `timeRange === "${timeRange}"`,
-        metadata: { hour, timeRange }
+        metadata: { hour, timeRange },
       });
     }
 
@@ -141,7 +148,7 @@ export class FeatureExtractionService {
         confidence: 1.0,
         examples: [logEntry.service],
         pattern: `service === "${logEntry.service}"`,
-        metadata: { service: logEntry.service }
+        metadata: { service: logEntry.service },
       });
     }
 
@@ -151,30 +158,34 @@ export class FeatureExtractionService {
   /**
    * 文本特征提取 - 使用向量化技术
    */
-  private async extractTextFeatures(logEntry: any): Promise<ExtractedFeature[]> {
+  private async extractTextFeatures(
+    logEntry: any,
+  ): Promise<ExtractedFeature[]> {
     const features: ExtractedFeature[] = [];
-    
+
     if (!logEntry.message) return features;
 
     try {
       // 1. 关键词提取
       const keywords = this.extractKeywords(logEntry.message);
-      
+
       // 2. 错误模式提取
       const errorPatterns = this.extractErrorPatterns(logEntry.message);
-      
+
       // 3. API端点提取
       const apiPatterns = this.extractApiPatterns(logEntry.message);
-      
+
       // 4. 错误代码提取
       const errorCodes = this.extractErrorCodes(logEntry.message);
 
-             // 5. 生成文本向量
-       const embeddingResult = await this.embeddingService.generateEmbedding(logEntry.message);
-       const messageVector = embeddingResult.vector;
-      
+      // 5. 生成文本向量
+      const embeddingResult = await this.embeddingService.generateEmbedding(
+        logEntry.message,
+      );
+      const messageVector = embeddingResult.vector;
+
       // 添加关键词特征
-      keywords.forEach(keyword => {
+      keywords.forEach((keyword) => {
         features.push({
           featureType: 'KEYWORD',
           featureName: `KEYWORD_${keyword.toUpperCase()}`,
@@ -183,12 +194,12 @@ export class FeatureExtractionService {
           confidence: 0.8,
           examples: [keyword],
           pattern: `message.includes("${keyword}")`,
-          metadata: { keyword, messageVector }
+          metadata: { keyword, messageVector },
         });
       });
 
       // 添加错误模式特征
-      errorPatterns.forEach(pattern => {
+      errorPatterns.forEach((pattern) => {
         features.push({
           featureType: 'ERROR_PATTERN',
           featureName: `ERROR_${pattern.type}`,
@@ -197,12 +208,11 @@ export class FeatureExtractionService {
           confidence: pattern.confidence,
           examples: [pattern.example],
           pattern: pattern.regex,
-          metadata: { errorPattern: pattern, messageVector }
+          metadata: { errorPattern: pattern, messageVector },
         });
       });
 
       return features;
-      
     } catch (error) {
       this.logger.error('文本特征提取失败', error.stack);
       return features;
@@ -212,16 +222,18 @@ export class FeatureExtractionService {
   /**
    * 结构化特征提取
    */
-  private async extractStructuredFeatures(logEntry: any): Promise<ExtractedFeature[]> {
+  private async extractStructuredFeatures(
+    logEntry: any,
+  ): Promise<ExtractedFeature[]> {
     const features: ExtractedFeature[] = [];
-    
+
     if (!logEntry.metadata) return features;
 
     // 1. API端点特征
     if (logEntry.metadata.apiEndpoint) {
       const endpoint = logEntry.metadata.apiEndpoint;
       const endpointCategory = this.categorizeApiEndpoint(endpoint);
-      
+
       features.push({
         featureType: 'API_ENDPOINT',
         featureName: `API_${endpointCategory}`,
@@ -230,7 +242,7 @@ export class FeatureExtractionService {
         confidence: 0.9,
         examples: [endpoint],
         pattern: `apiEndpoint.includes("${endpointCategory.toLowerCase()}")`,
-        metadata: { endpoint, category: endpointCategory }
+        metadata: { endpoint, category: endpointCategory },
       });
     }
 
@@ -238,7 +250,7 @@ export class FeatureExtractionService {
     if (logEntry.metadata.retCode !== undefined) {
       const retCode = logEntry.metadata.retCode;
       const codeCategory = this.categorizeReturnCode(retCode);
-      
+
       features.push({
         featureType: 'RETURN_CODE',
         featureName: `RET_${codeCategory}`,
@@ -247,13 +259,15 @@ export class FeatureExtractionService {
         confidence: 1.0,
         examples: [retCode.toString()],
         pattern: `retCode >= ${Math.floor(retCode / 100) * 100} && retCode < ${Math.floor(retCode / 100) * 100 + 100}`,
-        metadata: { retCode, category: codeCategory }
+        metadata: { retCode, category: codeCategory },
       });
     }
 
     // 3. 业务参数特征
     if (logEntry.metadata.inputParams) {
-      const paramFeatures = await this.extractParameterFeatures(logEntry.metadata.inputParams);
+      const paramFeatures = await this.extractParameterFeatures(
+        logEntry.metadata.inputParams,
+      );
       features.push(...paramFeatures);
     }
 
@@ -267,7 +281,7 @@ export class FeatureExtractionService {
         confidence: 1.0,
         examples: ['user_context'],
         pattern: 'metadata.userId !== undefined',
-        metadata: { hasUserContext: true }
+        metadata: { hasUserContext: true },
       });
     }
 
@@ -278,32 +292,35 @@ export class FeatureExtractionService {
    * 模式分析 - 检测是否为新模式
    */
   private async analyzePatterns(
-    logEntry: any, 
-    features: ExtractedFeature[]
+    logEntry: any,
+    features: ExtractedFeature[],
   ): Promise<PatternAnalysisResult[]> {
     const results: PatternAnalysisResult[] = [];
 
     try {
       // 1. 生成日志条目的综合向量
       const logVector = await this.generateLogVector(logEntry, features);
-      
+
       // 2. 与已知模式比较
       const similarityResults = await this.compareWithKnownPatterns(logVector);
-      
+
       // 3. 如果相似度低于阈值，认为是新模式
       const NEW_PATTERN_THRESHOLD = 0.7;
-      
+
       if (similarityResults.maxSimilarity < NEW_PATTERN_THRESHOLD) {
         // 4. 分析新模式特征
-        const newPattern = await this.analyzeNewPattern(logEntry, features, logVector);
+        const newPattern = await this.analyzeNewPattern(
+          logEntry,
+          features,
+          logVector,
+        );
         results.push(newPattern);
-        
+
         // 5. 保存新模式到向量库
         await this.saveNewPatternToVectorDB(newPattern, logVector);
       }
 
       return results;
-      
     } catch (error) {
       this.logger.error('模式分析失败', error.stack);
       return [];
@@ -316,23 +333,26 @@ export class FeatureExtractionService {
   private async analyzeNewPattern(
     logEntry: any,
     features: ExtractedFeature[],
-    logVector: number[]
+    logVector: number[],
   ): Promise<PatternAnalysisResult> {
     // 1. 分析特征重要性
     const importantFeatures = features
-      .filter(f => f.importance > 0.7)
+      .filter((f) => f.importance > 0.7)
       .sort((a, b) => b.importance - a.importance);
 
     // 2. 生成模式名称
     const suggestedName = this.generatePatternName(importantFeatures, logEntry);
-    
+
     // 3. 提取关键特征
     const characteristics = importantFeatures
       .slice(0, 5) // 取前5个重要特征
-      .map(f => f.description);
+      .map((f) => f.description);
 
     // 4. 确定推荐行动
-    const recommendedAction = this.determineRecommendedAction(logEntry, importantFeatures);
+    const recommendedAction = this.determineRecommendedAction(
+      logEntry,
+      importantFeatures,
+    );
 
     return {
       isNewPattern: true,
@@ -349,7 +369,7 @@ export class FeatureExtractionService {
    */
   private async learnNewPatterns(
     logEntry: any,
-    patterns: PatternAnalysisResult[]
+    patterns: PatternAnalysisResult[],
   ): Promise<void> {
     for (const pattern of patterns) {
       try {
@@ -382,9 +402,11 @@ export class FeatureExtractionService {
         });
 
         this.logger.log(`学习新模式: ${pattern.suggestedName}`);
-        
       } catch (error) {
-        this.logger.error(`保存新模式失败: ${pattern.suggestedName}`, error.stack);
+        this.logger.error(
+          `保存新模式失败: ${pattern.suggestedName}`,
+          error.stack,
+        );
       }
     }
   }
@@ -397,18 +419,19 @@ export class FeatureExtractionService {
     featureStats: Record<string, number>;
   }> {
     this.logger.log(`开始批量特征提取: ${logEntries.length} 条日志`);
-    
+
     const allNewPatterns: PatternAnalysisResult[] = [];
     const featureCount: Record<string, number> = {};
 
     for (const logEntry of logEntries) {
       const result = await this.extractFeaturesFromLog(logEntry);
-      
+
       // 统计特征出现次数
-      result.knownFeatures.forEach(feature => {
-        featureCount[feature.featureName] = (featureCount[feature.featureName] || 0) + 1;
+      result.knownFeatures.forEach((feature) => {
+        featureCount[feature.featureName] =
+          (featureCount[feature.featureName] || 0) + 1;
       });
-      
+
       // 收集新模式
       allNewPatterns.push(...result.unknownPatterns);
     }
@@ -433,28 +456,41 @@ export class FeatureExtractionService {
       'KEY_FLOW_ERROR',
       'PAGE_UNLOAD_ERROR',
       'BUSINESS_PARAM_ERROR',
-      'VEHICLE_SPEC_ERROR'
+      'VEHICLE_SPEC_ERROR',
     ];
 
-         for (const pattern of knownPatterns) {
-       try {
-         const embeddingResult = await this.embeddingService.generateEmbedding(pattern);
-         this.knownPatternVectors.set(pattern, embeddingResult.vector);
-       } catch (error) {
-         this.logger.error(`初始化模式向量失败: ${pattern}`, error.stack);
-       }
-     }
+    for (const pattern of knownPatterns) {
+      try {
+        const embeddingResult =
+          await this.embeddingService.generateEmbedding(pattern);
+        this.knownPatternVectors.set(pattern, embeddingResult.vector);
+      } catch (error) {
+        this.logger.error(`初始化模式向量失败: ${pattern}`, error.stack);
+      }
+    }
   }
 
   private extractKeywords(message: string): string[] {
     // 简单的关键词提取 - 可以用更复杂的NLP算法
-    const commonWords = new Set(['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for']);
-    
+    const commonWords = new Set([
+      'the',
+      'a',
+      'an',
+      'and',
+      'or',
+      'but',
+      'in',
+      'on',
+      'at',
+      'to',
+      'for',
+    ]);
+
     return message
       .toLowerCase()
       .replace(/[^\w\s]/g, ' ')
       .split(/\s+/)
-      .filter(word => word.length > 2 && !commonWords.has(word))
+      .filter((word) => word.length > 2 && !commonWords.has(word))
       .slice(0, 10); // 限制数量
   }
 
@@ -470,34 +506,34 @@ export class FeatureExtractionService {
         regex: /TypeError:.*?cannot read prop.*?of (null|undefined)/i,
         type: 'NULL_REFERENCE',
         description: '空值引用错误',
-        confidence: 0.9
+        confidence: 0.9,
       },
       {
         regex: /Network Error|ERR_NETWORK/i,
         type: 'NETWORK_ERROR',
         description: '网络连接错误',
-        confidence: 0.8
+        confidence: 0.8,
       },
       {
         regex: /timeout|timed out/i,
         type: 'TIMEOUT_ERROR',
         description: '超时错误',
-        confidence: 0.8
+        confidence: 0.8,
       },
       {
         regex: /401|unauthorized/i,
         type: 'AUTH_ERROR',
         description: '认证错误',
-        confidence: 0.9
-      }
+        confidence: 0.9,
+      },
     ];
 
     return patterns
-      .filter(pattern => pattern.regex.test(message))
-      .map(pattern => ({
+      .filter((pattern) => pattern.regex.test(message))
+      .map((pattern) => ({
         ...pattern,
         example: message.match(pattern.regex)?.[0] || '',
-        regex: pattern.regex.toString()
+        regex: pattern.regex.toString(),
       }));
   }
 
@@ -514,11 +550,11 @@ export class FeatureExtractionService {
   private categorizeApiEndpoint(endpoint: string): string {
     const categories: Record<string, string> = {
       '/api/auth': 'AUTHENTICATION',
-      '/api/user': 'USER_MANAGEMENT', 
+      '/api/user': 'USER_MANAGEMENT',
       '/api/order': 'ORDER_MANAGEMENT',
       '/api/payment': 'PAYMENT',
       '/api/pricing': 'PRICING',
-      '/api/cart': 'CART'
+      '/api/cart': 'CART',
     };
 
     for (const [prefix, category] of Object.entries(categories)) {
@@ -539,12 +575,14 @@ export class FeatureExtractionService {
     return 'BUSINESS_ERROR';
   }
 
-  private async extractParameterFeatures(inputParams: any): Promise<ExtractedFeature[]> {
+  private async extractParameterFeatures(
+    inputParams: any,
+  ): Promise<ExtractedFeature[]> {
     const features: ExtractedFeature[] = [];
-    
+
     // 分析参数结构
     const paramKeys = Object.keys(inputParams);
-    
+
     features.push({
       featureType: 'PARAM_STRUCTURE',
       featureName: `PARAM_COUNT_${paramKeys.length}`,
@@ -553,7 +591,7 @@ export class FeatureExtractionService {
       confidence: 1.0,
       examples: [paramKeys.length.toString()],
       pattern: `Object.keys(inputParams).length === ${paramKeys.length}`,
-      metadata: { paramCount: paramKeys.length, paramKeys }
+      metadata: { paramCount: paramKeys.length, paramKeys },
     });
 
     return features;
@@ -561,13 +599,13 @@ export class FeatureExtractionService {
 
   private calculateLogLevelImportance(level: string): number {
     const importance: Record<string, number> = {
-      'FATAL': 1.0,
-      'ERROR': 0.9,
-      'WARN': 0.6,
-      'INFO': 0.3,
-      'DEBUG': 0.1
+      FATAL: 1.0,
+      ERROR: 0.9,
+      WARN: 0.6,
+      INFO: 0.3,
+      DEBUG: 0.1,
     };
-    
+
     return importance[level] || 0.5;
   }
 
@@ -578,12 +616,15 @@ export class FeatureExtractionService {
     return 'EVENING';
   }
 
-     private async generateLogVector(logEntry: any, features: ExtractedFeature[]): Promise<number[]> {
-     // 生成综合向量表示
-     const text = `${logEntry.message} ${logEntry.source} ${logEntry.level}`;
-     const embeddingResult = await this.embeddingService.generateEmbedding(text);
-     return embeddingResult.vector;
-   }
+  private async generateLogVector(
+    logEntry: any,
+    features: ExtractedFeature[],
+  ): Promise<number[]> {
+    // 生成综合向量表示
+    const text = `${logEntry.message} ${logEntry.source} ${logEntry.level}`;
+    const embeddingResult = await this.embeddingService.generateEmbedding(text);
+    return embeddingResult.vector;
+  }
 
   private async compareWithKnownPatterns(logVector: number[]): Promise<{
     maxSimilarity: number;
@@ -594,7 +635,7 @@ export class FeatureExtractionService {
 
     for (const [pattern, patternVector] of this.knownPatternVectors) {
       const similarity = this.cosineSimilarity(logVector, patternVector);
-      
+
       if (similarity > maxSimilarity) {
         maxSimilarity = similarity;
         bestMatch = pattern;
@@ -608,51 +649,59 @@ export class FeatureExtractionService {
     const dotProduct = vectorA.reduce((sum, a, i) => sum + a * vectorB[i], 0);
     const magnitudeA = Math.sqrt(vectorA.reduce((sum, a) => sum + a * a, 0));
     const magnitudeB = Math.sqrt(vectorB.reduce((sum, b) => sum + b * b, 0));
-    
+
     return dotProduct / (magnitudeA * magnitudeB);
   }
 
-  private generatePatternName(features: ExtractedFeature[], logEntry: any): string {
+  private generatePatternName(
+    features: ExtractedFeature[],
+    logEntry: any,
+  ): string {
     const topFeatures = features.slice(0, 2);
-    const parts = topFeatures.map(f => f.featureName);
-    
+    const parts = topFeatures.map((f) => f.featureName);
+
     if (logEntry.metadata?.apiEndpoint) {
       const endpoint = logEntry.metadata.apiEndpoint.split('/').pop();
       parts.unshift(endpoint.toUpperCase());
     }
-    
+
     return `AUTO_${parts.join('_')}`;
   }
 
   private determineRecommendedAction(
-    logEntry: any, 
-    features: ExtractedFeature[]
+    logEntry: any,
+    features: ExtractedFeature[],
   ): 'MONITOR' | 'INVESTIGATE' | 'ALERT' | 'IGNORE' {
     // 基于特征重要性和日志级别决定行动
-    const maxImportance = Math.max(...features.map(f => f.importance));
-    
+    const maxImportance = Math.max(...features.map((f) => f.importance));
+
     if (logEntry.level === 'ERROR' && maxImportance > 0.8) {
       return 'ALERT';
     }
-    
+
     if (logEntry.level === 'ERROR' || maxImportance > 0.6) {
       return 'INVESTIGATE';
     }
-    
+
     if (maxImportance > 0.4) {
       return 'MONITOR';
     }
-    
+
     return 'IGNORE';
   }
 
-  private async saveNewPatternToVectorDB(pattern: PatternAnalysisResult, vector: number[]): Promise<void> {
+  private async saveNewPatternToVectorDB(
+    pattern: PatternAnalysisResult,
+    vector: number[],
+  ): Promise<void> {
     // 这里可以保存到向量数据库中，供后续比较使用
     this.knownPatternVectors.set(pattern.suggestedName, vector);
   }
 
-  private async clusterNewPatterns(patterns: PatternAnalysisResult[]): Promise<PatternAnalysisResult[]> {
+  private async clusterNewPatterns(
+    patterns: PatternAnalysisResult[],
+  ): Promise<PatternAnalysisResult[]> {
     // 简单的聚类实现 - 可以用更复杂的聚类算法
     return patterns; // 暂时直接返回，可以后续优化
   }
-} 
+}

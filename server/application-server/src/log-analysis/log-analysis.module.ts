@@ -15,10 +15,10 @@ import { UserLogIssueAgent } from './agents/user-log-issue.agent';
     // Core Services
     LogAnalysisService,
     LogAnalysisSimplifiedService,
-    
+
     // Agents
     UserLogIssueAgent,
   ],
   exports: [LogAnalysisService, LogAnalysisSimplifiedService],
 })
-export class LogAnalysisModule {} 
+export class LogAnalysisModule {}

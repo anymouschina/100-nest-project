@@ -74,7 +74,7 @@ export class QdrantService implements OnModuleInit {
   async createCollection(
     collectionName: string,
     vectorSize: number,
-    distance: 'Cosine' | 'Euclid' | 'Dot' = 'Cosine'
+    distance: 'Cosine' | 'Euclid' | 'Dot' = 'Cosine',
   ): Promise<boolean> {
     try {
       if (!this.isConnected) {
@@ -110,7 +110,7 @@ export class QdrantService implements OnModuleInit {
   async collectionExists(collectionName: string): Promise<boolean> {
     try {
       if (!this.isConnected) return false;
-      
+
       const info = await this.client.getCollection(collectionName);
       return !!info;
     } catch (error) {
@@ -139,21 +139,23 @@ export class QdrantService implements OnModuleInit {
    */
   async upsertPoints(
     collectionName: string,
-    points: QdrantPoint[]
+    points: QdrantPoint[],
   ): Promise<boolean> {
     try {
       if (!this.isConnected) return false;
 
       await this.client.upsert(collectionName, {
         wait: true,
-        points: points.map(point => ({
+        points: points.map((point) => ({
           id: point.id,
           vector: point.vector,
           payload: point.payload,
         })),
       });
 
-      this.logger.debug(`向量点插入成功: ${collectionName}, 数量: ${points.length}`);
+      this.logger.debug(
+        `向量点插入成功: ${collectionName}, 数量: ${points.length}`,
+      );
       return true;
     } catch (error) {
       this.logger.error(`向量点插入失败: ${collectionName}`, error.message);
@@ -167,7 +169,7 @@ export class QdrantService implements OnModuleInit {
   async searchVectors(
     collectionName: string,
     queryVector: number[],
-    options: QdrantSearchOptions = {}
+    options: QdrantSearchOptions = {},
   ): Promise<QdrantSearchResult[]> {
     try {
       if (!this.isConnected) return [];
@@ -189,7 +191,7 @@ export class QdrantService implements OnModuleInit {
         with_vector: withVector,
       });
 
-      return searchResult.map(result => ({
+      return searchResult.map((result) => ({
         id: result.id,
         score: result.score,
         payload: result.payload || {},
@@ -207,7 +209,7 @@ export class QdrantService implements OnModuleInit {
   async getPoints(
     collectionName: string,
     ids: (string | number)[],
-    withVector = false
+    withVector = false,
   ): Promise<QdrantSearchResult[]> {
     try {
       if (!this.isConnected) return [];
@@ -218,7 +220,7 @@ export class QdrantService implements OnModuleInit {
         with_vector: withVector,
       });
 
-      return points.map(point => ({
+      return points.map((point) => ({
         id: point.id,
         score: 1.0, // retrieve操作没有score
         payload: point.payload || {},
@@ -235,7 +237,7 @@ export class QdrantService implements OnModuleInit {
    */
   async deletePoints(
     collectionName: string,
-    ids: (string | number)[]
+    ids: (string | number)[],
   ): Promise<boolean> {
     try {
       if (!this.isConnected) return false;
@@ -245,7 +247,9 @@ export class QdrantService implements OnModuleInit {
         points: ids,
       });
 
-      this.logger.debug(`向量点删除成功: ${collectionName}, 数量: ${ids.length}`);
+      this.logger.debug(
+        `向量点删除成功: ${collectionName}, 数量: ${ids.length}`,
+      );
       return true;
     } catch (error) {
       this.logger.error(`向量点删除失败: ${collectionName}`, error.message);
@@ -279,7 +283,7 @@ export class QdrantService implements OnModuleInit {
       filter?: Record<string, any>;
       withPayload?: boolean;
       withVector?: boolean;
-    } = {}
+    } = {},
   ): Promise<{
     points: QdrantSearchResult[];
     nextOffset?: string | number;
@@ -306,15 +310,17 @@ export class QdrantService implements OnModuleInit {
       });
 
       return {
-        points: result.points.map(point => ({
+        points: result.points.map((point) => ({
           id: point.id,
           score: 1.0,
           payload: point.payload || {},
           vector: point.vector,
         })),
-        nextOffset: typeof result.next_page_offset === 'string' || typeof result.next_page_offset === 'number' 
-          ? result.next_page_offset 
-          : undefined,
+        nextOffset:
+          typeof result.next_page_offset === 'string' ||
+          typeof result.next_page_offset === 'number'
+            ? result.next_page_offset
+            : undefined,
       };
     } catch (error) {
       this.logger.error(`滚动查询失败: ${collectionName}`, error.message);
@@ -361,7 +367,7 @@ export class QdrantService implements OnModuleInit {
   async createIndex(
     collectionName: string,
     fieldName: string,
-    fieldType: 'keyword' | 'integer' | 'float' | 'bool' = 'keyword'
+    fieldType: 'keyword' | 'integer' | 'float' | 'bool' = 'keyword',
   ): Promise<boolean> {
     try {
       if (!this.isConnected) return false;
@@ -376,7 +382,10 @@ export class QdrantService implements OnModuleInit {
       this.logger.log(`索引创建成功: ${collectionName}.${fieldName}`);
       return true;
     } catch (error) {
-      this.logger.error(`索引创建失败: ${collectionName}.${fieldName}`, error.message);
+      this.logger.error(
+        `索引创建失败: ${collectionName}.${fieldName}`,
+        error.message,
+      );
       return false;
     }
   }
@@ -390,7 +399,7 @@ export class QdrantService implements OnModuleInit {
       type: 'upsert' | 'delete';
       points?: QdrantPoint[];
       ids?: (string | number)[];
-    }>
+    }>,
   ): Promise<boolean> {
     try {
       if (!this.isConnected) return false;
@@ -409,4 +418,4 @@ export class QdrantService implements OnModuleInit {
       return false;
     }
   }
-} 
+}

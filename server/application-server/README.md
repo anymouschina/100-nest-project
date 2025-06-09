@@ -1061,3 +1061,446 @@ curl -X POST "http://localhost:3001/api/log-analysis/analyze/quick-check" \
 ---
 
 🎉 **恭喜！您现在拥有了一个完整的智能日志分析Agent系统！**
+
+---
+
+## 📱 前端页面实现指南
+
+### 🎯 **AI提示词 - 日志分析前端页面**
+
+```
+你是一个资深的前端开发工程师，需要为日志分析系统创建一个现代化的Web管理界面。
+
+## 项目要求
+
+### 技术栈
+- 使用 React 18 + TypeScript
+- UI框架：Ant Design 5.x 或 Material-UI v5
+- 状态管理：Zustand 或 React Query
+- 样式：Tailwind CSS + CSS Modules
+- 图表库：ECharts 或 Chart.js
+- 请求库：Axios
+- 路由：React Router v6
+
+### 页面功能需求
+
+#### 1. 🔐 认证页面 (/login)
+- 支持游客登录模式（调用 /api/auth/guest-login）
+- 现代化登录界面，包含项目Logo和说明
+- 自动保存Token到localStorage
+- 登录成功后跳转到主控制台
+
+#### 2. 📊 主控制台 (/dashboard)
+**布局要求：**
+- 左侧导航栏：日志分析、用户查询、健康检查、设置
+- 顶部状态栏：用户信息、在线状态、退出按钮
+- 主内容区：根据导航显示不同功能模块
+
+**核心功能模块：**
+
+##### 2.1 🔍 手动日志分析 (/dashboard/manual)
+- **双输入模式切换：**
+  - 模式1：结构化表单（日志级别、来源、消息、元数据输入框）
+  - 模式2：文本区域（支持粘贴原始日志，每行一条）
+- **分析选项：** 
+  - 开启特征提取 / 相似搜索 / 异常检测的切换开关
+- **结果展示：**
+  - 风险等级显示（红色CRITICAL、橙色HIGH、黄色MEDIUM、绿色LOW）
+  - 问题类型标签
+  - 智能建议列表（带图标）
+  - 相似问题卡片（显示相似度百分比）
+  - 检测到的错误模式（饼图显示）
+
+##### 2.2 👤 用户日志分析 (/dashboard/user)
+- **查询表单：**
+  - 用户ID输入框（支持批量，逗号分隔）
+  - 时间范围选择器（快捷选项：今天、昨天、本周、本月）
+  - 日志来源多选（backend/frontend/mobile）
+  - 优先级选择（LOW/MEDIUM/HIGH/CRITICAL）
+- **结果展示：**
+  - 任务状态卡片（进行中/已完成/失败）
+  - 找到的日志数量统计
+  - 分析进度条
+  - 可点击查看详细报告
+
+##### 2.3 📋 用户历史日志 (/dashboard/history)
+- **搜索过滤：**
+  - 用户ID搜索框
+  - 日志级别筛选器
+  - 时间范围选择
+  - 关键词搜索
+- **数据表格：**
+  - 时间戳、级别、来源、服务、消息预览
+  - 支持排序、分页、导出
+  - 行点击展开详情（包含元数据和堆栈）
+  - 级别用不同颜色区分
+
+##### 2.4 ⚡ 快速健康检查 (/dashboard/health)
+- **批量输入：**
+  - 拖拽上传日志文件
+  - 或文本区域粘贴多条日志
+- **实时分析：**
+  - 总体健康状态仪表盘（GOOD绿色/WARNING橙色/CRITICAL红色）
+  - 错误统计图表（柱状图：错误数量vs时间）
+  - 问题类型分布（饼图）
+  - 建议措施卡片列表
+
+##### 2.5 📈 数据可视化
+- **统计图表：**
+  - 日志级别分布饼图
+  - 错误趋势线图（时间序列）
+  - 来源分析柱状图
+  - 问题类型热力图
+- **实时监控：**
+  - 错误率指标
+  - 平均响应时间
+  - 系统健康度评分
+
+### 设计要求
+- **现代化UI：** 使用卡片布局、阴影效果、圆角设计
+- **响应式：** 支持桌面端和平板端，手机端基础适配
+- **交互反馈：** Loading状态、成功/失败提示、骨架屏
+- **数据可视化：** 使用图表库展示分析结果
+- **用户体验：** 操作引导、快捷键支持、批量操作
+
+### API集成
+请集成以下API接口（已提供完整的curl示例）：
+- 认证接口：POST /api/auth/guest-login
+- 手动分析：POST /api/log-analysis/analyze/manual  
+- 用户分析：POST /api/log-analysis/analyze/user-logs
+- 历史查询：GET /api/log-analysis/logs/user/:userId
+- 健康检查：POST /api/log-analysis/analyze/quick-check
+
+### 错误处理
+- 网络错误提示和重试机制
+- API错误的用户友好提示
+- 表单验证和输入提示
+- Token过期自动跳转登录
+
+请提供完整的组件结构、状态管理、API封装和样式实现。
+```
+
+### 🔌 **API接口测试命令集合**
+
+#### **1. 获取访问Token**
+```bash
+# 游客登录获取Token
+curl -X POST http://localhost:3001/api/auth/guest-login \
+  -H "Content-Type: application/json"
+
+# 响应示例：
+# {
+#   "success": true,
+#   "data": {
+#     "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+#     "tokenType": "Bearer",
+#     "expiresIn": 3600,
+#     "user": {
+#       "userId": 4,
+#       "name": "游客用户",
+#       "email": "guest@example.com",
+#       "isGuest": true
+#     }
+#   }
+# }
+```
+
+> 💡 **游客模式特点：**
+> - 🚀 **无需注册**：直接获取访问Token，立即体验功能
+> - 🔐 **智能识别**：系统自动识别游客身份，无需手动传递用户ID
+> - 📊 **完整功能**：支持所有日志分析功能，包括手动分析、历史查询、健康检查
+> - ⏰ **会话管理**：Token有效期1小时，过期后重新登录即可
+
+#### **2. 手动日志分析接口**
+
+**格式1: 结构化对象**
+```bash
+curl -X POST "http://localhost:3001/api/log-analysis/analyze/manual" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userFeedback": "支付页面出现错误",
+    "logData": {
+      "timestamp": "2024-01-15T14:30:25.000Z",
+      "level": "ERROR",
+      "source": "frontend",
+      "service": "payment-service",
+      "message": "Cannot read property amount of null at PaymentComponent",
+      "stackTrace": "at PaymentComponent.calculateTotal (PaymentComponent.js:42:15)",
+      "metadata": {
+        "userId": 12345,
+        "orderId": "ORD-001",
+        "retCode": 500
+      }
+    },
+    "analysisOptions": {
+      "enableFeatureExtraction": true,
+      "enableSimilarSearch": true,
+      "enableAnomalyDetection": true
+    }
+  }'
+```
+
+**格式2: 字符串数组**
+```bash
+curl -X POST "http://localhost:3001/api/log-analysis/analyze/manual" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userFeedback": "前端支付组件出错",
+    "logData": [
+      "2024-01-15 14:30:25 ERROR [Frontend] Payment component crashed",
+      "TypeError: Cannot read property amount of null",
+      "at PaymentComponent.calculateTotal (PaymentComponent.js:42:15)",
+      "at PaymentComponent.render (PaymentComponent.js:108:9)",
+      "User ID: 12345, Session: sess_abc123"
+    ],
+    "analysisOptions": {
+      "enableFeatureExtraction": true,
+      "enableSimilarSearch": true,
+      "enableAnomalyDetection": true
+    }
+  }'
+```
+
+#### **3. 用户ID日志分析**
+```bash
+curl -X POST "http://localhost:3001/api/log-analysis/analyze/user-logs" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": 12345,
+    "timeRange": {
+      "startTime": "2024-01-01T00:00:00Z",
+      "endTime": "2024-01-31T23:59:59Z"
+    },
+    "logSources": ["backend", "frontend", "mobile"],
+    "priority": "HIGH",
+    "userFeedback": "用户反馈无法完成订单支付"
+  }'
+
+# 响应示例：
+# {
+#   "code": 0,
+#   "data": {
+#     "taskId": "task_1749459907115_ybc1amy",
+#     "message": "已创建分析任务，正在分析用户12345的3条日志",
+#     "logCount": 3
+#   }
+# }
+```
+
+#### **3.1 获取分析任务列表**
+
+**方式1: 获取当前用户的任务（游客模式推荐）**
+```bash
+curl -X GET "http://localhost:3001/api/log-analysis/tasks?status=COMPLETED&limit=10&offset=0" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+
+# 自动使用JWT token中的用户ID，无需手动指定
+```
+
+**方式2: 获取指定用户的任务**
+```bash
+curl -X GET "http://localhost:3001/api/log-analysis/tasks?userId=12345&status=COMPLETED&limit=10&offset=0" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+#### **4. 获取用户历史日志**
+
+**方式1: 获取当前登录用户的日志（游客模式推荐）**
+```bash
+curl -X GET "http://localhost:3001/api/log-analysis/logs/user?startDate=2024-01-01&endDate=2024-01-31&level=ERROR&source=backend&limit=50&offset=0" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+
+# 自动使用JWT token中的用户ID，无需手动指定
+```
+
+**方式2: 获取指定用户的日志**
+```bash
+curl -X GET "http://localhost:3001/api/log-analysis/logs/user/12345?startDate=2024-01-01&endDate=2024-01-31&level=ERROR&source=backend&limit=50&offset=0" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+**查询参数说明：**
+- `startDate`: 开始日期 (YYYY-MM-DD)
+- `endDate`: 结束日期 (YYYY-MM-DD)  
+- `level`: 日志级别 (DEBUG/INFO/WARN/ERROR/FATAL)
+- `source`: 日志来源 (backend/frontend/mobile)
+- `limit`: 每页数量 (默认100)
+- `offset`: 偏移量 (默认0)
+
+#### **5. 快速日志健康检查**
+```bash
+curl -X POST "http://localhost:3001/api/log-analysis/analyze/quick-check" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "logEntries": [
+      {
+        "level": "ERROR",
+        "source": "backend",
+        "message": "Database connection timeout",
+        "metadata": {"service": "user-service"}
+      },
+      {
+        "level": "ERROR",
+        "source": "frontend", 
+        "message": "Cannot read property amount of null"
+      },
+      {
+        "level": "WARN",
+        "source": "frontend",
+        "message": "API response delayed"
+      },
+      {
+        "level": "FATAL",
+        "source": "backend",
+        "message": "OutOfMemoryError: Java heap space"
+      }
+    ],
+    "checkOptions": {
+      "checkSeverity": true,
+      "checkPatterns": true,
+      "checkAnomalies": true
+    }
+  }'
+
+# 响应示例：
+# {
+#   "code": 0,
+#   "data": {
+#     "overallHealth": "CRITICAL",
+#     "summary": {
+#       "totalLogs": 4,
+#       "errorCount": 3,
+#       "warningCount": 1,
+#       "criticalIssues": 1
+#     },
+#     "issues": [
+#       {
+#         "type": "MEMORY_ERROR",
+#         "severity": "CRITICAL",
+#         "count": 1,
+#         "examples": ["OutOfMemoryError: Java heap space"]
+#       }
+#     ],
+#     "recommendations": [
+#       "🚨 发现严重问题，建议立即处理",
+#       "💾 检测到内存问题，建议检查内存泄漏"
+#     ]
+#   }
+# }
+```
+
+### 📋 **前端开发关键点**
+
+#### **状态管理结构建议**
+```typescript
+// 使用Zustand的状态结构
+interface LogAnalysisStore {
+  // 认证状态
+  auth: {
+    token: string | null;
+    isAuthenticated: boolean;
+    login: (token: string) => void;
+    logout: () => void;
+  };
+  
+  // 分析结果
+  analysis: {
+    currentResult: AnalysisResult | null;
+    isLoading: boolean;
+    error: string | null;
+    analyzeManual: (data: ManualAnalysisData) => Promise<void>;
+    analyzeUser: (data: UserAnalysisData) => Promise<void>;
+  };
+  
+  // 用户日志
+  userLogs: {
+    logs: LogEntry[];
+    totalCount: number;
+    currentPage: number;
+    isLoading: boolean;
+    fetchLogs: (userId: number, params?: QueryParams) => Promise<void>;
+  };
+  
+  // 健康检查
+  healthCheck: {
+    result: HealthCheckResult | null;
+    isLoading: boolean;
+    checkHealth: (logs: LogEntry[]) => Promise<void>;
+  };
+}
+```
+
+#### **组件结构建议**
+```
+src/
+├── components/
+│   ├── layout/
+│   │   ├── Header.tsx          # 顶部导航栏
+│   │   ├── Sidebar.tsx         # 左侧菜单
+│   │   └── Layout.tsx          # 主布局组件
+│   ├── auth/
+│   │   └── LoginForm.tsx       # 登录表单
+│   ├── analysis/
+│   │   ├── ManualAnalysis.tsx  # 手动日志分析
+│   │   ├── UserAnalysis.tsx    # 用户ID分析
+│   │   ├── ResultCard.tsx      # 分析结果卡片
+│   │   └── HealthCheck.tsx     # 健康检查
+│   ├── logs/
+│   │   ├── LogTable.tsx        # 日志表格
+│   │   ├── LogDetail.tsx       # 日志详情
+│   │   └── LogFilters.tsx      # 过滤器
+│   └── charts/
+│       ├── HealthDashboard.tsx # 健康状态仪表盘
+│       ├── ErrorTrendChart.tsx # 错误趋势图
+│       └── IssueDistribution.tsx # 问题分布图
+├── pages/
+│   ├── Login.tsx
+│   ├── Dashboard.tsx
+│   ├── ManualAnalysis.tsx
+│   ├── UserLogs.tsx
+│   └── HealthCheck.tsx
+├── services/
+│   ├── api.ts                  # API封装
+│   ├── auth.ts                 # 认证服务
+│   └── types.ts                # TypeScript类型定义
+└── stores/
+    └── useLogAnalysisStore.ts  # Zustand状态管理
+```
+
+### 🎨 **UI设计要点**
+
+#### **色彩方案**
+- **风险等级色彩：**
+  - CRITICAL: #ff4d4f (红色)
+  - HIGH: #fa8c16 (橙色) 
+  - MEDIUM: #fadb14 (黄色)
+  - LOW: #52c41a (绿色)
+
+#### **图标建议**
+- 手动分析: 🔍 EditOutlined
+- 用户查询: 👤 UserOutlined  
+- 健康检查: ⚡ ThunderboltOutlined
+- 历史日志: 📋 HistoryOutlined
+- 设置: ⚙️ SettingOutlined
+
+#### **响应式断点**
+- 桌面端: >= 1200px
+- 平板端: 768px - 1199px  
+- 手机端: < 768px
+
+### 🚀 **快速开始**
+
+使用以上提示词和API示例，可以快速开发出功能完善的日志分析前端管理界面！
+
+1. **复制完整的AI提示词** 到您喜欢的AI助手（如Claude、ChatGPT）
+2. **使用提供的curl命令** 测试API接口
+3. **参考组件结构建议** 搭建项目架构
+4. **按照设计要点** 实现现代化UI界面
+
+---
+
+💡 **提示：** 建议先用curl命令测试所有API接口，确保后端功能正常，再开始前端开发。

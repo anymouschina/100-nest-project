@@ -59,7 +59,7 @@ export class LogAnalysisService {
       });
 
       // 异步启动分析
-      this.startAnalysisAsync(taskId).catch(error => {
+      this.startAnalysisAsync(taskId).catch((error) => {
         this.logger.error(`异步分析任务失败: ${taskId}`, error.stack);
       });
 
@@ -137,7 +137,7 @@ export class LogAnalysisService {
       status?: string;
       limit?: number;
       offset?: number;
-    } = {}
+    } = {},
   ): Promise<any[]> {
     const { status, limit = 20, offset = 0 } = options;
 
@@ -187,10 +187,12 @@ export class LogAnalysisService {
   /**
    * 获取白名单规则
    */
-  async getWhitelistRules(options: {
-    ruleType?: string;
-    isActive?: boolean;
-  } = {}): Promise<any[]> {
+  async getWhitelistRules(
+    options: {
+      ruleType?: string;
+      isActive?: boolean;
+    } = {},
+  ): Promise<any[]> {
     const { ruleType, isActive } = options;
     const where: any = {};
 
@@ -215,11 +217,13 @@ export class LogAnalysisService {
   /**
    * 获取业务参数特征分析
    */
-  async getBusinessParamFeatures(options: {
-    apiEndpoint?: string;
-    isAnomalous?: boolean;
-    limit?: number;
-  } = {}): Promise<any[]> {
+  async getBusinessParamFeatures(
+    options: {
+      apiEndpoint?: string;
+      isAnomalous?: boolean;
+      limit?: number;
+    } = {},
+  ): Promise<any[]> {
     const { apiEndpoint, isAnomalous, limit = 50 } = options;
     const where: any = {};
 
@@ -275,7 +279,7 @@ export class LogAnalysisService {
       const recommendations = await this.generateParamRecommendations(
         input,
         similarIssues,
-        isAnomalous
+        isAnomalous,
       );
 
       return {
@@ -298,12 +302,14 @@ export class LogAnalysisService {
   /**
    * 获取分析统计
    */
-  async getAnalysisStats(options: {
-    userId?: number;
-    timeRange?: string;
-    startDate?: Date;
-    endDate?: Date;
-  } = {}): Promise<any> {
+  async getAnalysisStats(
+    options: {
+      userId?: number;
+      timeRange?: string;
+      startDate?: Date;
+      endDate?: Date;
+    } = {},
+  ): Promise<any> {
     const { userId, timeRange, startDate, endDate } = options;
 
     // 构建时间过滤条件
@@ -315,12 +321,17 @@ export class LogAnalysisService {
     }
 
     // 获取基础统计
-    const [totalTasks, completedTasks, failedTasks, avgCompletionTime] = await Promise.all([
-      this.databaseService.logAnalysisTask.count({ where }),
-      this.databaseService.logAnalysisTask.count({ where: { ...where, status: 'COMPLETED' } }),
-      this.databaseService.logAnalysisTask.count({ where: { ...where, status: 'FAILED' } }),
-      this.calculateAvgCompletionTime(where),
-    ]);
+    const [totalTasks, completedTasks, failedTasks, avgCompletionTime] =
+      await Promise.all([
+        this.databaseService.logAnalysisTask.count({ where }),
+        this.databaseService.logAnalysisTask.count({
+          where: { ...where, status: 'COMPLETED' },
+        }),
+        this.databaseService.logAnalysisTask.count({
+          where: { ...where, status: 'FAILED' },
+        }),
+        this.calculateAvgCompletionTime(where),
+      ]);
 
     return {
       totalTasks,
@@ -334,11 +345,13 @@ export class LogAnalysisService {
   /**
    * 获取问题分类统计
    */
-  async getIssueTypeStats(options: {
-    timeRange?: string;
-    startDate?: Date;
-    endDate?: Date;
-  } = {}): Promise<any> {
+  async getIssueTypeStats(
+    options: {
+      timeRange?: string;
+      startDate?: Date;
+      endDate?: Date;
+    } = {},
+  ): Promise<any> {
     const { timeRange, startDate, endDate } = options;
     const dateFilter = this.buildDateFilter(timeRange, startDate, endDate);
 
@@ -350,7 +363,7 @@ export class LogAnalysisService {
 
     // 转换为更友好的格式
     const result = {};
-    issueStats.forEach(stat => {
+    issueStats.forEach((stat) => {
       if (!result[stat.issueType]) {
         result[stat.issueType] = {};
       }
@@ -365,7 +378,7 @@ export class LogAnalysisService {
    */
   async exportAnalysisReport(
     taskId: string,
-    format: 'json' | 'csv' | 'pdf' = 'json'
+    format: 'json' | 'csv' | 'pdf' = 'json',
   ): Promise<any> {
     const result = await this.getAnalysisResult(taskId);
 
@@ -388,7 +401,10 @@ export class LogAnalysisService {
     return `task_${timestamp}_${random}`;
   }
 
-  private async updateTaskStatus(taskId: string, status: string): Promise<void> {
+  private async updateTaskStatus(
+    taskId: string,
+    status: string,
+  ): Promise<void> {
     const updateData: any = { status };
     if (status === 'COMPLETED' || status === 'FAILED') {
       updateData.completedAt = new Date();
@@ -446,9 +462,10 @@ export class LogAnalysisService {
 
   private async generateFinalResults(taskId: string): Promise<void> {
     // 获取所有Agent结果
-    const agentResults = await this.databaseService.agentAnalysisResult.findMany({
-      where: { taskId },
-    });
+    const agentResults =
+      await this.databaseService.agentAnalysisResult.findMany({
+        where: { taskId },
+      });
 
     // 获取用户日志问题
     const userLogIssues = await this.databaseService.userLogIssue.findMany({
@@ -457,7 +474,10 @@ export class LogAnalysisService {
 
     // 生成综合分析
     const summary = this.generateSummary(agentResults, userLogIssues);
-    const recommendations = this.generateRecommendations(agentResults, userLogIssues);
+    const recommendations = this.generateRecommendations(
+      agentResults,
+      userLogIssues,
+    );
 
     // 更新任务结果
     await this.databaseService.logAnalysisTask.update({
@@ -477,8 +497,12 @@ export class LogAnalysisService {
 
   private generateSummary(agentResults: any[], userLogIssues: any[]): string {
     const totalIssues = userLogIssues.length;
-    const criticalIssues = userLogIssues.filter(issue => issue.severity === 'CRITICAL').length;
-    const highIssues = userLogIssues.filter(issue => issue.severity === 'HIGH').length;
+    const criticalIssues = userLogIssues.filter(
+      (issue) => issue.severity === 'CRITICAL',
+    ).length;
+    const highIssues = userLogIssues.filter(
+      (issue) => issue.severity === 'HIGH',
+    ).length;
 
     if (totalIssues === 0) {
       return '未发现明显问题';
@@ -487,24 +511,29 @@ export class LogAnalysisService {
     return `发现${totalIssues}个问题，其中${criticalIssues}个严重问题，${highIssues}个高优先级问题`;
   }
 
-  private generateRecommendations(agentResults: any[], userLogIssues: any[]): string[] {
+  private generateRecommendations(
+    agentResults: any[],
+    userLogIssues: any[],
+  ): string[] {
     const recommendations = new Set<string>();
 
     // 从Agent结果中提取建议
-    agentResults.forEach(result => {
+    agentResults.forEach((result) => {
       if (result.recommendations) {
-        const agentRecs = Array.isArray(result.recommendations) 
-          ? result.recommendations 
+        const agentRecs = Array.isArray(result.recommendations)
+          ? result.recommendations
           : result.recommendations.recommendations || [];
-        agentRecs.forEach(rec => recommendations.add(rec));
+        agentRecs.forEach((rec) => recommendations.add(rec));
       }
     });
 
     // 根据问题类型生成通用建议
-    const issueTypes = [...new Set(userLogIssues.map(issue => issue.issueType))];
-    issueTypes.forEach(type => {
+    const issueTypes = [
+      ...new Set(userLogIssues.map((issue) => issue.issueType)),
+    ];
+    issueTypes.forEach((type) => {
       const typeRecommendations = this.getRecommendationsByIssueType(type);
-      typeRecommendations.forEach(rec => recommendations.add(rec));
+      typeRecommendations.forEach((rec) => recommendations.add(rec));
     });
 
     return Array.from(recommendations);
@@ -526,7 +555,7 @@ export class LogAnalysisService {
     // 参数特征分析逻辑
     const features = new Map();
 
-    issues.forEach(issue => {
+    issues.forEach((issue) => {
       const key = `${issue.apiEndpoint}_${issue.vehicleModel}`;
       if (!features.has(key)) {
         features.set(key, {
@@ -552,7 +581,7 @@ export class LogAnalysisService {
   private async findSimilarParamPatterns(input: any): Promise<any[]> {
     // 基于向量搜索查找相似参数模式
     const searchText = `${input.apiEndpoint} ${JSON.stringify(input.inputParams)}`;
-    
+
     try {
       const results = await this.vectorService.semanticSearch(searchText, {
         limit: 5,
@@ -560,7 +589,7 @@ export class LogAnalysisService {
         filters: { category: 'param_pattern' },
       });
 
-      return results.documents.map(doc => ({
+      return results.documents.map((doc) => ({
         id: doc.id,
         similarity: doc.similarity,
         ...doc.metadata,
@@ -571,33 +600,40 @@ export class LogAnalysisService {
     }
   }
 
-  private async detectParamAnomalies(input: any, similarPatterns: any[]): Promise<boolean> {
+  private async detectParamAnomalies(
+    input: any,
+    similarPatterns: any[],
+  ): Promise<boolean> {
     // 简单的异常检测逻辑
     if (similarPatterns.length === 0) {
       return false; // 没有历史数据，不判定为异常
     }
 
     // 如果有高相似度的异常模式，则判定为异常
-    return similarPatterns.some(pattern => 
-      pattern.similarity > 0.8 && pattern.isAnomalous
+    return similarPatterns.some(
+      (pattern) => pattern.similarity > 0.8 && pattern.isAnomalous,
     );
   }
 
-  private calculateAnomalyConfidence(input: any, similarPatterns: any[]): number {
+  private calculateAnomalyConfidence(
+    input: any,
+    similarPatterns: any[],
+  ): number {
     if (similarPatterns.length === 0) {
       return 0;
     }
 
-    const avgSimilarity = similarPatterns.reduce((sum, pattern) => 
-      sum + pattern.similarity, 0) / similarPatterns.length;
-    
+    const avgSimilarity =
+      similarPatterns.reduce((sum, pattern) => sum + pattern.similarity, 0) /
+      similarPatterns.length;
+
     return Math.min(avgSimilarity, 1.0);
   }
 
   private async generateParamRecommendations(
     input: any,
     similarPatterns: any[],
-    isAnomalous: boolean
+    isAnomalous: boolean,
   ): Promise<string[]> {
     const recommendations = [];
 
@@ -610,7 +646,7 @@ export class LogAnalysisService {
     }
 
     // 基于相似模式添加建议
-    similarPatterns.forEach(pattern => {
+    similarPatterns.forEach((pattern) => {
       if (pattern.recommendations) {
         recommendations.push(`参考历史解决方案: ${pattern.recommendations}`);
       }
@@ -619,9 +655,13 @@ export class LogAnalysisService {
     return recommendations;
   }
 
-  private buildDateFilter(timeRange?: string, startDate?: Date, endDate?: Date): any {
+  private buildDateFilter(
+    timeRange?: string,
+    startDate?: Date,
+    endDate?: Date,
+  ): any {
     const filter: any = {};
-    
+
     if (startDate && endDate) {
       filter.createdAt = {
         gte: startDate,
@@ -630,7 +670,7 @@ export class LogAnalysisService {
     } else if (timeRange) {
       const now = new Date();
       let start: Date;
-      
+
       switch (timeRange) {
         case 'day':
           start = new Date(now.getTime() - 24 * 60 * 60 * 1000);
@@ -644,13 +684,13 @@ export class LogAnalysisService {
         default:
           return filter;
       }
-      
+
       filter.createdAt = {
         gte: start,
         lte: now,
       };
     }
-    
+
     return filter;
   }
 
@@ -675,10 +715,10 @@ export class LogAnalysisService {
   private convertToCSV(data: any): string {
     // 简单的CSV转换实现
     const headers = Object.keys(data);
-    const values = Object.values(data).map(v => 
-      typeof v === 'object' ? JSON.stringify(v) : String(v)
+    const values = Object.values(data).map((v) =>
+      typeof v === 'object' ? JSON.stringify(v) : String(v),
     );
-    
+
     return `${headers.join(',')}\n${values.join(',')}`;
   }
 
@@ -713,7 +753,7 @@ export class LogAnalysisService {
     logCount: number;
   }> {
     const { userId, timeRange, logSources, priority, userFeedback } = options;
-    
+
     try {
       // 1. 查询用户相关的历史日志
       const existingLogs = await this.getUserLogsFromDatabase({
@@ -721,24 +761,24 @@ export class LogAnalysisService {
         startDate: timeRange?.startTime,
         endDate: timeRange?.endTime,
         sources: logSources,
-        limit: 500 // 限制查询数量
+        limit: 500, // 限制查询数量
       });
 
       if (existingLogs.length === 0) {
         return {
           taskId: '',
           message: '未找到该用户的相关日志',
-          logCount: 0
+          logCount: 0,
         };
       }
 
       // 2. 创建分析任务
       const taskId = this.generateTaskId();
-      
+
       // 创建分析任务记录 - 使用实际的Prisma模型
       // 注意：这里需要根据实际的数据库schema调整
       // 暂时跳过数据库写入，直接进行分析
-      
+
       const analysisRecord = {
         taskId,
         userId: userId,
@@ -748,7 +788,7 @@ export class LogAnalysisService {
         timeRange: timeRange || {},
         logSources: logSources || [],
         keywords: [`user:${userId}`],
-        createdAt: new Date()
+        createdAt: new Date(),
       };
 
       // 3. 将现有日志添加到任务中
@@ -771,16 +811,15 @@ export class LogAnalysisService {
       }
 
       // 4. 异步启动分析
-      this.startAnalysisAsync(taskId).catch(error => {
+      this.startAnalysisAsync(taskId).catch((error) => {
         this.logger.error(`用户日志分析任务失败: ${taskId}`, error.stack);
       });
 
       return {
         taskId,
         message: `已创建分析任务，正在分析用户${userId}的${existingLogs.length}条日志`,
-        logCount: existingLogs.length
+        logCount: existingLogs.length,
       };
-
     } catch (error) {
       this.logger.error(`用户日志分析失败: userId=${userId}`, error.stack);
       throw error;
@@ -825,12 +864,12 @@ export class LogAnalysisService {
         message: logData.message,
         stackTrace: logData.stackTrace,
         metadata: logData.metadata || {},
-        userFeedback
+        userFeedback,
       };
 
       // 2. 基础问题类型检测
       const issueType = await this.detectIssueType(normalizedLog);
-      
+
       // 3. 严重程度分析
       const riskLevel = this.analyzeSeverity(normalizedLog, issueType);
 
@@ -840,7 +879,7 @@ export class LogAnalysisService {
         severity: riskLevel,
         timestamp: normalizedLog.timestamp,
         source: normalizedLog.source,
-        detectedPatterns: []
+        detectedPatterns: [],
       };
 
       let suggestions: string[] = [];
@@ -860,17 +899,20 @@ export class LogAnalysisService {
       if (analysisOptions.enableSimilarSearch) {
         try {
           const searchText = `${normalizedLog.message} ${normalizedLog.source} ${issueType}`;
-          const searchResults = await this.vectorService.semanticSearch(searchText, {
-            limit: 5,
-            threshold: 0.6,
-            filters: { category: 'log_issue' }
-          });
-          
-          similarIssues = searchResults.documents.map(doc => ({
+          const searchResults = await this.vectorService.semanticSearch(
+            searchText,
+            {
+              limit: 5,
+              threshold: 0.6,
+              filters: { category: 'log_issue' },
+            },
+          );
+
+          similarIssues = searchResults.documents.map((doc) => ({
             id: doc.id,
             similarity: doc.similarity,
             description: doc.content,
-            metadata: doc.metadata
+            metadata: doc.metadata,
           }));
         } catch (error) {
           this.logger.warn('相似问题搜索失败', error.message);
@@ -878,14 +920,18 @@ export class LogAnalysisService {
       }
 
       // 7. 生成建议
-      suggestions = this.generateSuggestions(normalizedLog, issueType, similarIssues);
+      suggestions = this.generateSuggestions(
+        normalizedLog,
+        issueType,
+        similarIssues,
+      );
 
       // 8. 可选功能：异常检测
       if (analysisOptions.enableAnomalyDetection) {
         try {
           const anomalyScore = await this.detectAnomaly(normalizedLog);
           analysisResult.anomalyScore = anomalyScore;
-          
+
           if (anomalyScore > 0.8) {
             suggestions.unshift('⚠️ 检测到异常模式，建议立即调查');
           }
@@ -900,9 +946,8 @@ export class LogAnalysisService {
         analysisResult,
         suggestions,
         similarIssues,
-        riskLevel
+        riskLevel,
       };
-
     } catch (error) {
       this.logger.error('手动日志分析失败', error.stack);
       throw error;
@@ -929,14 +974,14 @@ export class LogAnalysisService {
       hasMore: boolean;
     };
   }> {
-    const { 
-      userId, 
-      startDate, 
-      endDate, 
-      level, 
-      source, 
-      limit = 100, 
-      offset = 0 
+    const {
+      userId,
+      startDate,
+      endDate,
+      level,
+      source,
+      limit = 100,
+      offset = 0,
     } = options;
 
     try {
@@ -974,10 +1019,10 @@ export class LogAnalysisService {
             metadata: true,
             normalizedType: true,
             severity: true,
-            category: true
-          }
+            category: true,
+          },
         }),
-        this.databaseService.logEntry.count({ where })
+        this.databaseService.logEntry.count({ where }),
       ]);
 
       return {
@@ -986,10 +1031,9 @@ export class LogAnalysisService {
         pagination: {
           limit,
           offset,
-          hasMore: offset + logs.length < totalCount
-        }
+          hasMore: offset + logs.length < totalCount,
+        },
       };
-
     } catch (error) {
       this.logger.error(`获取用户日志失败: userId=${userId}`, error.stack);
       throw error;
@@ -1028,10 +1072,10 @@ export class LogAnalysisService {
     recommendations: string[];
   }> {
     const { logEntries, checkOptions = {} } = options;
-    const { 
-      checkSeverity = true, 
-      checkPatterns = true, 
-      checkAnomalies = false 
+    const {
+      checkSeverity = true,
+      checkPatterns = true,
+      checkAnomalies = false,
     } = checkOptions;
 
     try {
@@ -1048,7 +1092,10 @@ export class LogAnalysisService {
 
       // 统计日志级别分布
       const levelCounts: Record<string, number> = {};
-      const patternCounts: Record<string, { count: number; examples: string[] }> = {};
+      const patternCounts: Record<
+        string,
+        { count: number; examples: string[] }
+      > = {};
 
       for (const logEntry of logEntries) {
         const level = logEntry.level.toUpperCase();
@@ -1067,15 +1114,17 @@ export class LogAnalysisService {
         // 检查常见错误模式
         if (checkPatterns) {
           const detectedPatterns = this.detectErrorPatterns(logEntry.message);
-          
+
           for (const pattern of detectedPatterns) {
             if (!patternCounts[pattern.type]) {
               patternCounts[pattern.type] = { count: 0, examples: [] };
             }
             patternCounts[pattern.type].count++;
-            
+
             if (patternCounts[pattern.type].examples.length < 3) {
-              patternCounts[pattern.type].examples.push(logEntry.message.substring(0, 100));
+              patternCounts[pattern.type].examples.push(
+                logEntry.message.substring(0, 100),
+              );
             }
           }
         }
@@ -1088,17 +1137,20 @@ export class LogAnalysisService {
             type: patternType,
             severity: this.getPatternSeverity(patternType),
             count: data.count,
-            examples: data.examples
+            examples: data.examples,
           });
         }
       }
 
       // 计算整体健康状态
       let overallHealth: 'GOOD' | 'WARNING' | 'CRITICAL' = 'GOOD';
-      
+
       if (criticalIssues > 0) {
         overallHealth = 'CRITICAL';
-      } else if (errorCount > logEntries.length * 0.1 || warningCount > logEntries.length * 0.3) {
+      } else if (
+        errorCount > logEntries.length * 0.1 ||
+        warningCount > logEntries.length * 0.3
+      ) {
         overallHealth = 'WARNING';
       }
 
@@ -1109,7 +1161,7 @@ export class LogAnalysisService {
         warningCount,
         criticalIssues,
         issues,
-        overallHealth
+        overallHealth,
       });
 
       return {
@@ -1118,12 +1170,11 @@ export class LogAnalysisService {
           totalLogs: logEntries.length,
           errorCount,
           warningCount,
-          criticalIssues
+          criticalIssues,
         },
         issues,
-        recommendations
+        recommendations,
       };
-
     } catch (error) {
       this.logger.error('快速日志检查失败', error.stack);
       throw error;
@@ -1149,8 +1200,8 @@ export class LogAnalysisService {
         service: 'payment-service',
         message: 'Payment failed for user order',
         userId: options.userId,
-        metadata: { orderId: '12345', retCode: 500 }
-      }
+        metadata: { orderId: '12345', retCode: 500 },
+      },
     ];
   }
 
@@ -1173,18 +1224,25 @@ export class LogAnalysisService {
     return 'INFO_LOG';
   }
 
-  private analyzeSeverity(logEntry: any, issueType: string): 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' {
-    const severityMap: Record<string, 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'> = {
-      'BACKEND_RET_ERROR': 'HIGH',
-      'FRONTEND_JS_ERROR': 'MEDIUM',
-      'GENERIC_ERROR': 'MEDIUM',
-      'INFO_LOG': 'LOW'
-    };
+  private analyzeSeverity(
+    logEntry: any,
+    issueType: string,
+  ): 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' {
+    const severityMap: Record<string, 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'> =
+      {
+        BACKEND_RET_ERROR: 'HIGH',
+        FRONTEND_JS_ERROR: 'MEDIUM',
+        GENERIC_ERROR: 'MEDIUM',
+        INFO_LOG: 'LOW',
+      };
 
     let severity = severityMap[issueType] || 'LOW';
 
     // 支付相关问题提升优先级
-    if (logEntry.metadata?.affectsPayment || logEntry.message.toLowerCase().includes('payment')) {
+    if (
+      logEntry.metadata?.affectsPayment ||
+      logEntry.message.toLowerCase().includes('payment')
+    ) {
       severity = 'CRITICAL';
     }
 
@@ -1197,36 +1255,40 @@ export class LogAnalysisService {
       {
         type: 'LOG_LEVEL',
         value: logEntry.level,
-        importance: 0.8
+        importance: 0.8,
       },
       {
         type: 'SOURCE',
         value: logEntry.source,
-        importance: 0.7
-      }
+        importance: 0.7,
+      },
     ];
   }
 
-  private generateSuggestions(logEntry: any, issueType: string, similarIssues: any[]): string[] {
+  private generateSuggestions(
+    logEntry: any,
+    issueType: string,
+    similarIssues: any[],
+  ): string[] {
     const suggestions: string[] = [];
 
     // 基于问题类型的建议
     const typeSuggestions: Record<string, string[]> = {
-      'BACKEND_RET_ERROR': [
+      BACKEND_RET_ERROR: [
         '检查API返回码的业务逻辑',
         '验证服务依赖是否正常',
-        '查看相关服务的健康状态'
+        '查看相关服务的健康状态',
       ],
-      'FRONTEND_JS_ERROR': [
+      FRONTEND_JS_ERROR: [
         '检查前端代码的错误处理',
         '验证组件的生命周期管理',
-        '确认数据格式是否正确'
+        '确认数据格式是否正确',
       ],
-      'GENERIC_ERROR': [
+      GENERIC_ERROR: [
         '查看完整的错误堆栈',
         '检查相关的系统资源',
-        '确认操作的前置条件'
-      ]
+        '确认操作的前置条件',
+      ],
     };
 
     if (typeSuggestions[issueType]) {
@@ -1236,11 +1298,11 @@ export class LogAnalysisService {
     // 基于相似问题的建议
     if (similarIssues.length > 0) {
       suggestions.push('参考相似问题的解决方案');
-      
+
       const resolutions = similarIssues
-        .map(issue => issue.metadata?.resolution)
+        .map((issue) => issue.metadata?.resolution)
         .filter(Boolean);
-      
+
       if (resolutions.length > 0) {
         suggestions.push(`历史解决方案：${resolutions[0]}`);
       }
@@ -1259,11 +1321,17 @@ export class LogAnalysisService {
     }
 
     // 检查是否包含异常关键词
-    const anomalyKeywords = ['crash', 'panic', 'fatal', 'corruption', 'memory leak'];
-    const hasAnomalyKeyword = anomalyKeywords.some(keyword => 
-      logEntry.message.toLowerCase().includes(keyword)
+    const anomalyKeywords = [
+      'crash',
+      'panic',
+      'fatal',
+      'corruption',
+      'memory leak',
+    ];
+    const hasAnomalyKeyword = anomalyKeywords.some((keyword) =>
+      logEntry.message.toLowerCase().includes(keyword),
     );
-    
+
     if (hasAnomalyKeyword) {
       score += 0.5;
     }
@@ -1277,52 +1345,62 @@ export class LogAnalysisService {
   }
 
   private isCriticalError(logEntry: any): boolean {
-    const criticalKeywords = ['fatal', 'critical', 'panic', 'crash', 'deadlock'];
-    
-    return logEntry.level === 'ERROR' && 
-           criticalKeywords.some(keyword => 
-             logEntry.message.toLowerCase().includes(keyword)
-           );
+    const criticalKeywords = [
+      'fatal',
+      'critical',
+      'panic',
+      'crash',
+      'deadlock',
+    ];
+
+    return (
+      logEntry.level === 'ERROR' &&
+      criticalKeywords.some((keyword) =>
+        logEntry.message.toLowerCase().includes(keyword),
+      )
+    );
   }
 
-  private detectErrorPatterns(message: string): Array<{ type: string; confidence: number }> {
+  private detectErrorPatterns(
+    message: string,
+  ): Array<{ type: string; confidence: number }> {
     const patterns = [
       {
         regex: /null.*reference|cannot.*read.*property.*null/i,
         type: 'NULL_POINTER_ERROR',
-        confidence: 0.9
+        confidence: 0.9,
       },
       {
         regex: /timeout|timed.*out/i,
         type: 'TIMEOUT_ERROR',
-        confidence: 0.8
+        confidence: 0.8,
       },
       {
         regex: /connection.*failed|connection.*refused/i,
         type: 'CONNECTION_ERROR',
-        confidence: 0.8
+        confidence: 0.8,
       },
       {
         regex: /memory.*error|out.*of.*memory/i,
         type: 'MEMORY_ERROR',
-        confidence: 0.9
-      }
+        confidence: 0.9,
+      },
     ];
 
     return patterns
-      .filter(pattern => pattern.regex.test(message))
-      .map(pattern => ({
+      .filter((pattern) => pattern.regex.test(message))
+      .map((pattern) => ({
         type: pattern.type,
-        confidence: pattern.confidence
+        confidence: pattern.confidence,
       }));
   }
 
   private getPatternSeverity(patternType: string): string {
     const severityMap: Record<string, string> = {
-      'NULL_POINTER_ERROR': 'HIGH',
-      'TIMEOUT_ERROR': 'MEDIUM',
-      'CONNECTION_ERROR': 'HIGH',
-      'MEMORY_ERROR': 'CRITICAL'
+      NULL_POINTER_ERROR: 'HIGH',
+      TIMEOUT_ERROR: 'MEDIUM',
+      CONNECTION_ERROR: 'HIGH',
+      MEMORY_ERROR: 'CRITICAL',
     };
 
     return severityMap[patternType] || 'MEDIUM';
@@ -1351,12 +1429,16 @@ export class LogAnalysisService {
     }
 
     // 基于具体问题类型的建议
-    const memoryIssues = healthData.issues.filter(issue => issue.type === 'MEMORY_ERROR');
+    const memoryIssues = healthData.issues.filter(
+      (issue) => issue.type === 'MEMORY_ERROR',
+    );
     if (memoryIssues.length > 0) {
       recommendations.push('💾 检测到内存问题，建议检查内存泄漏');
     }
 
-    const connectionIssues = healthData.issues.filter(issue => issue.type === 'CONNECTION_ERROR');
+    const connectionIssues = healthData.issues.filter(
+      (issue) => issue.type === 'CONNECTION_ERROR',
+    );
     if (connectionIssues.length > 0) {
       recommendations.push('🔗 检测到连接问题，建议检查网络和服务依赖');
     }
@@ -1367,4 +1449,4 @@ export class LogAnalysisService {
 
     return recommendations;
   }
-} 
+}

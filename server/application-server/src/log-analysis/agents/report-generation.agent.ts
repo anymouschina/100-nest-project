@@ -8,4 +8,4 @@ export class ReportGenerationAgent {
     this.logger.debug('生成分析报告');
     return {};
   }
-} 
+}

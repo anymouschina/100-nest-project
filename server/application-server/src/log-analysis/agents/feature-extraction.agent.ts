@@ -8,4 +8,4 @@ export class FeatureExtractionAgent {
     this.logger.debug('提取特征');
     return {};
   }
-} 
+}

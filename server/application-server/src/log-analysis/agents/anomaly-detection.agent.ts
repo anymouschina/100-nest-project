@@ -8,4 +8,4 @@ export class AnomalyDetectionAgent {
     this.logger.debug('检测异常');
     return {};
   }
-} 
+}

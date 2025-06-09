@@ -10,6 +10,8 @@ import SessionsPage from './pages/SessionsPage'
 import SettingsPage from './pages/SettingsPage'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
+import LogAnalysisPage from './pages/LogAnalysisPage'
+import UserLogsPage from './pages/UserLogsPage'
 import ProtectedRoute from './components/ProtectedRoute'
 
 function App() {
@@ -58,6 +60,22 @@ function App() {
               element={
                 <ProtectedRoute>
                   <SettingsPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="log-analysis" 
+              element={
+                <ProtectedRoute>
+                  <LogAnalysisPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="user-logs" 
+              element={
+                <ProtectedRoute>
+                  <UserLogsPage />
                 </ProtectedRoute>
               } 
             />

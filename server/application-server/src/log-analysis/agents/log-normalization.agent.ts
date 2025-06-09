@@ -16,32 +16,31 @@ export class LogNormalizationAgent {
    */
   async normalizeLog(logEntry: any): Promise<any> {
     this.logger.debug(`开始归一化日志: ${logEntry.id}`);
-    
+
     try {
       // 1. 基础归一化
       const normalized = await this.performBasicNormalization(logEntry);
-      
+
       // 2. 错误类型归一化
       const errorType = this.normalizeErrorType(logEntry);
-      
+
       // 3. 严重程度归一化
       const severity = this.normalizeSeverity(logEntry, errorType);
-      
+
       // 4. 分类归一化
       const category = this.normalizeCategory(logEntry, errorType);
-      
+
       const result = {
         ...logEntry,
         normalizedType: errorType,
         severity,
         category,
         isProcessed: true,
-        normalizedAt: new Date()
+        normalizedAt: new Date(),
       };
 
       this.logger.debug(`归一化完成: ${logEntry.id} -> ${errorType}`);
       return result;
-      
     } catch (error) {
       this.logger.error(`归一化失败: ${logEntry.id}`, error.stack);
       return {
@@ -49,7 +48,7 @@ export class LogNormalizationAgent {
         normalizedType: 'UNKNOWN',
         severity: 1,
         category: 'UNPROCESSED',
-        isProcessed: false
+        isProcessed: false,
       };
     }
   }
@@ -130,7 +129,7 @@ export class LogNormalizationAgent {
     // 8. 默认分类
     if (level === 'ERROR') return 'GENERIC_ERROR';
     if (level === 'WARN') return 'GENERIC_WARNING';
-    
+
     return 'INFO_LOG';
   }
 
@@ -140,33 +139,36 @@ export class LogNormalizationAgent {
   private normalizeSeverity(logEntry: any, errorType: string): number {
     // 基于错误类型的基础严重程度
     const baseSeverity: Record<string, number> = {
-      'BLOCKING_ERROR': 5,           // 最高优先级
-      'BACKEND_SERVER_ERROR': 4,     // 服务器错误
-      'KEY_FLOW_ERROR': 4,          // 关键流程
-      'BACKEND_CLIENT_ERROR': 3,     // 客户端错误  
-      'BACKEND_BUSINESS_ERROR': 3,   // 业务错误
-      'BUSINESS_PARAM_ERROR': 3,     // 业务参数
-      'VEHICLE_SPEC_ERROR': 3,      // 车型规格
-      'FRONTEND_NETWORK_ERROR': 3,   // 网络错误
-      'FRONTEND_TYPE_ERROR': 2,      // 类型错误
-      'FRONTEND_REFERENCE_ERROR': 2, // 引用错误
-      'FRONTEND_JS_ERROR': 2,       // JS错误
-      'PAGE_UNLOAD_ERROR': 1,       // 页面卸载
-      'GENERIC_ERROR': 2,           // 通用错误
-      'GENERIC_WARNING': 1,         // 警告
-      'INFO_LOG': 1                 // 信息日志
+      BLOCKING_ERROR: 5, // 最高优先级
+      BACKEND_SERVER_ERROR: 4, // 服务器错误
+      KEY_FLOW_ERROR: 4, // 关键流程
+      BACKEND_CLIENT_ERROR: 3, // 客户端错误
+      BACKEND_BUSINESS_ERROR: 3, // 业务错误
+      BUSINESS_PARAM_ERROR: 3, // 业务参数
+      VEHICLE_SPEC_ERROR: 3, // 车型规格
+      FRONTEND_NETWORK_ERROR: 3, // 网络错误
+      FRONTEND_TYPE_ERROR: 2, // 类型错误
+      FRONTEND_REFERENCE_ERROR: 2, // 引用错误
+      FRONTEND_JS_ERROR: 2, // JS错误
+      PAGE_UNLOAD_ERROR: 1, // 页面卸载
+      GENERIC_ERROR: 2, // 通用错误
+      GENERIC_WARNING: 1, // 警告
+      INFO_LOG: 1, // 信息日志
     };
 
     let severity = baseSeverity[errorType] || 1;
 
     // 调整因子
     const { metadata } = logEntry;
-    
+
     // 支付相关 +2
-    if (metadata?.affectsPayment || metadata?.apiEndpoint?.includes('payment')) {
+    if (
+      metadata?.affectsPayment ||
+      metadata?.apiEndpoint?.includes('payment')
+    ) {
       severity = Math.min(5, severity + 2);
     }
-    
+
     // 用户影响范围调整
     if (metadata?.affectedUsers && metadata.affectedUsers > 100) {
       severity = Math.min(5, severity + 1);
@@ -181,21 +183,21 @@ export class LogNormalizationAgent {
   private normalizeCategory(logEntry: any, errorType: string): string {
     // 基于错误类型的分类映射
     const categoryMap: Record<string, string> = {
-      'BLOCKING_ERROR': 'SYSTEM',
-      'BACKEND_SERVER_ERROR': 'BACKEND',
-      'BACKEND_CLIENT_ERROR': 'BACKEND', 
-      'BACKEND_BUSINESS_ERROR': 'BUSINESS',
-      'KEY_FLOW_ERROR': 'BUSINESS',
-      'BUSINESS_PARAM_ERROR': 'BUSINESS',
-      'VEHICLE_SPEC_ERROR': 'BUSINESS',
-      'FRONTEND_NETWORK_ERROR': 'NETWORK',
-      'FRONTEND_TYPE_ERROR': 'FRONTEND',
-      'FRONTEND_REFERENCE_ERROR': 'FRONTEND',
-      'FRONTEND_JS_ERROR': 'FRONTEND',
-      'PAGE_UNLOAD_ERROR': 'FRONTEND',
-      'GENERIC_ERROR': 'SYSTEM',
-      'GENERIC_WARNING': 'SYSTEM',
-      'INFO_LOG': 'INFO'
+      BLOCKING_ERROR: 'SYSTEM',
+      BACKEND_SERVER_ERROR: 'BACKEND',
+      BACKEND_CLIENT_ERROR: 'BACKEND',
+      BACKEND_BUSINESS_ERROR: 'BUSINESS',
+      KEY_FLOW_ERROR: 'BUSINESS',
+      BUSINESS_PARAM_ERROR: 'BUSINESS',
+      VEHICLE_SPEC_ERROR: 'BUSINESS',
+      FRONTEND_NETWORK_ERROR: 'NETWORK',
+      FRONTEND_TYPE_ERROR: 'FRONTEND',
+      FRONTEND_REFERENCE_ERROR: 'FRONTEND',
+      FRONTEND_JS_ERROR: 'FRONTEND',
+      PAGE_UNLOAD_ERROR: 'FRONTEND',
+      GENERIC_ERROR: 'SYSTEM',
+      GENERIC_WARNING: 'SYSTEM',
+      INFO_LOG: 'INFO',
     };
 
     return categoryMap[errorType] || 'UNKNOWN';
@@ -209,21 +211,24 @@ export class LogNormalizationAgent {
 
     // 标准化API端点
     if (normalized.apiEndpoint || normalized.endpoint || normalized.api) {
-      normalized.apiEndpoint = normalized.apiEndpoint || normalized.endpoint || normalized.api;
+      normalized.apiEndpoint =
+        normalized.apiEndpoint || normalized.endpoint || normalized.api;
       delete normalized.endpoint;
       delete normalized.api;
     }
 
     // 标准化返回码
     if (normalized.retCode || normalized.returnCode || normalized.code) {
-      normalized.retCode = normalized.retCode || normalized.returnCode || normalized.code;
+      normalized.retCode =
+        normalized.retCode || normalized.returnCode || normalized.code;
       delete normalized.returnCode;
       delete normalized.code;
     }
 
     // 标准化用户ID
     if (normalized.userId || normalized.uid || normalized.user_id) {
-      normalized.userId = normalized.userId || normalized.uid || normalized.user_id;
+      normalized.userId =
+        normalized.userId || normalized.uid || normalized.user_id;
       delete normalized.uid;
       delete normalized.user_id;
     }
@@ -235,41 +240,56 @@ export class LogNormalizationAgent {
 
   private isBlockingPattern(message: string, metadata: any): boolean {
     const blockingKeywords = [
-      'timeout', 'connection failed', 'service unavailable',
-      'database error', 'memory error', 'disk full'
+      'timeout',
+      'connection failed',
+      'service unavailable',
+      'database error',
+      'memory error',
+      'disk full',
     ];
-    
-    return blockingKeywords.some(keyword => 
-      message.toLowerCase().includes(keyword)
-    ) || metadata?.retCode >= 500;
+
+    return (
+      blockingKeywords.some((keyword) =>
+        message.toLowerCase().includes(keyword),
+      ) || metadata?.retCode >= 500
+    );
   }
 
   private isKeyFlowPattern(apiEndpoint?: string): boolean {
     if (!apiEndpoint) return false;
-    
+
     const keyFlowApis = [
-      '/api/orders', '/api/payment', '/api/cart',
-      '/api/auth/login', '/api/user/register'
+      '/api/orders',
+      '/api/payment',
+      '/api/cart',
+      '/api/auth/login',
+      '/api/user/register',
     ];
-    
-    return keyFlowApis.some(api => apiEndpoint.includes(api));
+
+    return keyFlowApis.some((api) => apiEndpoint.includes(api));
   }
 
   private isBusinessParamPattern(message: string, metadata: any): boolean {
-    return message.includes('Invalid parameter') ||
-           message.includes('Parameter validation') ||
-           metadata?.inputParams !== undefined;
+    return (
+      message.includes('Invalid parameter') ||
+      message.includes('Parameter validation') ||
+      metadata?.inputParams !== undefined
+    );
   }
 
   private isVehicleSpecPattern(metadata: any): boolean {
-    return metadata?.vehicleModel !== undefined ||
-           metadata?.specifications !== undefined;
+    return (
+      metadata?.vehicleModel !== undefined ||
+      metadata?.specifications !== undefined
+    );
   }
 
   private isPageUnloadPattern(message: string, source: string): boolean {
     const unloadKeywords = ['unload', 'unmount', 'route change', 'navigation'];
-    return source === 'frontend' && 
-           unloadKeywords.some(keyword => message.toLowerCase().includes(keyword));
+    return (
+      source === 'frontend' &&
+      unloadKeywords.some((keyword) => message.toLowerCase().includes(keyword))
+    );
   }
 
   /**
@@ -277,15 +297,17 @@ export class LogNormalizationAgent {
    */
   async normalizeBatch(logEntries: any[]): Promise<any[]> {
     this.logger.log(`开始批量归一化: ${logEntries.length} 条日志`);
-    
+
     const startTime = Date.now();
     const results = await Promise.all(
-      logEntries.map(entry => this.normalizeLog(entry))
+      logEntries.map((entry) => this.normalizeLog(entry)),
     );
-    
+
     const duration = Date.now() - startTime;
-    this.logger.log(`批量归一化完成: 耗时 ${duration}ms, 平均 ${(duration/logEntries.length).toFixed(2)}ms/条`);
-    
+    this.logger.log(
+      `批量归一化完成: 耗时 ${duration}ms, 平均 ${(duration / logEntries.length).toFixed(2)}ms/条`,
+    );
+
     return results;
   }
-} 
+}

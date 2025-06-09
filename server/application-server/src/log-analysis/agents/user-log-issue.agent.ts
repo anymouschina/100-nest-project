@@ -49,10 +49,13 @@ export class UserLogIssueAgent {
 
       // 分析每个日志条目
       for (const logEntry of task.logEntries) {
-        const analysisResult = await this.analyzeSingleLogEntry(logEntry, taskId);
+        const analysisResult = await this.analyzeSingleLogEntry(
+          logEntry,
+          taskId,
+        );
         if (analysisResult) {
           issues.push(analysisResult);
-          
+
           // 保存问题到数据库
           await this.saveUserLogIssue(taskId, logEntry.id, analysisResult);
         }
@@ -70,7 +73,9 @@ export class UserLogIssueAgent {
         confidence: summary.confidence,
       });
 
-      this.logger.log(`用户日志问题分析完成: ${taskId}, 发现问题: ${issues.length}`);
+      this.logger.log(
+        `用户日志问题分析完成: ${taskId}, 发现问题: ${issues.length}`,
+      );
     } catch (error) {
       this.logger.error(`用户日志问题分析失败: ${taskId}`, error.stack);
       await this.markAgentFailed(taskId, error.message);
@@ -145,7 +150,11 @@ export class UserLogIssueAgent {
     }
 
     // 前端JS错误
-    if (source === 'frontend' && level === 'ERROR' && message.includes('Error')) {
+    if (
+      source === 'frontend' &&
+      level === 'ERROR' &&
+      message.includes('Error')
+    ) {
       return 'FRONTEND_JS_ERROR';
     }
 
@@ -189,7 +198,7 @@ export class UserLogIssueAgent {
       /database.*error/i,
     ];
 
-    return blockingPatterns.some(pattern => pattern.test(logEntry.message));
+    return blockingPatterns.some((pattern) => pattern.test(logEntry.message));
   }
 
   /**
@@ -204,10 +213,11 @@ export class UserLogIssueAgent {
       '/api/user/register',
     ];
 
-    const apiEndpoint = logEntry.metadata?.apiEndpoint || logEntry.metadata?.endpoint;
+    const apiEndpoint =
+      logEntry.metadata?.apiEndpoint || logEntry.metadata?.endpoint;
     if (!apiEndpoint) return false;
 
-    return keyFlowApis.some(api => apiEndpoint.includes(api));
+    return keyFlowApis.some((api) => apiEndpoint.includes(api));
   }
 
   /**
@@ -223,7 +233,7 @@ export class UserLogIssueAgent {
 
     return (
       logEntry.source === 'frontend' &&
-      unloadPatterns.some(pattern => pattern.test(logEntry.message))
+      unloadPatterns.some((pattern) => pattern.test(logEntry.message))
     );
   }
 
@@ -236,7 +246,7 @@ export class UserLogIssueAgent {
 
     // 检查计价相关参数
     const pricingParams = ['vehicleModel', 'specifications', 'serviceType'];
-    const hasUnexpectedParams = pricingParams.some(param => {
+    const hasUnexpectedParams = pricingParams.some((param) => {
       const value = metadata.inputParams[param];
       return value && this.isUnexpectedParamValue(param, value);
     });
@@ -287,13 +297,15 @@ export class UserLogIssueAgent {
     const validSpecs = await this.getValidSpecifications(vehicleModel);
     const inputSpecs = Object.keys(specifications);
 
-    return inputSpecs.some(spec => !validSpecs.includes(spec));
+    return inputSpecs.some((spec) => !validSpecs.includes(spec));
   }
 
   /**
    * 获取有效规格列表
    */
-  private async getValidSpecifications(vehicleModel: string): Promise<string[]> {
+  private async getValidSpecifications(
+    vehicleModel: string,
+  ): Promise<string[]> {
     // 模拟数据，实际应该从配置库获取
     const specMapping = {
       ModelA: ['engine', 'transmission', 'color'],
@@ -313,14 +325,17 @@ export class UserLogIssueAgent {
       const searchText = this.buildSearchText(logEntry);
 
       // 向量语义搜索
-      const vectorResults = await this.vectorService.semanticSearch(searchText, {
-        limit: 5,
-        threshold: 0.7,
-        filters: { category: 'log_issue' },
-      });
+      const vectorResults = await this.vectorService.semanticSearch(
+        searchText,
+        {
+          limit: 5,
+          threshold: 0.7,
+          filters: { category: 'log_issue' },
+        },
+      );
 
       // 转换为相似问题格式
-      return vectorResults.documents.map(doc => ({
+      return vectorResults.documents.map((doc) => ({
         id: doc.id,
         similarity: doc.similarity || 0,
         resolution: doc.metadata.resolution,
@@ -382,9 +397,12 @@ export class UserLogIssueAgent {
   /**
    * 分析根因
    */
-  private async analyzeRootCause(logEntry: any, similarIssues: any[]): Promise<string> {
+  private async analyzeRootCause(
+    logEntry: any,
+    similarIssues: any[],
+  ): Promise<string> {
     const commonCauses = this.extractCommonCauses(similarIssues);
-    
+
     if (commonCauses.length > 0) {
       return `基于相似问题分析，可能的根因：${commonCauses.join('; ')}`;
     }
@@ -398,7 +416,7 @@ export class UserLogIssueAgent {
    */
   private extractCommonCauses(similarIssues: any[]): string[] {
     const causes = similarIssues
-      .map(issue => issue.rootCause)
+      .map((issue) => issue.rootCause)
       .filter(Boolean);
 
     return [...new Set(causes)];
@@ -468,7 +486,7 @@ export class UserLogIssueAgent {
 
     // 基于相似问题的建议
     const resolutions = similarIssues
-      .map(issue => issue.resolution)
+      .map((issue) => issue.resolution)
       .filter(Boolean);
 
     if (resolutions.length > 0) {
@@ -486,7 +504,9 @@ export class UserLogIssueAgent {
 
     // 有相似问题提升置信度
     if (similarIssues.length > 0) {
-      const avgSimilarity = similarIssues.reduce((sum, issue) => sum + issue.similarity, 0) / similarIssues.length;
+      const avgSimilarity =
+        similarIssues.reduce((sum, issue) => sum + issue.similarity, 0) /
+        similarIssues.length;
       confidence += avgSimilarity * 0.3;
     }
 
@@ -508,9 +528,10 @@ export class UserLogIssueAgent {
    */
   private async checkWhitelist(logEntry: any): Promise<boolean> {
     try {
-      const whitelistRules = await this.databaseService.issueWhitelistRule.findMany({
-        where: { isActive: true },
-      });
+      const whitelistRules =
+        await this.databaseService.issueWhitelistRule.findMany({
+          where: { isActive: true },
+        });
 
       for (const rule of whitelistRules) {
         if (await this.matchesWhitelistRule(logEntry, rule)) {
@@ -528,7 +549,10 @@ export class UserLogIssueAgent {
   /**
    * 匹配白名单规则
    */
-  private async matchesWhitelistRule(logEntry: any, rule: any): Promise<boolean> {
+  private async matchesWhitelistRule(
+    logEntry: any,
+    rule: any,
+  ): Promise<boolean> {
     const conditions = rule.conditions;
 
     for (const [key, value] of Object.entries(conditions)) {
@@ -644,7 +668,10 @@ export class UserLogIssueAgent {
     });
   }
 
-  private async updateAgentResult(taskId: string, findings: any): Promise<void> {
+  private async updateAgentResult(
+    taskId: string,
+    findings: any,
+  ): Promise<void> {
     await this.databaseService.agentAnalysisResult.updateMany({
       where: {
         taskId,
@@ -674,12 +701,12 @@ export class UserLogIssueAgent {
   }
 
   private extractIssueTypes(issues: LogIssueAnalysisResult[]): string[] {
-    return [...new Set(issues.map(issue => issue.issueType))];
+    return [...new Set(issues.map((issue) => issue.issueType))];
   }
 
   private calculateSeverityDistribution(issues: LogIssueAnalysisResult[]): any {
     const distribution = { LOW: 0, MEDIUM: 0, HIGH: 0, CRITICAL: 0 };
-    issues.forEach(issue => {
+    issues.forEach((issue) => {
       distribution[issue.severity]++;
     });
     return distribution;
@@ -689,16 +716,18 @@ export class UserLogIssueAgent {
     recommendations: string[];
     confidence: number;
   }> {
-    const allRecommendations = issues.flatMap(issue => issue.recommendations);
+    const allRecommendations = issues.flatMap((issue) => issue.recommendations);
     const uniqueRecommendations = [...new Set(allRecommendations)];
-    
-    const avgConfidence = issues.length > 0 
-      ? issues.reduce((sum, issue) => sum + issue.confidence, 0) / issues.length
-      : 0;
+
+    const avgConfidence =
+      issues.length > 0
+        ? issues.reduce((sum, issue) => sum + issue.confidence, 0) /
+          issues.length
+        : 0;
 
     return {
       recommendations: uniqueRecommendations.slice(0, 10), // 限制推荐数量
       confidence: avgConfidence,
     };
   }
-} 
+}

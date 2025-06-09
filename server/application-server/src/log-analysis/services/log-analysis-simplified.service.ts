@@ -56,13 +56,13 @@ export class LogAnalysisSimplifiedService {
     logCount: number;
   }> {
     const { userId, userFeedback } = options;
-    
+
     try {
       // 模拟查询用户日志
       const simulatedLogs = this.generateUserLogs(userId);
-      
+
       const taskId = this.generateTaskId();
-      
+
       this.logger.log(`创建用户日志分析任务: ${taskId}, 用户ID: ${userId}`);
 
       // 模拟异步分析过程
@@ -73,9 +73,8 @@ export class LogAnalysisSimplifiedService {
       return {
         taskId,
         message: `已创建分析任务，正在分析用户${userId}的${simulatedLogs.length}条日志`,
-        logCount: simulatedLogs.length
+        logCount: simulatedLogs.length,
       };
-
     } catch (error) {
       this.logger.error(`用户日志分析失败: userId=${userId}`, error.stack);
       throw error;
@@ -87,15 +86,17 @@ export class LogAnalysisSimplifiedService {
    */
   async analyzeManualLog(options: {
     userFeedback: string;
-    logData: string[] | {
-      timestamp?: Date;
-      level: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR' | 'FATAL';
-      source: string;
-      service?: string;
-      message: string;
-      stackTrace?: string;
-      metadata?: Record<string, any>;
-    };
+    logData:
+      | string[]
+      | {
+          timestamp?: Date;
+          level: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR' | 'FATAL';
+          source: string;
+          service?: string;
+          message: string;
+          stackTrace?: string;
+          metadata?: Record<string, any>;
+        };
     analysisOptions?: {
       enableFeatureExtraction?: boolean;
       enableSimilarSearch?: boolean;
@@ -128,7 +129,7 @@ export class LogAnalysisSimplifiedService {
           service: logData.service || 'unknown',
           message: logData.message,
           stackTrace: logData.stackTrace,
-          metadata: logData.metadata || {}
+          metadata: logData.metadata || {},
         };
       }
 
@@ -136,12 +137,12 @@ export class LogAnalysisSimplifiedService {
       const normalizedLog = {
         id: `manual_${Date.now()}`,
         ...parsedLogData,
-        userFeedback
+        userFeedback,
       };
 
       // 2. 基础问题类型检测
       const issueType = this.detectIssueType(normalizedLog);
-      
+
       // 3. 严重程度分析
       const riskLevel = this.analyzeSeverity(normalizedLog, issueType);
 
@@ -151,7 +152,7 @@ export class LogAnalysisSimplifiedService {
         severity: riskLevel,
         timestamp: normalizedLog.timestamp,
         source: normalizedLog.source,
-                 detectedPatterns: this.detectErrorPatterns(parsedLogData.message)
+        detectedPatterns: this.detectErrorPatterns(parsedLogData.message),
       };
 
       let suggestions: string[] = [];
@@ -159,7 +160,8 @@ export class LogAnalysisSimplifiedService {
 
       // 5. 可选功能处理
       if (analysisOptions.enableFeatureExtraction) {
-        analysisResult.extractedFeatures = this.extractBasicFeatures(normalizedLog);
+        analysisResult.extractedFeatures =
+          this.extractBasicFeatures(normalizedLog);
       }
 
       if (analysisOptions.enableSimilarSearch) {
@@ -169,121 +171,139 @@ export class LogAnalysisSimplifiedService {
       if (analysisOptions.enableAnomalyDetection) {
         const anomalyScore = this.detectAnomaly(normalizedLog);
         analysisResult.anomalyScore = anomalyScore;
-        
+
         if (anomalyScore > 0.8) {
           suggestions.unshift('⚠️ 检测到异常模式，建议立即调查');
         }
       }
 
-             // 6. 生成建议
-       suggestions.push(...this.generateSuggestions(normalizedLog, issueType, similarIssues));
+      // 6. 生成建议
+      suggestions.push(
+        ...this.generateSuggestions(normalizedLog, issueType, similarIssues),
+      );
 
-       this.logger.log(`手动日志分析完成: ${issueType}, 风险等级: ${riskLevel}`);
+      this.logger.log(`手动日志分析完成: ${issueType}, 风险等级: ${riskLevel}`);
 
-       return {
-         analysisResult,
-         suggestions,
-         similarIssues,
-         riskLevel
-       };
+      return {
+        analysisResult,
+        suggestions,
+        similarIssues,
+        riskLevel,
+      };
+    } catch (error) {
+      this.logger.error('手动日志分析失败', error.stack);
+      throw error;
+    }
+  }
 
-     } catch (error) {
-       this.logger.error('手动日志分析失败', error.stack);
-       throw error;
-     }
-   }
+  /**
+   * 解析字符串数组格式的日志
+   */
+  private parseLogStrings(logStrings: string[]): {
+    timestamp: Date;
+    level: string;
+    source: string;
+    service: string;
+    message: string;
+    stackTrace?: string;
+    metadata: Record<string, any>;
+  } {
+    // 将所有日志字符串合并
+    const combinedLogs = logStrings.join('\n');
 
-   /**
-    * 解析字符串数组格式的日志
-    */
-   private parseLogStrings(logStrings: string[]): {
-     timestamp: Date;
-     level: string;
-     source: string;
-     service: string;
-     message: string;
-     stackTrace?: string;
-     metadata: Record<string, any>;
-   } {
-     // 将所有日志字符串合并
-     const combinedLogs = logStrings.join('\n');
-     
-     // 尝试从日志字符串中提取信息
-     const result = {
-       timestamp: new Date(),
-       level: 'ERROR', // 默认级别
-       source: 'unknown',
-       service: 'unknown',
-       message: combinedLogs,
-       stackTrace: undefined as string | undefined,
-       metadata: {} as Record<string, any>
-     };
+    // 尝试从日志字符串中提取信息
+    const result = {
+      timestamp: new Date(),
+      level: 'ERROR', // 默认级别
+      source: 'unknown',
+      service: 'unknown',
+      message: combinedLogs,
+      stackTrace: undefined as string | undefined,
+      metadata: {} as Record<string, any>,
+    };
 
-     // 检测日志级别
-     const levelMatch = combinedLogs.match(/\b(DEBUG|INFO|WARN|WARNING|ERROR|FATAL|CRITICAL)\b/i);
-     if (levelMatch) {
-       result.level = levelMatch[1].toUpperCase();
-     }
+    // 检测日志级别
+    const levelMatch = combinedLogs.match(
+      /\b(DEBUG|INFO|WARN|WARNING|ERROR|FATAL|CRITICAL)\b/i,
+    );
+    if (levelMatch) {
+      result.level = levelMatch[1].toUpperCase();
+    }
 
-     // 检测来源
-     if (combinedLogs.toLowerCase().includes('frontend') || combinedLogs.toLowerCase().includes('react') || combinedLogs.toLowerCase().includes('js')) {
-       result.source = 'frontend';
-     } else if (combinedLogs.toLowerCase().includes('backend') || combinedLogs.toLowerCase().includes('server') || combinedLogs.toLowerCase().includes('api')) {
-       result.source = 'backend';
-     } else if (combinedLogs.toLowerCase().includes('mobile') || combinedLogs.toLowerCase().includes('app') || combinedLogs.toLowerCase().includes('ios') || combinedLogs.toLowerCase().includes('android')) {
-       result.source = 'mobile';
-     }
+    // 检测来源
+    if (
+      combinedLogs.toLowerCase().includes('frontend') ||
+      combinedLogs.toLowerCase().includes('react') ||
+      combinedLogs.toLowerCase().includes('js')
+    ) {
+      result.source = 'frontend';
+    } else if (
+      combinedLogs.toLowerCase().includes('backend') ||
+      combinedLogs.toLowerCase().includes('server') ||
+      combinedLogs.toLowerCase().includes('api')
+    ) {
+      result.source = 'backend';
+    } else if (
+      combinedLogs.toLowerCase().includes('mobile') ||
+      combinedLogs.toLowerCase().includes('app') ||
+      combinedLogs.toLowerCase().includes('ios') ||
+      combinedLogs.toLowerCase().includes('android')
+    ) {
+      result.source = 'mobile';
+    }
 
-     // 检测服务名
-     const serviceMatch = combinedLogs.match(/service[:\s]+([a-zA-Z0-9-_]+)/i);
-     if (serviceMatch) {
-       result.service = serviceMatch[1];
-     }
+    // 检测服务名
+    const serviceMatch = combinedLogs.match(/service[:\s]+([a-zA-Z0-9-_]+)/i);
+    if (serviceMatch) {
+      result.service = serviceMatch[1];
+    }
 
-     // 提取时间戳
-     const timestampMatch = combinedLogs.match(/(\d{4}-\d{2}-\d{2}[\sT]\d{2}:\d{2}:\d{2})/);
-     if (timestampMatch) {
-       try {
-         result.timestamp = new Date(timestampMatch[1]);
-       } catch (e) {
-         // 保持默认时间戳
-       }
-     }
+    // 提取时间戳
+    const timestampMatch = combinedLogs.match(
+      /(\d{4}-\d{2}-\d{2}[\sT]\d{2}:\d{2}:\d{2})/,
+    );
+    if (timestampMatch) {
+      try {
+        result.timestamp = new Date(timestampMatch[1]);
+      } catch (e) {
+        // 保持默认时间戳
+      }
+    }
 
-     // 检查是否有堆栈跟踪
-     if (combinedLogs.includes('at ') && combinedLogs.includes('(')) {
-       const stackStart = combinedLogs.indexOf('at ');
-       if (stackStart !== -1) {
-         result.stackTrace = combinedLogs.substring(stackStart);
-       }
-     }
+    // 检查是否有堆栈跟踪
+    if (combinedLogs.includes('at ') && combinedLogs.includes('(')) {
+      const stackStart = combinedLogs.indexOf('at ');
+      if (stackStart !== -1) {
+        result.stackTrace = combinedLogs.substring(stackStart);
+      }
+    }
 
-     // 提取元数据
-     try {
-       // 查找JSON格式的数据
-       const jsonMatch = combinedLogs.match(/\{[^{}]*\}/);
-       if (jsonMatch) {
-         result.metadata = JSON.parse(jsonMatch[0]);
-       }
-     } catch (e) {
-       // JSON解析失败，保持空对象
-     }
+    // 提取元数据
+    try {
+      // 查找JSON格式的数据
+      const jsonMatch = combinedLogs.match(/\{[^{}]*\}/);
+      if (jsonMatch) {
+        result.metadata = JSON.parse(jsonMatch[0]);
+      }
+    } catch (e) {
+      // JSON解析失败，保持空对象
+    }
 
-     // 简化消息，移除重复信息
-     let cleanMessage = combinedLogs;
-     if (result.stackTrace) {
-       cleanMessage = cleanMessage.replace(result.stackTrace, '').trim();
-     }
-     
-     // 限制消息长度
-     if (cleanMessage.length > 500) {
-       cleanMessage = cleanMessage.substring(0, 500) + '...';
-     }
-     
-     result.message = cleanMessage || combinedLogs;
+    // 简化消息，移除重复信息
+    let cleanMessage = combinedLogs;
+    if (result.stackTrace) {
+      cleanMessage = cleanMessage.replace(result.stackTrace, '').trim();
+    }
 
-     return result;
-   }
+    // 限制消息长度
+    if (cleanMessage.length > 500) {
+      cleanMessage = cleanMessage.substring(0, 500) + '...';
+    }
+
+    result.message = cleanMessage || combinedLogs;
+
+    return result;
+  }
 
   /**
    * 获取用户历史日志
@@ -303,7 +323,7 @@ export class LogAnalysisSimplifiedService {
       // 模拟数据库查询
       const allLogs = this.generateUserLogs(userId);
       const totalCount = allLogs.length;
-      
+
       // 模拟分页
       const logs = allLogs.slice(offset, offset + limit);
 
@@ -313,10 +333,9 @@ export class LogAnalysisSimplifiedService {
         pagination: {
           limit,
           offset,
-          hasMore: offset + logs.length < totalCount
-        }
+          hasMore: offset + logs.length < totalCount,
+        },
       };
-
     } catch (error) {
       this.logger.error(`获取用户日志失败: userId=${userId}`, error.stack);
       throw error;
@@ -340,10 +359,7 @@ export class LogAnalysisSimplifiedService {
     };
   }): Promise<HealthCheckResult> {
     const { logEntries, checkOptions = {} } = options;
-    const { 
-      checkSeverity = true, 
-      checkPatterns = true 
-    } = checkOptions;
+    const { checkSeverity = true, checkPatterns = true } = checkOptions;
 
     try {
       const issues: Array<{
@@ -358,7 +374,10 @@ export class LogAnalysisSimplifiedService {
       let criticalIssues = 0;
 
       // 统计分析
-      const patternCounts: Record<string, { count: number; examples: string[] }> = {};
+      const patternCounts: Record<
+        string,
+        { count: number; examples: string[] }
+      > = {};
 
       for (const logEntry of logEntries) {
         const level = logEntry.level.toUpperCase();
@@ -374,15 +393,17 @@ export class LogAnalysisSimplifiedService {
         // 检查错误模式
         if (checkPatterns) {
           const detectedPatterns = this.detectErrorPatterns(logEntry.message);
-          
+
           for (const pattern of detectedPatterns) {
             if (!patternCounts[pattern.type]) {
               patternCounts[pattern.type] = { count: 0, examples: [] };
             }
             patternCounts[pattern.type].count++;
-            
+
             if (patternCounts[pattern.type].examples.length < 3) {
-              patternCounts[pattern.type].examples.push(logEntry.message.substring(0, 100));
+              patternCounts[pattern.type].examples.push(
+                logEntry.message.substring(0, 100),
+              );
             }
           }
         }
@@ -395,17 +416,20 @@ export class LogAnalysisSimplifiedService {
             type: patternType,
             severity: this.getPatternSeverity(patternType),
             count: data.count,
-            examples: data.examples
+            examples: data.examples,
           });
         }
       }
 
       // 计算整体健康状态
       let overallHealth: 'GOOD' | 'WARNING' | 'CRITICAL' = 'GOOD';
-      
+
       if (criticalIssues > 0) {
         overallHealth = 'CRITICAL';
-      } else if (errorCount > logEntries.length * 0.1 || warningCount > logEntries.length * 0.3) {
+      } else if (
+        errorCount > logEntries.length * 0.1 ||
+        warningCount > logEntries.length * 0.3
+      ) {
         overallHealth = 'WARNING';
       }
 
@@ -416,7 +440,7 @@ export class LogAnalysisSimplifiedService {
         warningCount,
         criticalIssues,
         issues,
-        overallHealth
+        overallHealth,
       });
 
       return {
@@ -425,12 +449,11 @@ export class LogAnalysisSimplifiedService {
           totalLogs: logEntries.length,
           errorCount,
           warningCount,
-          criticalIssues
+          criticalIssues,
         },
         issues,
-        recommendations
+        recommendations,
       };
-
     } catch (error) {
       this.logger.error('快速日志检查失败', error.stack);
       throw error;
@@ -454,7 +477,7 @@ export class LogAnalysisSimplifiedService {
         service: 'payment-service',
         message: 'Payment processing failed: insufficient funds',
         userId,
-        metadata: { orderId: 'ORD-001', retCode: 400 }
+        metadata: { orderId: 'ORD-001', retCode: 400 },
       },
       {
         id: `log_${userId}_2`,
@@ -464,7 +487,7 @@ export class LogAnalysisSimplifiedService {
         service: 'ui-service',
         message: 'API response time exceeded threshold',
         userId,
-        metadata: { responseTime: 5000 }
+        metadata: { responseTime: 5000 },
       },
       {
         id: `log_${userId}_3`,
@@ -474,8 +497,8 @@ export class LogAnalysisSimplifiedService {
         service: 'app-service',
         message: 'User login successful',
         userId,
-        metadata: { deviceType: 'iOS' }
-      }
+        metadata: { deviceType: 'iOS' },
+      },
     ];
   }
 
@@ -501,19 +524,26 @@ export class LogAnalysisSimplifiedService {
     return 'INFO_LOG';
   }
 
-  private analyzeSeverity(logEntry: any, issueType: string): 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' {
-    const severityMap: Record<string, 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'> = {
-      'BACKEND_RET_ERROR': 'HIGH',
-      'FRONTEND_JS_ERROR': 'MEDIUM',
-      'PAYMENT_ERROR': 'CRITICAL',
-      'GENERIC_ERROR': 'MEDIUM',
-      'INFO_LOG': 'LOW'
-    };
+  private analyzeSeverity(
+    logEntry: any,
+    issueType: string,
+  ): 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' {
+    const severityMap: Record<string, 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'> =
+      {
+        BACKEND_RET_ERROR: 'HIGH',
+        FRONTEND_JS_ERROR: 'MEDIUM',
+        PAYMENT_ERROR: 'CRITICAL',
+        GENERIC_ERROR: 'MEDIUM',
+        INFO_LOG: 'LOW',
+      };
 
     let severity = severityMap[issueType] || 'LOW';
 
     // 支付相关问题提升优先级
-    if (logEntry.metadata?.affectsPayment || logEntry.message.toLowerCase().includes('payment')) {
+    if (
+      logEntry.metadata?.affectsPayment ||
+      logEntry.message.toLowerCase().includes('payment')
+    ) {
       severity = 'CRITICAL';
     }
 
@@ -525,18 +555,18 @@ export class LogAnalysisSimplifiedService {
       {
         type: 'LOG_LEVEL',
         value: logEntry.level,
-        importance: 0.8
+        importance: 0.8,
       },
       {
         type: 'SOURCE',
         value: logEntry.source,
-        importance: 0.7
+        importance: 0.7,
       },
       {
         type: 'MESSAGE_LENGTH',
         value: logEntry.message.length,
-        importance: 0.5
-      }
+        importance: 0.5,
+      },
     ];
   }
 
@@ -547,48 +577,52 @@ export class LogAnalysisSimplifiedService {
         id: 'similar_1',
         similarity: 0.85,
         description: '类似的支付失败问题',
-        metadata: { 
+        metadata: {
           resolution: '检查支付网关配置',
-          resolvedAt: '2024-01-15'
-        }
+          resolvedAt: '2024-01-15',
+        },
       },
       {
         id: 'similar_2',
         similarity: 0.72,
         description: '用户余额不足错误',
-        metadata: { 
+        metadata: {
           resolution: '引导用户充值',
-          resolvedAt: '2024-01-10'
-        }
-      }
+          resolvedAt: '2024-01-10',
+        },
+      },
     ];
   }
 
-  private generateSuggestions(logEntry: any, issueType: string, similarIssues: any[]): string[] {
+  private generateSuggestions(
+    logEntry: any,
+    issueType: string,
+    similarIssues: any[],
+  ): string[] {
     const suggestions: string[] = [];
 
     // 基于问题类型的建议
     const typeSuggestions: Record<string, string[]> = {
-      'BACKEND_RET_ERROR': [
+      BACKEND_RET_ERROR: [
         '检查API返回码的业务逻辑',
         '验证服务依赖是否正常',
-        '查看相关服务的健康状态'
+        '查看相关服务的健康状态',
       ],
-      'FRONTEND_JS_ERROR': [
+      FRONTEND_JS_ERROR: [
         '检查前端代码的错误处理',
         '验证组件的生命周期管理',
-        '确认数据格式是否正确'
+        '确认数据格式是否正确',
       ],
-      'PAYMENT_ERROR': [
+      PAYMENT_ERROR: [
         '检查支付网关状态',
         '验证用户账户余额',
-        '确认支付参数正确性'
+        '确认支付参数正确性',
       ],
-      'GENERIC_ERROR': [
+      GENERIC_ERROR: [
         '查看完整的错误堆栈',
         '检查相关的系统资源',
-        '确认操作的前置条件'
-      ]
+        '确认操作的前置条件',
+      ],
     };
 
     if (typeSuggestions[issueType]) {
@@ -598,11 +632,11 @@ export class LogAnalysisSimplifiedService {
     // 基于相似问题的建议
     if (similarIssues.length > 0) {
       suggestions.push('参考相似问题的解决方案');
-      
+
       const resolutions = similarIssues
-        .map(issue => issue.metadata?.resolution)
+        .map((issue) => issue.metadata?.resolution)
         .filter(Boolean);
-      
+
       if (resolutions.length > 0) {
         suggestions.push(`历史解决方案：${resolutions[0]}`);
       }
@@ -620,11 +654,17 @@ export class LogAnalysisSimplifiedService {
     }
 
     // 检查是否包含异常关键词
-    const anomalyKeywords = ['crash', 'panic', 'fatal', 'corruption', 'memory leak'];
-    const hasAnomalyKeyword = anomalyKeywords.some(keyword => 
-      logEntry.message.toLowerCase().includes(keyword)
+    const anomalyKeywords = [
+      'crash',
+      'panic',
+      'fatal',
+      'corruption',
+      'memory leak',
+    ];
+    const hasAnomalyKeyword = anomalyKeywords.some((keyword) =>
+      logEntry.message.toLowerCase().includes(keyword),
     );
-    
+
     if (hasAnomalyKeyword) {
       score += 0.5;
     }
@@ -638,58 +678,68 @@ export class LogAnalysisSimplifiedService {
   }
 
   private isCriticalError(logEntry: any): boolean {
-    const criticalKeywords = ['fatal', 'critical', 'panic', 'crash', 'deadlock'];
-    
-    return logEntry.level === 'ERROR' && 
-           criticalKeywords.some(keyword => 
-             logEntry.message.toLowerCase().includes(keyword)
-           );
+    const criticalKeywords = [
+      'fatal',
+      'critical',
+      'panic',
+      'crash',
+      'deadlock',
+    ];
+
+    return (
+      logEntry.level === 'ERROR' &&
+      criticalKeywords.some((keyword) =>
+        logEntry.message.toLowerCase().includes(keyword),
+      )
+    );
   }
 
-  private detectErrorPatterns(message: string): Array<{ type: string; confidence: number }> {
+  private detectErrorPatterns(
+    message: string,
+  ): Array<{ type: string; confidence: number }> {
     const patterns = [
       {
         regex: /null.*reference|cannot.*read.*property.*null/i,
         type: 'NULL_POINTER_ERROR',
-        confidence: 0.9
+        confidence: 0.9,
       },
       {
         regex: /timeout|timed.*out/i,
         type: 'TIMEOUT_ERROR',
-        confidence: 0.8
+        confidence: 0.8,
       },
       {
         regex: /connection.*failed|connection.*refused/i,
         type: 'CONNECTION_ERROR',
-        confidence: 0.8
+        confidence: 0.8,
       },
       {
         regex: /memory.*error|out.*of.*memory/i,
         type: 'MEMORY_ERROR',
-        confidence: 0.9
+        confidence: 0.9,
       },
       {
         regex: /payment.*fail|insufficient.*fund/i,
         type: 'PAYMENT_ERROR',
-        confidence: 0.9
-      }
+        confidence: 0.9,
+      },
     ];
 
     return patterns
-      .filter(pattern => pattern.regex.test(message))
-      .map(pattern => ({
+      .filter((pattern) => pattern.regex.test(message))
+      .map((pattern) => ({
         type: pattern.type,
-        confidence: pattern.confidence
+        confidence: pattern.confidence,
       }));
   }
 
   private getPatternSeverity(patternType: string): string {
     const severityMap: Record<string, string> = {
-      'NULL_POINTER_ERROR': 'HIGH',
-      'TIMEOUT_ERROR': 'MEDIUM',
-      'CONNECTION_ERROR': 'HIGH',
-      'MEMORY_ERROR': 'CRITICAL',
-      'PAYMENT_ERROR': 'CRITICAL'
+      NULL_POINTER_ERROR: 'HIGH',
+      TIMEOUT_ERROR: 'MEDIUM',
+      CONNECTION_ERROR: 'HIGH',
+      MEMORY_ERROR: 'CRITICAL',
+      PAYMENT_ERROR: 'CRITICAL',
     };
 
     return severityMap[patternType] || 'MEDIUM';
@@ -718,17 +768,23 @@ export class LogAnalysisSimplifiedService {
     }
 
     // 基于具体问题类型的建议
-    const memoryIssues = healthData.issues.filter(issue => issue.type === 'MEMORY_ERROR');
+    const memoryIssues = healthData.issues.filter(
+      (issue) => issue.type === 'MEMORY_ERROR',
+    );
     if (memoryIssues.length > 0) {
       recommendations.push('💾 检测到内存问题，建议检查内存泄漏');
     }
 
-    const connectionIssues = healthData.issues.filter(issue => issue.type === 'CONNECTION_ERROR');
+    const connectionIssues = healthData.issues.filter(
+      (issue) => issue.type === 'CONNECTION_ERROR',
+    );
     if (connectionIssues.length > 0) {
       recommendations.push('🔗 检测到连接问题，建议检查网络和服务依赖');
     }
 
-    const paymentIssues = healthData.issues.filter(issue => issue.type === 'PAYMENT_ERROR');
+    const paymentIssues = healthData.issues.filter(
+      (issue) => issue.type === 'PAYMENT_ERROR',
+    );
     if (paymentIssues.length > 0) {
       recommendations.push('💳 检测到支付问题，建议检查支付网关和用户账户');
     }
@@ -739,4 +795,4 @@ export class LogAnalysisSimplifiedService {
 
     return recommendations;
   }
-} 
+}

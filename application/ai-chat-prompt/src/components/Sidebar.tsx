@@ -6,7 +6,9 @@ import {
   History, 
   Settings, 
   Plus,
-  Brain
+  Brain,
+  FileSearch,
+  Activity
 } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import { useChat } from '@/contexts/ChatContext'
@@ -16,6 +18,8 @@ const navigation = [
   { name: '提示词优化', href: '/optimize', icon: Wand2 },
   { name: '质量分析', href: '/analyze', icon: BarChart3 },
   { name: '会话历史', href: '/sessions', icon: History },
+  { name: '日志分析', href: '/log-analysis', icon: FileSearch },
+  { name: '用户日志', href: '/user-logs', icon: Activity },
   { name: '设置', href: '/settings', icon: Settings },
 ]
 
