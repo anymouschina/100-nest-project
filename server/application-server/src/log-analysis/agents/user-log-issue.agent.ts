@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { DatabaseService } from '../../database/database.service';
 import { VectorKnowledgeService } from '../../ai/services/vector-knowledge.service';
 import { EmbeddingService } from '../../ai/services/embedding.service';
+import { Agent, AgentContext, AgentResult } from '../services/agent-orchestrator.service';
 
 export interface LogIssueAnalysisResult {
   issueType: string;
@@ -20,7 +21,10 @@ export interface LogIssueAnalysisResult {
 }
 
 @Injectable()
-export class UserLogIssueAgent {
+export class UserLogIssueAgent implements Agent {
+  readonly name = 'UserLogIssueAgent';
+  readonly version = '1.0.0';
+  readonly capabilities = ['user_issue_analysis', 'problem_classification', 'similarity_search', 'recommendation_generation'];
   private readonly logger = new Logger(UserLogIssueAgent.name);
 
   constructor(
@@ -28,6 +32,67 @@ export class UserLogIssueAgent {
     private readonly vectorService: VectorKnowledgeService,
     private readonly embeddingService: EmbeddingService,
   ) {}
+
+  /**
+   * 执行用户日志问题分析 (Agent接口实现)
+   */
+  async execute(logData: any[], context: AgentContext): Promise<AgentResult> {
+    const startTime = Date.now();
+    this.logger.debug(`开始执行用户日志问题分析: ${context.taskId}`);
+
+    try {
+      const issues: LogIssueAnalysisResult[] = [];
+
+      // 分析每个日志条目
+      for (const logEntry of logData) {
+        const analysisResult = await this.analyzeSingleLogEntry(logEntry, context.taskId);
+        if (analysisResult) {
+          issues.push(analysisResult);
+        }
+      }
+
+      // 综合分析结果
+      const summary = await this.generateSummary(issues);
+      const processingTime = Date.now() - startTime;
+
+      return {
+        agentName: this.name,
+        success: true,
+        data: {
+          totalIssues: issues.length,
+          issues,
+          issueTypes: this.extractIssueTypes(issues),
+          severityDistribution: this.calculateSeverityDistribution(issues),
+          recommendations: summary.recommendations,
+        },
+        processingTime,
+        confidence: summary.confidence,
+      };
+    } catch (error) {
+      return {
+        agentName: this.name,
+        success: false,
+        data: null,
+        error: error.message,
+        processingTime: Date.now() - startTime,
+      };
+    }
+  }
+
+  /**
+   * 健康检查 (Agent接口实现)
+   */
+  async healthCheck(): Promise<boolean> {
+    try {
+      // 检查必要的依赖服务
+      if (!this.databaseService || !this.vectorService || !this.embeddingService) {
+        return false;
+      }
+      return true;
+    } catch {
+      return false;
+    }
+  }
 
   /**
    * 分析用户日志问题

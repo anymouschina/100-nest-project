@@ -184,28 +184,35 @@ function ManualAnalysisTab({ onTaskCreated }: { onTaskCreated: () => void }) {
   const [analysisResult, setAnalysisResult] = useState<any>(null)
   const [isLoadingResult, setIsLoadingResult] = useState(false)
 
-  // 预设的示例数据
+  // 预设的示例数据（基于新的详细格式）
   const structuredExample = {
-    timestamp: "2024-01-15T14:30:25.000Z",
+    id: "log-001",
+    timestamp: "2025-01-10T15:25:02.678Z",
     level: "ERROR",
-    source: "frontend",
-    service: "payment-service",
-    message: "Cannot read property 'amount' of null at PaymentComponent",
-    stackTrace: "at PaymentComponent.calculateTotal (PaymentComponent.js:42:15)\nat PaymentComponent.render (PaymentComponent.js:108:9)",
+    source: "order-service",
+    service: "payment-gateway",
+    message: "创建订单失败",
     metadata: {
-      userId: 12345,
-      orderId: "ORD-001",
-      sessionId: "sess_abc123",
-      retCode: 500
+      userId: "user-12345",
+      sessionId: "session-abc123",
+      trace_id: "TRC-20250110-152500",
+      error_code: "ORDER_003",
+      error_type: "business_logic_error",
+      cause: "课程库存不足（库存=0）",
+      http_status: 400,
+      retCode: 40001,
+      apiEndpoint: "/api/order/create",
+      responseTime: 1250,
+      related_services: ["inventory-service", "payment-gateway"]
     }
   }
 
   const stringExample = [
-    "2024-01-15 14:30:25 ERROR [Frontend] Payment component crashed",
-    "TypeError: Cannot read property 'amount' of null",
-    "at PaymentComponent.calculateTotal (PaymentComponent.js:42:15)",
-    "at PaymentComponent.render (PaymentComponent.js:108:9)",
-    "User ID: 12345, Session: sess_abc123, Order: ORD-001"
+    "2025-01-10 15:25:02 ERROR [order-service] 创建订单失败 - ORDER_003",
+    "2025-01-10 15:25:05 ERROR [payment-gateway] 第三方支付请求超时 - PAY_TIMEOUT",
+    "2025-01-10 15:25:08 ERROR [frontend] 支付按钮点击无响应，JavaScript错误",
+    "2025-01-10 15:25:12 WARN [database] 数据库连接池接近饱和",
+    "User: user-12345, Session: session-abc123, Trace: TRC-20250110-152500"
   ]
 
   const handleAnalyze = async () => {
@@ -214,14 +221,28 @@ function ManualAnalysisTab({ onTaskCreated }: { onTaskCreated: () => void }) {
       return
     }
 
-    let logData: any
+    let logData: any[]
     if (logDataType === 'structured') {
       if (!structuredLogData.trim()) {
         toast.error('请输入结构化日志数据')
         return
       }
       try {
-        logData = JSON.parse(structuredLogData)
+        const parsed = JSON.parse(structuredLogData)
+        // 如果是单个对象，转为数组
+        logData = Array.isArray(parsed) ? parsed : [parsed]
+        
+        // 确保每个日志条目都有必需的字段
+        logData = logData.map((entry, index) => ({
+          id: entry.id || `log-${index}`,
+          timestamp: entry.timestamp || new Date().toISOString(),
+          level: entry.level || 'INFO',
+          source: entry.source || 'unknown',
+          message: entry.message || '',
+          service: entry.service,
+          stackTrace: entry.stackTrace,
+          metadata: entry.metadata
+        }))
       } catch (error) {
         toast.error('结构化日志数据格式不正确，请输入有效的JSON')
         return
@@ -231,29 +252,42 @@ function ManualAnalysisTab({ onTaskCreated }: { onTaskCreated: () => void }) {
         toast.error('请输入日志字符串数据')
         return
       }
-      logData = stringLogData.split('\n').filter(line => line.trim())
+      const lines = stringLogData.split('\n').filter(line => line.trim())
+      logData = lines.map((line, index) => ({
+        id: `log-${index}`,
+        timestamp: new Date().toISOString(),
+        level: 'INFO' as const,
+        source: 'unknown',
+        message: line.trim()
+      }))
     }
 
     setIsAnalyzing(true)
     try {
-      const request: ManualLogAnalysisRequest = {
+      // 直接使用新的快速分析API
+      const result = await logAnalysisAPI.quickAnalysis({
         userFeedback: userFeedback.trim(),
         logData,
-        analysisOptions
-      }
-
-      const result = await logAnalysisAPI.analyzeManual(request)
+        options: {
+          pipeline: 'PARALLEL',
+          priority: 'HIGH',
+          analysisType: 'REAL_TIME'
+        }
+      })
       
-      // 使用真实的API响应数据
+      // 使用新的AI代理编排系统响应数据
       setAnalysisResult({
         taskId: result.taskId,
-        message: result.message,
-        analysis: result.analysis || null
+        message: `AI代理分析完成，总用时 ${result.totalProcessingTime}ms`,
+        analysis: result.analysis || null,
+        agentResults: result.agentResults,
+        summary: result.summary,
+        quickInsights: result.quickInsights
       })
 
-      toast.success(`分析任务已创建：${result.taskId}`)
+      toast.success(`AI代理分析完成！使用了${result.summary.totalAgents}个专业代理，成功率${Math.round(result.summary.overallConfidence * 100)}%`)
       
-      // 如果API返回了分析结果，直接显示；如果是异步任务，可能需要轮询获取结果
+      // 新的AI代理编排系统是实时返回结果的，不需要轮询
       if (!result.analysis && result.taskId) {
         setIsLoadingResult(true)
         // 异步获取任务结果 - 可以改进为轮询或WebSocket
@@ -297,7 +331,7 @@ function ManualAnalysisTab({ onTaskCreated }: { onTaskCreated: () => void }) {
     } else {
       setStringLogData(stringExample.join('\n'))
     }
-    setUserFeedback('用户在支付页面遇到错误，无法完成订单支付')
+    setUserFeedback('系统最近出现多次支付失败，用户反馈无法完成订单，请帮我分析一下原因')
   }
 
   const handleClearForm = () => {
@@ -384,15 +418,24 @@ function ManualAnalysisTab({ onTaskCreated }: { onTaskCreated: () => void }) {
                 onChange={(e) => setStructuredLogData(e.target.value)}
                 placeholder={`请输入结构化日志数据，例如：
 {
-  "timestamp": "2024-01-15T14:30:25.000Z",
+  "id": "log-001",
+  "timestamp": "2025-01-10T15:25:02.678Z",
   "level": "ERROR",
-  "source": "frontend",
-  "service": "payment-service",
-  "message": "Cannot read property amount of null",
-  "stackTrace": "at PaymentComponent.calculateTotal...",
+  "source": "order-service",
+  "service": "payment-gateway",
+  "message": "创建订单失败",
   "metadata": {
-    "userId": 12345,
-    "orderId": "ORD-001"
+    "userId": "user-12345",
+    "sessionId": "session-abc123",
+    "trace_id": "TRC-20250110-152500",
+    "error_code": "ORDER_003",
+    "error_type": "business_logic_error",
+    "cause": "课程库存不足（库存=0）",
+    "http_status": 400,
+    "retCode": 40001,
+    "apiEndpoint": "/api/order/create",
+    "responseTime": 1250,
+    "related_services": ["inventory-service", "payment-gateway"]
   }
 }`}
                 className="w-full h-64 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none font-mono text-sm"
@@ -407,10 +450,10 @@ function ManualAnalysisTab({ onTaskCreated }: { onTaskCreated: () => void }) {
                 value={stringLogData}
                 onChange={(e) => setStringLogData(e.target.value)}
                 placeholder={`请输入日志字符串，每行一条日志：
-2024-01-15 14:30:25 ERROR [Frontend] Payment component crashed
-TypeError: Cannot read property amount of null
-at PaymentComponent.calculateTotal (PaymentComponent.js:42:15)
-User ID: 12345, Session: sess_abc123`}
+2025-01-10 15:25:02 ERROR [order-service] 创建订单失败 - ORDER_003
+2025-01-10 15:25:05 ERROR [payment-gateway] 第三方支付请求超时 - PAY_TIMEOUT
+2025-01-10 15:25:08 ERROR [frontend] 支付按钮点击无响应，JavaScript错误
+User: user-12345, Session: session-abc123, Trace: TRC-20250110-152500`}
                 className="w-full h-64 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none font-mono text-sm"
               />
               <div className="mt-1 text-xs text-gray-500">
@@ -490,11 +533,85 @@ User ID: 12345, Session: sess_abc123`}
       {analysisResult && (
         <div className="bg-white rounded-lg border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-semibold text-gray-900">分析结果</h3>
+            <h3 className="text-lg font-semibold text-gray-900">AI代理分析结果</h3>
             <div className="text-sm text-gray-500">
               任务ID: {analysisResult.taskId}
             </div>
           </div>
+
+          {/* AI代理执行摘要 */}
+          {analysisResult.summary && (
+            <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+              <h4 className="text-md font-semibold text-blue-900 mb-3">🤖 AI代理执行摘要</h4>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                <div>
+                  <span className="text-blue-700 font-medium">总代理数:</span>
+                  <span className="ml-1 text-blue-800">{analysisResult.summary.totalAgents}</span>
+                </div>
+                <div>
+                  <span className="text-green-700 font-medium">成功:</span>
+                  <span className="ml-1 text-green-800">{analysisResult.summary.successfulAgents}</span>
+                </div>
+                <div>
+                  <span className="text-red-700 font-medium">失败:</span>
+                  <span className="ml-1 text-red-800">{analysisResult.summary.failedAgents}</span>
+                </div>
+                <div>
+                  <span className="text-purple-700 font-medium">置信度:</span>
+                  <span className="ml-1 text-purple-800">{Math.round(analysisResult.summary.overallConfidence * 100)}%</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 快速洞察 */}
+          {analysisResult.quickInsights && (
+            <div className="mb-6 p-4 bg-gradient-to-r from-amber-50 to-orange-50 rounded-lg border border-amber-200">
+              <h4 className="text-md font-semibold text-amber-900 mb-3">⚡ 快速洞察</h4>
+              <div className="space-y-3">
+                {analysisResult.quickInsights.riskLevel && (
+                  <div className="flex items-center space-x-2">
+                    <span className="text-amber-700 font-medium">风险等级:</span>
+                    <SeverityBadge severity={analysisResult.quickInsights.riskLevel} />
+                  </div>
+                )}
+                {analysisResult.quickInsights.systemHealth && (
+                  <div className="flex items-center space-x-2">
+                    <span className="text-amber-700 font-medium">系统健康:</span>
+                    <span className={`px-2 py-1 rounded text-xs font-medium ${
+                      analysisResult.quickInsights.systemHealth === 'EXCELLENT' || analysisResult.quickInsights.systemHealth === 'GOOD' 
+                        ? 'text-green-700 bg-green-100'
+                        : analysisResult.quickInsights.systemHealth === 'CRITICAL' || analysisResult.quickInsights.systemHealth === 'POOR'
+                        ? 'text-red-700 bg-red-100'
+                        : 'text-yellow-700 bg-yellow-100'
+                    }`}>
+                      {analysisResult.quickInsights.systemHealth}
+                    </span>
+                  </div>
+                )}
+                {analysisResult.quickInsights.topIssues && analysisResult.quickInsights.topIssues.length > 0 && (
+                  <div>
+                    <span className="text-amber-700 font-medium">主要问题:</span>
+                    <ul className="mt-1 ml-4">
+                      {analysisResult.quickInsights.topIssues.map((issue: string, index: number) => (
+                        <li key={index} className="text-amber-800 text-sm">• {issue}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {analysisResult.quickInsights.urgentActions && analysisResult.quickInsights.urgentActions.length > 0 && (
+                  <div>
+                    <span className="text-amber-700 font-medium">紧急操作:</span>
+                    <ul className="mt-1 ml-4">
+                      {analysisResult.quickInsights.urgentActions.map((action: string, index: number) => (
+                        <li key={index} className="text-amber-800 text-sm">🔥 {action}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* 加载状态 */}
           {isLoadingResult && (
@@ -544,6 +661,37 @@ User ID: 12345, Session: sess_abc123`}
             </div>
           )}
 
+          {/* AI代理详细结果 */}
+          {!isLoadingResult && analysisResult.agentResults && analysisResult.agentResults.length > 0 && (
+            <div className="mb-6">
+              <h4 className="text-md font-semibold text-gray-900 mb-3">🔍 AI代理执行详情</h4>
+              <div className="space-y-3">
+                {analysisResult.agentResults.map((agent: any, index: number) => (
+                  <div key={index} className="border border-gray-200 rounded-lg p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center space-x-2">
+                        <span className="font-medium text-gray-900">{agent.agentName}</span>
+                        <span className={`px-2 py-1 rounded text-xs font-medium ${
+                          agent.success ? 'text-green-700 bg-green-100' : 'text-red-700 bg-red-100'
+                        }`}>
+                          {agent.success ? '成功' : '失败'}
+                        </span>
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        {agent.processingTime}ms | 置信度 {Math.round(agent.confidence * 100)}%
+                      </div>
+                    </div>
+                    {agent.data && agent.data.summary && (
+                      <p className="text-sm text-gray-600 bg-gray-50 p-2 rounded">
+                        {agent.data.summary}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* 分析结果内容 */}
           {!isLoadingResult && analysisResult.analysis && (
             <div>
@@ -568,9 +716,21 @@ User ID: 12345, Session: sess_abc123`}
                         <span className="text-sm font-medium text-gray-700">示例：</span>
                         <ul className="mt-1 text-sm text-gray-600">
                           {issue.examples.slice(0, 3).map((example: string, i: number) => (
-                            <li key={i} className="font-mono bg-gray-50 p-1 rounded">• {example}</li>
+                            <li key={i} className="font-mono bg-gray-50 p-2 rounded text-xs break-all">• {example}</li>
                           ))}
                         </ul>
+                      </div>
+                    )}
+                    {issue.metadata && (
+                      <div className="mt-2">
+                        <span className="text-sm font-medium text-gray-700">相关元数据：</span>
+                        <div className="mt-1 text-xs text-gray-600 bg-gray-50 p-2 rounded font-mono">
+                          {Object.entries(issue.metadata).slice(0, 5).map(([key, value]) => (
+                            <div key={key} className="truncate">
+                              <span className="text-gray-500">{key}:</span> {JSON.stringify(value)}
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     )}
                   </div>
@@ -635,20 +795,40 @@ User ID: 12345, Session: sess_abc123`}
             <button
               onClick={() => {
                 const report = `
-日志分析报告
+AI代理日志分析报告
 ==================
 
 任务ID: ${analysisResult.taskId}
 用户反馈: ${userFeedback}
 
+AI代理执行摘要:
+• 总代理数: ${analysisResult.summary?.totalAgents || 0}
+• 成功代理数: ${analysisResult.summary?.successfulAgents || 0}
+• 失败代理数: ${analysisResult.summary?.failedAgents || 0}
+• 整体置信度: ${Math.round((analysisResult.summary?.overallConfidence || 0) * 100)}%
+• 总处理时间: ${analysisResult.totalProcessingTime || 0}ms
+
+${analysisResult.quickInsights ? `
+快速洞察:
+• 风险等级: ${analysisResult.quickInsights.riskLevel}
+• 系统健康: ${analysisResult.quickInsights.systemHealth}
+• 主要问题: ${analysisResult.quickInsights.topIssues?.join(', ') || '无'}
+• 紧急操作: ${analysisResult.quickInsights.urgentActions?.join(', ') || '无'}
+` : ''}
+
 ${analysisResult.analysis?.issues ? `
 发现的问题:
-${analysisResult.analysis.issues.map((issue: any) => `• ${issue.type}: ${issue.description}`).join('\n')}
+${analysisResult.analysis.issues.map((issue: any) => `• ${issue.type} (${issue.severity}): ${issue.description}`).join('\n')}
 ` : ''}
 
 ${analysisResult.analysis?.recommendations ? `
 改进建议:
 ${analysisResult.analysis.recommendations.map((rec: string) => `• ${rec}`).join('\n')}
+` : ''}
+
+${analysisResult.agentResults ? `
+AI代理执行详情:
+${analysisResult.agentResults.map((agent: any) => `• ${agent.agentName}: ${agent.success ? '成功' : '失败'} (${agent.processingTime}ms, 置信度${Math.round(agent.confidence * 100)}%)`).join('\n')}
 ` : ''}
                 `.trim()
 

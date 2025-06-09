@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { Agent, AgentContext, AgentResult } from '../services/agent-orchestrator.service';
 
 interface NormalizedLog {
   normalizedType: string;
@@ -8,8 +9,51 @@ interface NormalizedLog {
 }
 
 @Injectable()
-export class LogNormalizationAgent {
+export class LogNormalizationAgent implements Agent {
+  readonly name = 'LogNormalizationAgent';
+  readonly version = '1.0.0';
+  readonly capabilities = ['log_normalization', 'data_cleaning', 'format_standardization'];
   private readonly logger = new Logger(LogNormalizationAgent.name);
+
+  /**
+   * 执行日志归一化 (Agent接口实现)
+   */
+  async execute(logData: any[], context: AgentContext): Promise<AgentResult> {
+    const startTime = Date.now();
+    this.logger.debug(`开始执行日志归一化: ${context.taskId}`);
+
+    try {
+      const normalizedLogs = await this.normalizeBatch(logData);
+      const processingTime = Date.now() - startTime;
+
+      return {
+        agentName: this.name,
+        success: true,
+        data: normalizedLogs,
+        processingTime,
+        confidence: 1.0,
+      };
+    } catch (error) {
+      return {
+        agentName: this.name,
+        success: false,
+        data: null,
+        error: error.message,
+        processingTime: Date.now() - startTime,
+      };
+    }
+  }
+
+  /**
+   * 健康检查 (Agent接口实现)
+   */
+  async healthCheck(): Promise<boolean> {
+    try {
+      return true;
+    } catch {
+      return false;
+    }
+  }
 
   /**
    * 归一化日志条目 - 基于规则的快速分类

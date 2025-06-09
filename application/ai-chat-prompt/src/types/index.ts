@@ -189,16 +189,159 @@ export interface KnowledgeSearchRequest {
   limit?: number
 }
 
-// 日志分析相关类型
-export interface LogEntry {
-  timestamp: string
+// AI代理编排系统相关类型
+export interface AgentLogEntry {
+  id?: string
+  timestamp?: string
   level: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR' | 'FATAL'
-  source: 'backend' | 'frontend' | 'mobile'
+  source: 'backend' | 'frontend' | 'mobile' | 'database' | 'order-service' | string
   service?: string
   message: string
   stackTrace?: string
-  metadata?: Record<string, any>
+  metadata?: {
+    // 用户和会话信息
+    userId?: string | number
+    sessionId?: string
+    
+    // 追踪和调试信息
+    trace_id?: string
+    error_code?: string
+    error_type?: string
+    cause?: string
+    
+    // HTTP相关信息
+    http_status?: number
+    retCode?: number
+    apiEndpoint?: string
+    responseTime?: number
+    
+    // 业务相关信息
+    paymentMethod?: string
+    amount?: number
+    orderId?: string
+    
+    // 前端错误信息
+    errorType?: string
+    errorMessage?: string
+    pageUrl?: string
+    userAgent?: string
+    
+    // 数据库相关信息
+    activeConnections?: number
+    maxConnections?: number
+    queueLength?: number
+    avgResponseTime?: number
+    database?: string
+    
+    // 服务依赖信息
+    related_services?: string[]
+    
+    // 其他扩展信息
+    [key: string]: any
+  }
 }
+
+export interface QuickAnalysisRequest {
+  userFeedback: string
+  logData: AgentLogEntry[]
+  options?: {
+    pipeline?: 'SEQUENTIAL' | 'PARALLEL' | 'CONDITIONAL'
+    priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'
+    analysisType?: 'REAL_TIME' | 'BATCH' | 'DEEP_ANALYSIS'
+  }
+}
+
+export interface ErrorAnalysisRequest {
+  userFeedback: string
+  logData: AgentLogEntry[]
+  options?: {
+    pipeline?: 'SEQUENTIAL' | 'PARALLEL' | 'CONDITIONAL'
+    priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'
+    focusAreas?: string[]
+  }
+}
+
+export interface ComprehensiveAnalysisRequest {
+  userFeedback: string
+  logData: AgentLogEntry[]
+  options?: {
+    pipeline?: 'SEQUENTIAL' | 'PARALLEL' | 'CONDITIONAL'
+    priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'
+    analysisType?: 'REAL_TIME' | 'BATCH' | 'DEEP_ANALYSIS'
+    enabledAgents?: string[]
+    customParams?: Record<string, any>
+  }
+}
+
+export interface AgentResult {
+  agentName: string
+  success: boolean
+  processingTime: number
+  confidence: number
+  data: any
+}
+
+export interface QuickAnalysisResponse {
+  taskId: string
+  success: boolean
+  totalProcessingTime: number
+  agentResults: AgentResult[]
+  summary: {
+    totalAgents: number
+    successfulAgents: number
+    failedAgents: number
+    overallConfidence: number
+  }
+  quickInsights?: {
+    topIssues: string[]
+    riskLevel: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'
+    urgentActions: string[]
+    systemHealth: 'EXCELLENT' | 'GOOD' | 'MODERATE' | 'POOR' | 'CRITICAL'
+  }
+  analysis?: {
+    issues: Array<{
+      type: string
+      severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'
+      count: number
+      examples: string[]
+      description: string
+    }>
+    recommendations: string[]
+    patterns: Array<{
+      pattern: string
+      frequency: number
+      severity: string
+    }>
+    anomalies: Array<{
+      type: string
+      description: string
+      severity: string
+    }>
+  }
+}
+
+export interface AgentInfo {
+  name: string
+  description: string
+  capabilities: string[]
+  version: string
+  status: 'ACTIVE' | 'INACTIVE' | 'MAINTENANCE'
+}
+
+export interface PerformanceStats {
+  totalRequests: number
+  successRate: number
+  averageProcessingTime: number
+  agentPerformance: Array<{
+    agentName: string
+    averageTime: number
+    successRate: number
+    requestCount: number
+  }>
+}
+
+// 兼容旧接口的类型定义（保持向后兼容）
+export interface LogEntry extends AgentLogEntry {}
 
 export interface ManualLogAnalysisRequest {
   userFeedback: string
@@ -208,6 +351,11 @@ export interface ManualLogAnalysisRequest {
     enableSimilarSearch?: boolean
     enableAnomalyDetection?: boolean
   }
+}
+
+export interface LogAnalysisResponse extends QuickAnalysisResponse {
+  message?: string
+  logCount?: number
 }
 
 export interface UserLogAnalysisRequest {
@@ -232,32 +380,6 @@ export interface QuickLogCheckRequest {
     checkSeverity?: boolean
     checkPatterns?: boolean
     checkAnomalies?: boolean
-  }
-}
-
-export interface LogAnalysisResponse {
-  taskId: string
-  message: string
-  logCount?: number
-  analysis?: {
-    issues: Array<{
-      type: string
-      severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'
-      count: number
-      examples: string[]
-      description: string
-    }>
-    recommendations: string[]
-    patterns: Array<{
-      pattern: string
-      frequency: number
-      severity: string
-    }>
-    anomalies: Array<{
-      type: string
-      description: string
-      severity: string
-    }>
   }
 }
 
