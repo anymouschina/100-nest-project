@@ -12,6 +12,7 @@ import {
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { LogAnalysisService } from '../services/log-analysis.service';
+import { LogAnalysisSimplifiedService } from '../services/log-analysis-simplified.service';
 import { VectorKnowledgeService } from '../../ai/services/vector-knowledge.service';
 
 // DTO定义
@@ -47,6 +48,35 @@ export class AddWhitelistRuleDto {
   createdBy: number;
 }
 
+export class AnalyzeUserLogDto {
+  userId: number;
+  timeRange?: {
+    startTime: Date;
+    endTime: Date;
+  };
+  logSources?: string[];
+  priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  userFeedback?: string;
+}
+
+export class ManualLogAnalysisDto {
+  userFeedback: string;
+  logData: {
+    timestamp?: Date;
+    level: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR' | 'FATAL';
+    source: string; // backend, frontend, mobile
+    service?: string;
+    message: string;
+    stackTrace?: string;
+    metadata?: Record<string, any>;
+  };
+  analysisOptions?: {
+    enableFeatureExtraction?: boolean;
+    enableSimilarSearch?: boolean;
+    enableAnomalyDetection?: boolean;
+  };
+}
+
 @ApiTags('日志分析')
 @Controller('api/log-analysis')
 @UseGuards(JwtAuthGuard)
@@ -54,6 +84,7 @@ export class AddWhitelistRuleDto {
 export class LogAnalysisController {
   constructor(
     private readonly logAnalysisService: LogAnalysisService,
+    private readonly logAnalysisSimplifiedService: LogAnalysisSimplifiedService,
     private readonly vectorService: VectorKnowledgeService,
   ) {}
 
@@ -425,5 +456,136 @@ export class LogAnalysisController {
   ) {
     const { filters, numClusters = 5 } = body;
     return await this.vectorService.clusterDocuments(filters, numClusters);
+  }
+
+  /**
+   * 通过用户ID分析日志
+   */
+  @Post('analyze/user-logs')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: '通过用户ID查询并分析日志' })
+  @ApiResponse({ 
+    status: 201, 
+    description: '分析任务创建成功',
+    schema: {
+      type: 'object',
+      properties: {
+        taskId: { type: 'string', description: '任务ID' },
+        message: { type: 'string', description: '返回消息' },
+        logCount: { type: 'number', description: '找到的日志条数' }
+      }
+    }
+  })
+  async analyzeUserLogs(
+    @Body() body: {
+      userId: number;
+      timeRange?: {
+        startTime: Date;
+        endTime: Date;
+      };
+      logSources?: string[];
+      priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+      userFeedback?: string;
+    }
+  ) {
+    return await this.logAnalysisSimplifiedService.analyzeUserLogs(body);
+  }
+
+  /**
+   * 手动输入日志进行即时分析
+   */
+  @Post('analyze/manual')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: '手动输入日志进行即时分析' })
+  @ApiResponse({ 
+    status: 200, 
+    description: '分析完成',
+    schema: {
+      type: 'object',
+      properties: {
+        analysisResult: { type: 'object', description: '分析结果' },
+        suggestions: { type: 'array', description: '建议措施' },
+        similarIssues: { type: 'array', description: '相似问题' },
+        riskLevel: { type: 'string', description: '风险等级' }
+      }
+    }
+  })
+  async analyzeManualLog(
+    @Body() body: {
+      userFeedback: string;
+      logData: string[] | {
+        timestamp?: Date;
+        level: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR' | 'FATAL';
+        source: string; // backend, frontend, mobile
+        service?: string;
+        message: string;
+        stackTrace?: string;
+        metadata?: Record<string, any>;
+      };
+      analysisOptions?: {
+        enableFeatureExtraction?: boolean;
+        enableSimilarSearch?: boolean;
+        enableAnomalyDetection?: boolean;
+      };
+    }
+  ) {
+    return await this.logAnalysisSimplifiedService.analyzeManualLog(body);
+  }
+
+  /**
+   * 获取用户历史日志
+   */
+  @Get('logs/user/:userId')
+  @ApiOperation({ summary: '获取用户的历史日志' })
+  @ApiResponse({ 
+    status: 200, 
+    description: '日志获取成功'
+  })
+  async getUserLogs(
+    @Param('userId') userId: number,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('level') level?: string,
+    @Query('source') source?: string,
+    @Query('limit') limit: number = 100,
+    @Query('offset') offset: number = 0
+  ) {
+    return await this.logAnalysisSimplifiedService.getUserLogs({
+      userId,
+      startDate: startDate ? new Date(startDate) : undefined,
+      endDate: endDate ? new Date(endDate) : undefined,
+      level,
+      source,
+      limit,
+      offset
+    });
+  }
+
+  /**
+   * 快速日志健康检查
+   */
+  @Post('analyze/quick-check')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: '快速日志健康检查' })
+  @ApiResponse({ 
+    status: 200, 
+    description: '检查完成'
+  })
+  async quickLogCheck(
+    @Body() body: {
+      logEntries: Array<{
+        level: string;
+        source: string;
+        message: string;
+        metadata?: Record<string, any>;
+      }>;
+      checkOptions?: {
+        checkSeverity?: boolean;
+        checkPatterns?: boolean;
+        checkAnomalies?: boolean;
+      };
+    }
+  ) {
+    return await this.logAnalysisSimplifiedService.quickLogCheck(body);
   }
 } 

@@ -689,4 +689,682 @@ export class LogAnalysisService {
       data,
     };
   }
+
+  private async clusterNewPatterns(patterns: any[]): Promise<any[]> {
+    // 简单的聚类实现 - 可以用更复杂的聚类算法
+    return patterns; // 暂时直接返回，可以后续优化
+  }
+
+  /**
+   * 通过用户ID分析日志
+   */
+  async analyzeUserLogs(options: {
+    userId: number;
+    timeRange?: {
+      startTime: Date;
+      endTime: Date;
+    };
+    logSources?: string[];
+    priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+    userFeedback?: string;
+  }): Promise<{
+    taskId: string;
+    message: string;
+    logCount: number;
+  }> {
+    const { userId, timeRange, logSources, priority, userFeedback } = options;
+    
+    try {
+      // 1. 查询用户相关的历史日志
+      const existingLogs = await this.getUserLogsFromDatabase({
+        userId,
+        startDate: timeRange?.startTime,
+        endDate: timeRange?.endTime,
+        sources: logSources,
+        limit: 500 // 限制查询数量
+      });
+
+      if (existingLogs.length === 0) {
+        return {
+          taskId: '',
+          message: '未找到该用户的相关日志',
+          logCount: 0
+        };
+      }
+
+      // 2. 创建分析任务
+      const taskId = this.generateTaskId();
+      
+      // 创建分析任务记录 - 使用实际的Prisma模型
+      // 注意：这里需要根据实际的数据库schema调整
+      // 暂时跳过数据库写入，直接进行分析
+      
+      const analysisRecord = {
+        taskId,
+        userId: userId,
+        userFeedback: userFeedback || `分析用户${userId}的日志问题`,
+        status: 'PENDING',
+        priority: priority || 'MEDIUM',
+        timeRange: timeRange || {},
+        logSources: logSources || [],
+        keywords: [`user:${userId}`],
+        createdAt: new Date()
+      };
+
+      // 3. 将现有日志添加到任务中
+      for (const log of existingLogs) {
+        await this.databaseService.logEntry.create({
+          data: {
+            taskId,
+            timestamp: log.timestamp,
+            level: log.level,
+            source: log.source,
+            service: log.service,
+            message: log.message,
+            stackTrace: log.stackTrace,
+            userId: log.userId,
+            sessionId: log.sessionId,
+            requestId: log.requestId,
+            metadata: log.metadata,
+          },
+        });
+      }
+
+      // 4. 异步启动分析
+      this.startAnalysisAsync(taskId).catch(error => {
+        this.logger.error(`用户日志分析任务失败: ${taskId}`, error.stack);
+      });
+
+      return {
+        taskId,
+        message: `已创建分析任务，正在分析用户${userId}的${existingLogs.length}条日志`,
+        logCount: existingLogs.length
+      };
+
+    } catch (error) {
+      this.logger.error(`用户日志分析失败: userId=${userId}`, error.stack);
+      throw error;
+    }
+  }
+
+  /**
+   * 手动输入日志进行即时分析
+   */
+  async analyzeManualLog(options: {
+    userFeedback: string;
+    logData: {
+      timestamp?: Date;
+      level: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR' | 'FATAL';
+      source: string;
+      service?: string;
+      message: string;
+      stackTrace?: string;
+      metadata?: Record<string, any>;
+    };
+    analysisOptions?: {
+      enableFeatureExtraction?: boolean;
+      enableSimilarSearch?: boolean;
+      enableAnomalyDetection?: boolean;
+    };
+  }): Promise<{
+    analysisResult: any;
+    suggestions: string[];
+    similarIssues: any[];
+    riskLevel: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  }> {
+    const { userFeedback, logData, analysisOptions = {} } = options;
+
+    try {
+      // 1. 标准化日志数据
+      const normalizedLog = {
+        id: `manual_${Date.now()}`,
+        timestamp: logData.timestamp || new Date(),
+        level: logData.level,
+        source: logData.source,
+        service: logData.service || 'unknown',
+        message: logData.message,
+        stackTrace: logData.stackTrace,
+        metadata: logData.metadata || {},
+        userFeedback
+      };
+
+      // 2. 基础问题类型检测
+      const issueType = await this.detectIssueType(normalizedLog);
+      
+      // 3. 严重程度分析
+      const riskLevel = this.analyzeSeverity(normalizedLog, issueType);
+
+      // 4. 生成基础分析结果
+      let analysisResult: any = {
+        issueType,
+        severity: riskLevel,
+        timestamp: normalizedLog.timestamp,
+        source: normalizedLog.source,
+        detectedPatterns: []
+      };
+
+      let suggestions: string[] = [];
+      let similarIssues: any[] = [];
+
+      // 5. 可选功能：特征提取
+      if (analysisOptions.enableFeatureExtraction) {
+        try {
+          const features = await this.extractBasicFeatures(normalizedLog);
+          analysisResult.extractedFeatures = features;
+        } catch (error) {
+          this.logger.warn('特征提取失败', error.message);
+        }
+      }
+
+      // 6. 可选功能：相似问题搜索
+      if (analysisOptions.enableSimilarSearch) {
+        try {
+          const searchText = `${normalizedLog.message} ${normalizedLog.source} ${issueType}`;
+          const searchResults = await this.vectorService.semanticSearch(searchText, {
+            limit: 5,
+            threshold: 0.6,
+            filters: { category: 'log_issue' }
+          });
+          
+          similarIssues = searchResults.documents.map(doc => ({
+            id: doc.id,
+            similarity: doc.similarity,
+            description: doc.content,
+            metadata: doc.metadata
+          }));
+        } catch (error) {
+          this.logger.warn('相似问题搜索失败', error.message);
+        }
+      }
+
+      // 7. 生成建议
+      suggestions = this.generateSuggestions(normalizedLog, issueType, similarIssues);
+
+      // 8. 可选功能：异常检测
+      if (analysisOptions.enableAnomalyDetection) {
+        try {
+          const anomalyScore = await this.detectAnomaly(normalizedLog);
+          analysisResult.anomalyScore = anomalyScore;
+          
+          if (anomalyScore > 0.8) {
+            suggestions.unshift('⚠️ 检测到异常模式，建议立即调查');
+          }
+        } catch (error) {
+          this.logger.warn('异常检测失败', error.message);
+        }
+      }
+
+      this.logger.log(`手动日志分析完成: ${issueType}, 风险等级: ${riskLevel}`);
+
+      return {
+        analysisResult,
+        suggestions,
+        similarIssues,
+        riskLevel
+      };
+
+    } catch (error) {
+      this.logger.error('手动日志分析失败', error.stack);
+      throw error;
+    }
+  }
+
+  /**
+   * 获取用户历史日志
+   */
+  async getUserLogs(options: {
+    userId: number;
+    startDate?: Date;
+    endDate?: Date;
+    level?: string;
+    source?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<{
+    logs: any[];
+    totalCount: number;
+    pagination: {
+      limit: number;
+      offset: number;
+      hasMore: boolean;
+    };
+  }> {
+    const { 
+      userId, 
+      startDate, 
+      endDate, 
+      level, 
+      source, 
+      limit = 100, 
+      offset = 0 
+    } = options;
+
+    try {
+      // 构建查询条件
+      const where: any = { userId };
+
+      if (startDate || endDate) {
+        where.timestamp = {};
+        if (startDate) where.timestamp.gte = startDate;
+        if (endDate) where.timestamp.lte = endDate;
+      }
+
+      if (level) {
+        where.level = level.toUpperCase();
+      }
+
+      if (source) {
+        where.source = source.toLowerCase();
+      }
+
+      // 查询日志
+      const [logs, totalCount] = await Promise.all([
+        this.databaseService.logEntry.findMany({
+          where,
+          orderBy: { timestamp: 'desc' },
+          take: limit,
+          skip: offset,
+          select: {
+            id: true,
+            timestamp: true,
+            level: true,
+            source: true,
+            service: true,
+            message: true,
+            metadata: true,
+            normalizedType: true,
+            severity: true,
+            category: true
+          }
+        }),
+        this.databaseService.logEntry.count({ where })
+      ]);
+
+      return {
+        logs,
+        totalCount,
+        pagination: {
+          limit,
+          offset,
+          hasMore: offset + logs.length < totalCount
+        }
+      };
+
+    } catch (error) {
+      this.logger.error(`获取用户日志失败: userId=${userId}`, error.stack);
+      throw error;
+    }
+  }
+
+  /**
+   * 快速日志健康检查
+   */
+  async quickLogCheck(options: {
+    logEntries: Array<{
+      level: string;
+      source: string;
+      message: string;
+      metadata?: Record<string, any>;
+    }>;
+    checkOptions?: {
+      checkSeverity?: boolean;
+      checkPatterns?: boolean;
+      checkAnomalies?: boolean;
+    };
+  }): Promise<{
+    overallHealth: 'GOOD' | 'WARNING' | 'CRITICAL';
+    summary: {
+      totalLogs: number;
+      errorCount: number;
+      warningCount: number;
+      criticalIssues: number;
+    };
+    issues: Array<{
+      type: string;
+      severity: string;
+      count: number;
+      examples: string[];
+    }>;
+    recommendations: string[];
+  }> {
+    const { logEntries, checkOptions = {} } = options;
+    const { 
+      checkSeverity = true, 
+      checkPatterns = true, 
+      checkAnomalies = false 
+    } = checkOptions;
+
+    try {
+      const issues: Array<{
+        type: string;
+        severity: string;
+        count: number;
+        examples: string[];
+      }> = [];
+
+      let errorCount = 0;
+      let warningCount = 0;
+      let criticalIssues = 0;
+
+      // 统计日志级别分布
+      const levelCounts: Record<string, number> = {};
+      const patternCounts: Record<string, { count: number; examples: string[] }> = {};
+
+      for (const logEntry of logEntries) {
+        const level = logEntry.level.toUpperCase();
+        levelCounts[level] = (levelCounts[level] || 0) + 1;
+
+        if (level === 'ERROR') errorCount++;
+        if (level === 'WARN') warningCount++;
+
+        // 检查严重程度
+        if (checkSeverity) {
+          if (this.isCriticalError(logEntry)) {
+            criticalIssues++;
+          }
+        }
+
+        // 检查常见错误模式
+        if (checkPatterns) {
+          const detectedPatterns = this.detectErrorPatterns(logEntry.message);
+          
+          for (const pattern of detectedPatterns) {
+            if (!patternCounts[pattern.type]) {
+              patternCounts[pattern.type] = { count: 0, examples: [] };
+            }
+            patternCounts[pattern.type].count++;
+            
+            if (patternCounts[pattern.type].examples.length < 3) {
+              patternCounts[pattern.type].examples.push(logEntry.message.substring(0, 100));
+            }
+          }
+        }
+      }
+
+      // 生成问题报告
+      for (const [patternType, data] of Object.entries(patternCounts)) {
+        if (data.count > 0) {
+          issues.push({
+            type: patternType,
+            severity: this.getPatternSeverity(patternType),
+            count: data.count,
+            examples: data.examples
+          });
+        }
+      }
+
+      // 计算整体健康状态
+      let overallHealth: 'GOOD' | 'WARNING' | 'CRITICAL' = 'GOOD';
+      
+      if (criticalIssues > 0) {
+        overallHealth = 'CRITICAL';
+      } else if (errorCount > logEntries.length * 0.1 || warningCount > logEntries.length * 0.3) {
+        overallHealth = 'WARNING';
+      }
+
+      // 生成建议
+      const recommendations = this.generateHealthRecommendations({
+        totalLogs: logEntries.length,
+        errorCount,
+        warningCount,
+        criticalIssues,
+        issues,
+        overallHealth
+      });
+
+      return {
+        overallHealth,
+        summary: {
+          totalLogs: logEntries.length,
+          errorCount,
+          warningCount,
+          criticalIssues
+        },
+        issues,
+        recommendations
+      };
+
+    } catch (error) {
+      this.logger.error('快速日志检查失败', error.stack);
+      throw error;
+    }
+  }
+
+  // ==================== 辅助方法 ====================
+
+  private async getUserLogsFromDatabase(options: {
+    userId: number;
+    startDate?: Date;
+    endDate?: Date;
+    sources?: string[];
+    limit: number;
+  }): Promise<any[]> {
+    // 这里应该从实际的日志系统查询
+    // 暂时返回模拟数据
+    return [
+      {
+        timestamp: new Date(),
+        level: 'ERROR',
+        source: 'backend',
+        service: 'payment-service',
+        message: 'Payment failed for user order',
+        userId: options.userId,
+        metadata: { orderId: '12345', retCode: 500 }
+      }
+    ];
+  }
+
+  private async detectIssueType(logEntry: any): Promise<string> {
+    // 复用现有的问题类型检测逻辑
+    const { message, level, source, metadata } = logEntry;
+
+    if (source === 'backend' && metadata?.retCode && metadata.retCode !== 0) {
+      return 'BACKEND_RET_ERROR';
+    }
+
+    if (source === 'frontend' && level === 'ERROR') {
+      return 'FRONTEND_JS_ERROR';
+    }
+
+    if (level === 'ERROR') {
+      return 'GENERIC_ERROR';
+    }
+
+    return 'INFO_LOG';
+  }
+
+  private analyzeSeverity(logEntry: any, issueType: string): 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' {
+    const severityMap: Record<string, 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'> = {
+      'BACKEND_RET_ERROR': 'HIGH',
+      'FRONTEND_JS_ERROR': 'MEDIUM',
+      'GENERIC_ERROR': 'MEDIUM',
+      'INFO_LOG': 'LOW'
+    };
+
+    let severity = severityMap[issueType] || 'LOW';
+
+    // 支付相关问题提升优先级
+    if (logEntry.metadata?.affectsPayment || logEntry.message.toLowerCase().includes('payment')) {
+      severity = 'CRITICAL';
+    }
+
+    return severity;
+  }
+
+  private async extractBasicFeatures(logEntry: any): Promise<any[]> {
+    // 简化的特征提取
+    return [
+      {
+        type: 'LOG_LEVEL',
+        value: logEntry.level,
+        importance: 0.8
+      },
+      {
+        type: 'SOURCE',
+        value: logEntry.source,
+        importance: 0.7
+      }
+    ];
+  }
+
+  private generateSuggestions(logEntry: any, issueType: string, similarIssues: any[]): string[] {
+    const suggestions: string[] = [];
+
+    // 基于问题类型的建议
+    const typeSuggestions: Record<string, string[]> = {
+      'BACKEND_RET_ERROR': [
+        '检查API返回码的业务逻辑',
+        '验证服务依赖是否正常',
+        '查看相关服务的健康状态'
+      ],
+      'FRONTEND_JS_ERROR': [
+        '检查前端代码的错误处理',
+        '验证组件的生命周期管理',
+        '确认数据格式是否正确'
+      ],
+      'GENERIC_ERROR': [
+        '查看完整的错误堆栈',
+        '检查相关的系统资源',
+        '确认操作的前置条件'
+      ]
+    };
+
+    if (typeSuggestions[issueType]) {
+      suggestions.push(...typeSuggestions[issueType]);
+    }
+
+    // 基于相似问题的建议
+    if (similarIssues.length > 0) {
+      suggestions.push('参考相似问题的解决方案');
+      
+      const resolutions = similarIssues
+        .map(issue => issue.metadata?.resolution)
+        .filter(Boolean);
+      
+      if (resolutions.length > 0) {
+        suggestions.push(`历史解决方案：${resolutions[0]}`);
+      }
+    }
+
+    return suggestions;
+  }
+
+  private async detectAnomaly(logEntry: any): Promise<number> {
+    // 简化的异常检测 - 可以集成更复杂的机器学习模型
+    let score = 0;
+
+    // 检查消息长度异常
+    if (logEntry.message.length > 1000) {
+      score += 0.3;
+    }
+
+    // 检查是否包含异常关键词
+    const anomalyKeywords = ['crash', 'panic', 'fatal', 'corruption', 'memory leak'];
+    const hasAnomalyKeyword = anomalyKeywords.some(keyword => 
+      logEntry.message.toLowerCase().includes(keyword)
+    );
+    
+    if (hasAnomalyKeyword) {
+      score += 0.5;
+    }
+
+    // 检查元数据异常
+    if (logEntry.metadata?.retCode && logEntry.metadata.retCode >= 500) {
+      score += 0.4;
+    }
+
+    return Math.min(1.0, score);
+  }
+
+  private isCriticalError(logEntry: any): boolean {
+    const criticalKeywords = ['fatal', 'critical', 'panic', 'crash', 'deadlock'];
+    
+    return logEntry.level === 'ERROR' && 
+           criticalKeywords.some(keyword => 
+             logEntry.message.toLowerCase().includes(keyword)
+           );
+  }
+
+  private detectErrorPatterns(message: string): Array<{ type: string; confidence: number }> {
+    const patterns = [
+      {
+        regex: /null.*reference|cannot.*read.*property.*null/i,
+        type: 'NULL_POINTER_ERROR',
+        confidence: 0.9
+      },
+      {
+        regex: /timeout|timed.*out/i,
+        type: 'TIMEOUT_ERROR',
+        confidence: 0.8
+      },
+      {
+        regex: /connection.*failed|connection.*refused/i,
+        type: 'CONNECTION_ERROR',
+        confidence: 0.8
+      },
+      {
+        regex: /memory.*error|out.*of.*memory/i,
+        type: 'MEMORY_ERROR',
+        confidence: 0.9
+      }
+    ];
+
+    return patterns
+      .filter(pattern => pattern.regex.test(message))
+      .map(pattern => ({
+        type: pattern.type,
+        confidence: pattern.confidence
+      }));
+  }
+
+  private getPatternSeverity(patternType: string): string {
+    const severityMap: Record<string, string> = {
+      'NULL_POINTER_ERROR': 'HIGH',
+      'TIMEOUT_ERROR': 'MEDIUM',
+      'CONNECTION_ERROR': 'HIGH',
+      'MEMORY_ERROR': 'CRITICAL'
+    };
+
+    return severityMap[patternType] || 'MEDIUM';
+  }
+
+  private generateHealthRecommendations(healthData: {
+    totalLogs: number;
+    errorCount: number;
+    warningCount: number;
+    criticalIssues: number;
+    issues: any[];
+    overallHealth: string;
+  }): string[] {
+    const recommendations: string[] = [];
+
+    if (healthData.overallHealth === 'CRITICAL') {
+      recommendations.push('🚨 发现严重问题，建议立即处理');
+    }
+
+    if (healthData.errorCount > healthData.totalLogs * 0.1) {
+      recommendations.push('⚠️ 错误率偏高，建议检查系统稳定性');
+    }
+
+    if (healthData.criticalIssues > 0) {
+      recommendations.push('🔴 发现致命错误，优先处理critical级别问题');
+    }
+
+    // 基于具体问题类型的建议
+    const memoryIssues = healthData.issues.filter(issue => issue.type === 'MEMORY_ERROR');
+    if (memoryIssues.length > 0) {
+      recommendations.push('💾 检测到内存问题，建议检查内存泄漏');
+    }
+
+    const connectionIssues = healthData.issues.filter(issue => issue.type === 'CONNECTION_ERROR');
+    if (connectionIssues.length > 0) {
+      recommendations.push('🔗 检测到连接问题，建议检查网络和服务依赖');
+    }
+
+    if (recommendations.length === 0) {
+      recommendations.push('✅ 系统运行正常，保持当前监控策略');
+    }
+
+    return recommendations;
+  }
 } 

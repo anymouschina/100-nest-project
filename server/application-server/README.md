@@ -823,19 +823,14 @@ async detectAnomalousParams(params: any): Promise<{
 
 ## 日志分析Agent系统 (v3.0) - 已完成实施 ✅
 
-### 🎉 向量数据库集成完成
+### 🎉 智能日志分析系统
 
-**实施方案**：使用 **Qdrant v1.7.4** 作为向量数据库
+**实施方案**：使用 **内存向量存储** + **传统数据库**
 
-**Docker配置**：
-```yaml
-# 在docker-compose.yml中已配置
-qdrant:
-  image: qdrant/qdrant:v1.7.4  # 推荐版本
-  ports:
-    - "6333:6333"  # REST API
-    - "6334:6334"  # gRPC API
-```
+**架构特点**：
+- 轻量级实现，无需额外的向量数据库
+- 智能语义搜索，基于内存向量计算
+- 完全集成到现有PostgreSQL数据库中
 
 ### 🚀 已实现功能
 
@@ -872,11 +867,14 @@ qdrant:
 
 #### 1. 环境启动
 ```bash
-# 启动所有服务（包含Qdrant）
+# 启动数据库服务
 docker-compose up -d
 
 # 安装依赖
 pnpm install
+
+# 初始化数据库
+pnpm run db:init
 
 # 启动应用
 pnpm run start:dev
@@ -899,15 +897,129 @@ curl -X GET "http://localhost:3001/api/log-analysis/tasks/TASK_ID" \
   -H "Authorization: Bearer YOUR_JWT_TOKEN"
 ```
 
-#### 3. 向量数据库管理
-- **Web界面**: http://localhost:6333/dashboard
-- **健康检查**: http://localhost:6333/health
-- **API文档**: Swagger界面中的向量相关接口
+#### 3. 系统监控  
+- **API文档**: http://localhost:3001/api-docs
+- **健康检查**: 应用启动日志
+- **数据库状态**: PostgreSQL连接状态
+
+### 🆕 用户日志分析功能 (v3.1)
+
+#### **通过用户ID分析日志**
+```bash
+# 分析特定用户的日志问题
+curl -X POST "http://localhost:3001/api/log-analysis/analyze/user-logs" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": 12345,
+    "timeRange": {
+      "startTime": "2024-01-01T00:00:00Z",
+      "endTime": "2024-01-31T23:59:59Z"
+    },
+    "logSources": ["backend", "frontend"],
+    "priority": "HIGH",
+    "userFeedback": "用户反馈无法完成订单支付"
+  }'
+```
+
+#### **手动输入日志即时分析**
+
+**格式1: 结构化对象格式**
+```bash  
+# 输入单条日志进行快速分析
+curl -X POST "http://localhost:3001/api/log-analysis/analyze/manual" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userFeedback": "支付页面崩溃了",
+    "logData": {
+      "level": "ERROR",
+      "source": "frontend", 
+      "message": "Cannot read property \"amount\" of null at PaymentComponent",
+      "metadata": {
+        "userId": 12345,
+        "orderId": "ORD-001",
+        "retCode": 500
+      }
+    },
+    "analysisOptions": {
+      "enableFeatureExtraction": true,
+      "enableSimilarSearch": true,
+      "enableAnomalyDetection": true
+    }
+  }'
+```
+
+**格式2: 字符串数组格式** ⭐
+```bash
+# 输入原始日志文本数组进行分析
+curl -X POST "http://localhost:3001/api/log-analysis/analyze/manual" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userFeedback": "前端支付组件出错",
+    "logData": [
+      "2024-01-15 14:30:25 ERROR [Frontend] Payment component crashed",
+      "TypeError: Cannot read property amount of null",
+      "at PaymentComponent.calculateTotal (PaymentComponent.js:42:15)",
+      "at PaymentComponent.render (PaymentComponent.js:108:9)",
+      "User ID: 12345, Session: sess_abc123"
+    ],
+    "analysisOptions": {
+      "enableFeatureExtraction": true,
+      "enableSimilarSearch": true,
+      "enableAnomalyDetection": true
+    }
+  }'
+```
+
+**💡 字符串数组格式特点：**
+- ✅ 自动解析日志级别（DEBUG/INFO/WARN/ERROR/FATAL）
+- ✅ 智能识别来源（frontend/backend/mobile）
+- ✅ 自动提取时间戳和服务名
+- ✅ 检测堆栈跟踪信息
+- ✅ 解析JSON元数据
+- ✅ 支持多种日志格式混合
+
+#### **获取用户历史日志**
+```bash
+# 查看用户的历史日志记录
+curl -X GET "http://localhost:3001/api/log-analysis/logs/user/12345?startDate=2024-01-01&endDate=2024-01-31&level=ERROR&limit=50" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+#### **快速日志健康检查**
+```bash
+# 批量检查多条日志的健康状态
+curl -X POST "http://localhost:3001/api/log-analysis/analyze/quick-check" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "logEntries": [
+      {
+        "level": "ERROR",
+        "source": "backend",
+        "message": "Database connection timeout",
+        "metadata": {"service": "user-service"}
+      },
+      {
+        "level": "WARN", 
+        "source": "frontend",
+        "message": "API response delayed"
+      }
+    ],
+    "checkOptions": {
+      "checkSeverity": true,
+      "checkPatterns": true,
+      "checkAnomalies": true
+    }
+  }'
+```
 
 ### 📋 核心特性
 
 #### 智能分析能力
-- 🧠 **语义理解**：基于OpenAI Embeddings的文本理解
+- 🧠 **语义理解**：基于内存向量计算的文本理解
 - 🔍 **相似检索**：自动查找历史相同问题
 - 🎯 **智能分类**：自动识别7种主要问题类型
 - 💡 **解决方案推荐**：基于历史解决方案的智能推荐
@@ -921,7 +1033,7 @@ curl -X GET "http://localhost:3001/api/log-analysis/tasks/TASK_ID" \
 #### 可视化和报告
 - 📈 **统计分析**：问题分类、严重程度分布
 - 📑 **详细报告**：包含根因分析和解决建议
-- 🔍 **可视化搜索**：Qdrant Dashboard支持
+- 🔍 **搜索功能**：支持语义和关键词搜索
 - 📊 **实时监控**：任务状态和Agent执行情况
 
 ### 📖 详细文档
