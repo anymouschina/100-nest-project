@@ -30,7 +30,7 @@ export class OrderController {
   /**
    * GET /api/orders/stats
    * 获取订单统计数据，支持按不同时间维度进行统计
-   * 
+   *
    * @param timeRange 时间维度：day(日)、week(周)、month(月)、year(年)
    * @param startDate 开始日期
    * @param endDate 结束日期
@@ -69,7 +69,7 @@ export class OrderController {
   /**
    * GET /api/orders
    * 获取订单列表，可按状态筛选
-   * 
+   *
    * @param query - 查询参数，包含status、userId、page、pageSize等
    * @returns 订单列表和分页信息
    */
@@ -77,7 +77,8 @@ export class OrderController {
   @ApiQuery({
     name: 'status',
     required: false,
-    description: '订单状态，如 PENDING, ACCEPTED, PROCESSING, COMPLETED, CANCELLED, DELIVERED',
+    description:
+      '订单状态，如 PENDING, ACCEPTED, PROCESSING, COMPLETED, CANCELLED, DELIVERED',
   })
   @ApiQuery({
     name: 'status[name]',
@@ -87,7 +88,8 @@ export class OrderController {
   @ApiQuery({
     name: 'status[index]',
     required: false,
-    description: '订单状态索引，0:PENDING, 1:ACCEPTED, 2:PROCESSING, 3:COMPLETED, 4:CANCELLED, 5:DELIVERED',
+    description:
+      '订单状态索引，0:PENDING, 1:ACCEPTED, 2:PROCESSING, 3:COMPLETED, 4:CANCELLED, 5:DELIVERED',
   })
   @ApiQuery({
     name: 'userId',
@@ -110,18 +112,29 @@ export class OrderController {
   })
   async findAll(@Query() query: any) {
     // 订单状态枚举映射
-    const statusMap = ['PENDING', 'ACCEPTED', 'PROCESSING', 'COMPLETED', 'CANCELLED', 'DELIVERED'];
-    
+    const statusMap = [
+      'PENDING',
+      'ACCEPTED',
+      'PROCESSING',
+      'COMPLETED',
+      'CANCELLED',
+      'DELIVERED',
+    ];
+
     // 处理status参数，支持status[name]和status[index]格式
     let status: string | undefined;
-    
+
     if (query['status[name]']) {
       // 处理status[name]参数
       status = query['status[name]'].toUpperCase();
     } else if (query['status[index]'] !== undefined) {
       // 处理status[index]参数，转换为对应的状态名
       const statusIndex = parseInt(query['status[index]']);
-      if (!isNaN(statusIndex) && statusIndex >= 0 && statusIndex < statusMap.length) {
+      if (
+        !isNaN(statusIndex) &&
+        statusIndex >= 0 &&
+        statusIndex < statusMap.length
+      ) {
         status = statusMap[statusIndex];
       }
     } else if (query.status && typeof query.status === 'object') {
@@ -130,7 +143,11 @@ export class OrderController {
         status = query.status.name.toUpperCase();
       } else if (query.status.index !== undefined) {
         const statusIndex = parseInt(query.status.index);
-        if (!isNaN(statusIndex) && statusIndex >= 0 && statusIndex < statusMap.length) {
+        if (
+          !isNaN(statusIndex) &&
+          statusIndex >= 0 &&
+          statusIndex < statusMap.length
+        ) {
           status = statusMap[statusIndex];
         }
       }
@@ -138,27 +155,32 @@ export class OrderController {
       // 处理简单的status字符串
       status = query.status.toUpperCase();
     }
-    
+
     // 处理userId参数
     const userId = query.userId ? parseInt(query.userId) : undefined;
-    
+
     // 处理分页参数
     const page = query.page ? parseInt(query.page) : 1;
     const pageSize = query.pageSize ? parseInt(query.pageSize) : 20;
-    if(status === 'ALL'){
-      status = ''
+    if (status === 'ALL') {
+      status = '';
     }
     // 获取订单数据
-    const { orders, total } = await this.orderService.findAll(status, userId, page, pageSize);
-    
+    const { orders, total } = await this.orderService.findAll(
+      status,
+      userId,
+      page,
+      pageSize,
+    );
+
     return {
       data: orders,
       pagination: {
         page,
         pageSize,
         total,
-        pages: Math.ceil(total / pageSize)
-      }
+        pages: Math.ceil(total / pageSize),
+      },
     };
   }
 
@@ -304,7 +326,7 @@ export class OrderController {
   /**
    * POST /api/orders/:id/cancel
    * 取消订单，并根据需要处理退款
-   * 
+   *
    * @param id - 要取消的订单ID
    * @param cancelOrderDto - 包含取消原因和是否需要退款的DTO
    * @returns 取消后的订单信息

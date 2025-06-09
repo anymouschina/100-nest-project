@@ -7,12 +7,12 @@ import { ApiProperty } from '@nestjs/swagger';
 
 // 使用枚举值定义可用状态
 const Status = [
-  'PENDING',   // 待接单
-  'ACCEPTED',  // 已接单
+  'PENDING', // 待接单
+  'ACCEPTED', // 已接单
   'PROCESSING', // 施工中
   'COMPLETED', // 已完成
   'CANCELLED', // 已取消
-  'DELIVERED'  // 已交付
+  'DELIVERED', // 已交付
 ];
 
 export class UpdateOrderDto extends PartialType(CreateOrderDto) {

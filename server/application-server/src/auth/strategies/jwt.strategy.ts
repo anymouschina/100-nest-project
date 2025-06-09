@@ -22,7 +22,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
   /**
    * Validate the JWT payload and find the user
-   * 
+   *
    * @param req - Express request object
    * @param payload - JWT payload containing user info
    * @returns User object if valid, throws UnauthorizedException if invalid
@@ -33,18 +33,19 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       throw new UnauthorizedException('Invalid token format');
     }
-    
+
     const token = authHeader.split(' ')[1];
-    
+
     // Check if token is blacklisted
-    const blacklistedToken = await this.databaseService.blacklistedToken.findUnique({
-      where: { token },
-    });
-    
+    const blacklistedToken =
+      await this.databaseService.blacklistedToken.findUnique({
+        where: { token },
+      });
+
     if (blacklistedToken) {
       throw new UnauthorizedException('Token has been revoked');
     }
-    
+
     // Find user
     const user = await this.databaseService.user.findUnique({
       where: { userId: payload.sub },
@@ -59,4 +60,4 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
     return user;
   }
-} 
+}

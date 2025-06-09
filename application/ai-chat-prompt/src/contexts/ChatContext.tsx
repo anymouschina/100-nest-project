@@ -124,6 +124,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       const chatRequest: ChatRequest = {
         message,
         sessionId: currentSessionId, // 确保传递sessionId以保持会话连续性
+        model: 'moonshot-v1-8k', // 默认使用moonshot模型
       }
       
       const response = await aiRequest.post<ChatResponse>('/ai/chat', chatRequest)

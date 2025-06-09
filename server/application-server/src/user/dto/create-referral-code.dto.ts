@@ -18,4 +18,4 @@ export class CreateReferralCodeDto {
   @IsOptional()
   @IsString({ message: '描述必须是字符串' })
   description?: string;
-} 
+}

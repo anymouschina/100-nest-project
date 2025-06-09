@@ -9,7 +9,9 @@ describe('OrderMicroserviceController', () => {
       controllers: [OrderMicroserviceController],
     }).compile();
 
-    controller = module.get<OrderMicroserviceController>(OrderMicroserviceController);
+    controller = module.get<OrderMicroserviceController>(
+      OrderMicroserviceController,
+    );
   });
 
   it('should be defined', () => {

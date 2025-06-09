@@ -5,11 +5,11 @@ import { DatabaseService } from '../database/database.service';
 import { Cron } from '@nestjs/schedule';
 
 export interface JwtPayload {
-  sub: number;      // User ID
-  openId?: string;  // WeChat openId
-  name?: string;    // Username
-  iat?: number;     // Issued at
-  exp?: number;     // Expiration time
+  sub: number; // User ID
+  openId?: string; // WeChat openId
+  name?: string; // Username
+  iat?: number; // Issued at
+  exp?: number; // Expiration time
 }
 
 @Injectable()
@@ -27,12 +27,15 @@ export class AuthService implements OnModuleInit {
 
   /**
    * Generate a JWT token for a user
-   * 
+   *
    * @param userId User ID
    * @param payload Additional payload data
    * @returns JWT token string
    */
-  async generateToken(userId: number, payload: Partial<JwtPayload> = {}): Promise<string> {
+  async generateToken(
+    userId: number,
+    payload: Partial<JwtPayload> = {},
+  ): Promise<string> {
     const tokenPayload: JwtPayload = {
       sub: userId,
       ...payload,
@@ -43,21 +46,22 @@ export class AuthService implements OnModuleInit {
 
   /**
    * Verify and decode a JWT token
-   * 
+   *
    * @param token JWT token string
    * @returns Decoded payload or null if invalid
    */
   async verifyToken(token: string): Promise<JwtPayload | null> {
     try {
       // Check if the token is blacklisted
-      const blacklistedToken = await this.databaseService.blacklistedToken.findUnique({
-        where: { token },
-      });
-      
+      const blacklistedToken =
+        await this.databaseService.blacklistedToken.findUnique({
+          where: { token },
+        });
+
       if (blacklistedToken) {
         return null;
       }
-      
+
       return this.jwtService.verify<JwtPayload>(token);
     } catch (error) {
       return null;
@@ -66,7 +70,7 @@ export class AuthService implements OnModuleInit {
 
   /**
    * Blacklist a token (logout)
-   * 
+   *
    * @param token JWT token string
    * @param userId User ID
    * @returns True if token was blacklisted, false otherwise
@@ -75,14 +79,14 @@ export class AuthService implements OnModuleInit {
     try {
       // Decode token without verifying to get expiration time
       const decoded = this.jwtService.decode(token) as JwtPayload;
-      
+
       if (!decoded || !decoded.exp) {
         return false;
       }
-      
+
       // Convert exp timestamp to Date object
       const expiresAt = new Date(decoded.exp * 1000);
-      
+
       // Add token to blacklist
       await this.databaseService.blacklistedToken.create({
         data: {
@@ -91,7 +95,7 @@ export class AuthService implements OnModuleInit {
           expiresAt,
         },
       });
-      
+
       return true;
     } catch (error) {
       return false;
@@ -105,7 +109,7 @@ export class AuthService implements OnModuleInit {
   @Cron('0 0 * * *')
   async cleanupExpiredTokens() {
     const now = new Date();
-    
+
     await this.databaseService.blacklistedToken.deleteMany({
       where: {
         expiresAt: {
@@ -114,4 +118,4 @@ export class AuthService implements OnModuleInit {
       },
     });
   }
-} 
+}

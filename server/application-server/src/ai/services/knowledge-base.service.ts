@@ -155,7 +155,7 @@ export class KnowledgeBaseService {
       if (
         knowledge.title.toLowerCase().includes(queryLower) ||
         knowledge.content.toLowerCase().includes(queryLower) ||
-        knowledge.tags.some(tag => tag.toLowerCase().includes(queryLower)) ||
+        knowledge.tags.some((tag) => tag.toLowerCase().includes(queryLower)) ||
         knowledge.category.toLowerCase().includes(queryLower)
       ) {
         results.push(knowledge);
@@ -166,15 +166,15 @@ export class KnowledgeBaseService {
   }
 
   getKnowledgeByCategory(category: string): KnowledgeBase[] {
-    return Array.from(this.knowledgeBase.values())
-      .filter(knowledge => knowledge.category === category);
+    return Array.from(this.knowledgeBase.values()).filter(
+      (knowledge) => knowledge.category === category,
+    );
   }
 
   getKnowledgeByTags(tags: string[]): KnowledgeBase[] {
-    return Array.from(this.knowledgeBase.values())
-      .filter(knowledge => 
-        tags.some(tag => knowledge.tags.includes(tag))
-      );
+    return Array.from(this.knowledgeBase.values()).filter((knowledge) =>
+      tags.some((tag) => knowledge.tags.includes(tag)),
+    );
   }
 
   updateKnowledge(id: string, updates: Partial<KnowledgeBase>): boolean {
@@ -202,10 +202,13 @@ export class KnowledgeBaseService {
     return deleted;
   }
 
-  getRelevantKnowledge(prompt: string, maxResults: number = 3): KnowledgeBase[] {
+  getRelevantKnowledge(
+    prompt: string,
+    maxResults: number = 3,
+  ): KnowledgeBase[] {
     // 简单的相关性匹配算法
     const results = this.searchKnowledge(prompt);
-    
+
     // 按相关性排序（这里使用简单的匹配度计算）
     results.sort((a, b) => {
       const scoreA = this.calculateRelevanceScore(prompt, a);
@@ -216,7 +219,10 @@ export class KnowledgeBaseService {
     return results.slice(0, maxResults);
   }
 
-  private calculateRelevanceScore(query: string, knowledge: KnowledgeBase): number {
+  private calculateRelevanceScore(
+    query: string,
+    knowledge: KnowledgeBase,
+  ): number {
     let score = 0;
     const queryLower = query.toLowerCase();
     const titleLower = knowledge.title.toLowerCase();
@@ -224,14 +230,16 @@ export class KnowledgeBaseService {
 
     // 标题匹配权重更高
     if (titleLower.includes(queryLower)) score += 10;
-    
+
     // 标签匹配
-    knowledge.tags.forEach(tag => {
+    knowledge.tags.forEach((tag) => {
       if (tag.toLowerCase().includes(queryLower)) score += 5;
     });
 
     // 内容匹配
-    const contentMatches = (contentLower.match(new RegExp(queryLower, 'g')) || []).length;
+    const contentMatches = (
+      contentLower.match(new RegExp(queryLower, 'g')) || []
+    ).length;
     score += contentMatches;
 
     return score;
@@ -247,7 +255,7 @@ export class KnowledgeBaseService {
       const data: KnowledgeBase[] = JSON.parse(jsonData);
       let imported = 0;
 
-      data.forEach(knowledge => {
+      data.forEach((knowledge) => {
         this.addKnowledge(knowledge);
         imported++;
       });
@@ -269,10 +277,10 @@ export class KnowledgeBaseService {
     const categories: Record<string, number> = {};
     const tags: Record<string, number> = {};
 
-    knowledge.forEach(item => {
+    knowledge.forEach((item) => {
       categories[item.category] = (categories[item.category] || 0) + 1;
-      
-      item.tags.forEach(tag => {
+
+      item.tags.forEach((tag) => {
         tags[tag] = (tags[tag] || 0) + 1;
       });
     });
@@ -283,4 +291,4 @@ export class KnowledgeBaseService {
       tags,
     };
   }
-} 
+}

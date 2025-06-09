@@ -64,6 +64,7 @@ export interface ChatSession {
 export interface ChatRequest {
   message: string
   sessionId?: string
+  model?: string
   context?: string
 }
 
@@ -86,18 +87,32 @@ export interface ChatResponse {
 // 提示词优化相关类型
 export type OptimizationType = 
   | 'basic' 
-  | 'role-based' 
-  | 'few-shot' 
-  | 'chain-of-thought' 
-  | 'domain-specific' 
-  | 'multimodal'
+  | 'rolePlay' 
+  | 'fewShot' 
+  | 'chainOfThought' 
+  | 'domainSpecific' 
+  | 'multiModal'
 
 export interface OptimizationRequest {
-  originalPrompt: string
+  prompt: string
   optimizationType: OptimizationType
-  domain?: string
   context?: string
-  requirements?: string[]
+  additionalParams?: {
+    role?: string
+    audience?: string
+    tone?: string
+    examples?: Array<{
+      input: string
+      output: string
+    }>
+    stepByStep?: boolean
+    showReasoning?: boolean
+    domain?: string
+    expertiseLevel?: string
+    technicalTerms?: boolean
+    modalities?: string[]
+    detailLevel?: string
+  }
 }
 
 export interface OptimizationResponse {
@@ -131,9 +146,12 @@ export interface AnalysisResponse {
 
 // 批量优化类型
 export interface BatchOptimizationRequest {
-  prompts: string[]
-  optimizationType: OptimizationType
-  domain?: string
+  prompts: Array<{
+    prompt: string
+    optimizationType: OptimizationType
+    context?: string
+    additionalParams?: any
+  }>
 }
 
 export interface BatchOptimizationResponse {

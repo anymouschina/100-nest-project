@@ -34,7 +34,7 @@ export class AuthController {
     private readonly authService: AuthService,
     private readonly databaseService: DatabaseService,
   ) {}
-  
+
   @Public()
   @Post('login')
   @ApiOperation({ summary: '用户登录' })
@@ -61,7 +61,10 @@ export class AuthController {
 
     // 验证密码
     if (!user.password) {
-      throw new HttpException('该用户未设置密码，请使用其他登录方式', HttpStatus.UNAUTHORIZED);
+      throw new HttpException(
+        '该用户未设置密码，请使用其他登录方式',
+        HttpStatus.UNAUTHORIZED,
+      );
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
@@ -162,7 +165,7 @@ export class AuthController {
       message: '注册成功',
     };
   }
- 
+
   @Post('logout')
   @ApiOperation({ summary: '用户登出' })
   @ApiResponse({ status: HttpStatus.OK, description: '登出成功' })
@@ -241,7 +244,10 @@ export class AuthController {
     }
 
     // 验证当前密码
-    const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.password);
+    const isCurrentPasswordValid = await bcrypt.compare(
+      currentPassword,
+      user.password,
+    );
     if (!isCurrentPasswordValid) {
       throw new HttpException('当前密码错误', HttpStatus.UNAUTHORIZED);
     }
@@ -319,4 +325,4 @@ export class AuthController {
       message: '游客登录成功，可以体验AI功能',
     };
   }
-} 
+}

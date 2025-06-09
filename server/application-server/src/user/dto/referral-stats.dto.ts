@@ -58,4 +58,4 @@ export class ReferralStatsDataDto {
     example: 8,
   })
   totalOrdered: number;
-} 
+}

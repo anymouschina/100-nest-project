@@ -7,6 +7,6 @@ import { DatabaseService } from '../database/database.service';
   imports: [],
   controllers: [AppointmentController],
   providers: [AppointmentService, DatabaseService],
-  exports: [AppointmentService]
+  exports: [AppointmentService],
 })
-export class AppointmentModule {} 
+export class AppointmentModule {}

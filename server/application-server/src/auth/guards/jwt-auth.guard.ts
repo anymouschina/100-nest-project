@@ -1,4 +1,8 @@
-import { Injectable, ExecutionContext, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  ExecutionContext,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { Reflector } from '@nestjs/core';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
@@ -11,7 +15,7 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
 
   /**
    * Check if the endpoint is public or requires authentication
-   * 
+   *
    * @param context Execution context
    * @returns Whether to skip authentication check
    */
@@ -21,18 +25,18 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
       context.getHandler(),
       context.getClass(),
     ]);
-    
+
     if (isPublic) {
       return true;
     }
-    
+
     // Use the parent class's canActivate method for JWT auth
     return super.canActivate(context);
   }
 
   /**
    * Handle unauthorized errors
-   * 
+   *
    * @param err Error object
    * @returns Never - throws an UnauthorizedException
    */
@@ -42,4 +46,4 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     }
     return user;
   }
-} 
+}

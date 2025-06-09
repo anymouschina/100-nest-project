@@ -26,4 +26,4 @@ export class ReferralDto {
   })
   @IsOptional()
   metadata?: Record<string, any>;
-} 
+}

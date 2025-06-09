@@ -29,6 +29,9 @@ model User {
   orders          Order[]
   referredUsers   UserReferral[]    @relation("ReferredUsers")
   referredBy      UserReferral?     @relation("ReferredBy")
+  chatSessions    ChatSession[]
+  chatMessages    ChatMessage[]
+  userPreference  UserPreference?
 }
 
 // 用户引荐关联记录表
@@ -186,4 +189,45 @@ model ReferralCode {
   updatedAt     DateTime        @updatedAt
   isActive      Boolean         @default(true) // 是否激活
   referrals     UserReferral[]  // 关联的引荐记录
+}
+
+// AI聊天会话表
+model ChatSession {
+  sessionId    String        @id
+  userId       Int
+  title        String
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  messageCount Int           @default(0)
+  user         User          @relation(fields: [userId], references: [userId])
+  messages     ChatMessage[]
+
+  @@index([userId])
+  @@index([updatedAt])
+}
+
+// AI聊天消息表
+model ChatMessage {
+  id          Int         @id @default(autoincrement())
+  sessionId   String
+  userId      Int
+  userMessage String
+  aiResponse  String
+  createdAt   DateTime    @default(now())
+  session     ChatSession @relation(fields: [sessionId], references: [sessionId], onDelete: Cascade)
+  user        User        @relation(fields: [userId], references: [userId])
+
+  @@index([sessionId])
+  @@index([userId])
+  @@index([createdAt])
+}
+
+// 用户偏好设置表
+model UserPreference {
+  id          Int      @id @default(autoincrement())
+  userId      Int      @unique
+  preferences Json     // 存储用户偏好的JSON数据
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [userId])
 }

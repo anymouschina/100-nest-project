@@ -46,21 +46,27 @@ export class MoonshotService {
         return response;
       },
       (error) => {
-        this.logger.error('响应拦截器错误:', error.response?.data || error.message);
+        this.logger.error(
+          '响应拦截器错误:',
+          error.response?.data || error.message,
+        );
         return Promise.reject(error);
       },
     );
   }
 
-  async chat(messages: ChatMessage[], options?: {
-    temperature?: number;
-    maxTokens?: number;
-    stream?: boolean;
-  }): Promise<AIResponse> {
+  async chat(
+    messages: ChatMessage[],
+    options?: {
+      temperature?: number;
+      maxTokens?: number;
+      stream?: boolean;
+    },
+  ): Promise<AIResponse> {
     try {
       const requestData = {
         model: this.model,
-        messages: messages.map(msg => ({
+        messages: messages.map((msg) => ({
           role: msg.role,
           content: msg.content,
         })),
@@ -71,7 +77,10 @@ export class MoonshotService {
 
       this.logger.debug('发送聊天请求:', JSON.stringify(requestData, null, 2));
 
-      const response = await this.httpClient.post('/chat/completions', requestData);
+      const response = await this.httpClient.post(
+        '/chat/completions',
+        requestData,
+      );
 
       const choice = response.data.choices[0];
       const usage = response.data.usage;
@@ -88,31 +97,43 @@ export class MoonshotService {
       };
     } catch (error) {
       this.logger.error('聊天请求失败:', error);
-      
+
       if (error.response) {
         const status = error.response.status;
         const message = error.response.data?.error?.message || '未知错误';
-        
+
         switch (status) {
           case 401:
             throw new HttpException('API密钥无效', HttpStatus.UNAUTHORIZED);
           case 429:
-            throw new HttpException('请求频率过高，请稍后重试', HttpStatus.TOO_MANY_REQUESTS);
+            throw new HttpException(
+              '请求频率过高，请稍后重试',
+              HttpStatus.TOO_MANY_REQUESTS,
+            );
           case 500:
-            throw new HttpException('AI服务暂时不可用', HttpStatus.INTERNAL_SERVER_ERROR);
+            throw new HttpException(
+              'AI服务暂时不可用',
+              HttpStatus.INTERNAL_SERVER_ERROR,
+            );
           default:
-            throw new HttpException(`AI服务错误: ${message}`, HttpStatus.BAD_REQUEST);
+            throw new HttpException(
+              `AI服务错误: ${message}`,
+              HttpStatus.BAD_REQUEST,
+            );
         }
       }
-      
+
       throw new HttpException('网络连接错误', HttpStatus.SERVICE_UNAVAILABLE);
     }
   }
 
-  async generateCompletion(prompt: string, options?: {
-    temperature?: number;
-    maxTokens?: number;
-  }): Promise<string> {
+  async generateCompletion(
+    prompt: string,
+    options?: {
+      temperature?: number;
+      maxTokens?: number;
+    },
+  ): Promise<string> {
     const messages: ChatMessage[] = [
       {
         role: 'user',
@@ -159,4 +180,4 @@ export class MoonshotService {
       averageResponseTime: 0,
     };
   }
-} 
+}

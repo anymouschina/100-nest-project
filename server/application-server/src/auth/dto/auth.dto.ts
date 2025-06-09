@@ -37,7 +37,10 @@ export class RegisterDto {
   @MinLength(6, { message: '密码长度至少6位' })
   password: string;
 
-  @ApiPropertyOptional({ description: '地址', example: '123 Main St, City, Country' })
+  @ApiPropertyOptional({
+    description: '地址',
+    example: '123 Main St, City, Country',
+  })
   @IsOptional()
   @IsString({ message: '地址必须是字符串' })
   address?: string;
@@ -83,4 +86,4 @@ export class LoginResponse {
     email: string;
     address?: string;
   };
-} 
+}

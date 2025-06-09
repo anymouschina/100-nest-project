@@ -19,11 +19,12 @@ export interface ChatSession {
 }
 
 export interface PromptOptimizationRequest {
-  originalPrompt: string;
+  prompt: string;
   optimizationType: OptimizationType;
   domain?: string;
   context?: string;
   requirements?: string[];
+  additionalParams?: Record<string, any>;
 }
 
 export interface PromptOptimizationResponse {
@@ -98,11 +99,11 @@ export interface PromptExample {
 
 export type OptimizationType =
   | 'basic'
-  | 'role-based'
-  | 'few-shot'
-  | 'chain-of-thought'
-  | 'domain-specific'
-  | 'multimodal';
+  | 'rolePlay'
+  | 'fewShot'
+  | 'chainOfThought'
+  | 'domainSpecific'
+  | 'multiModal';
 
 export interface AIServiceConfig {
   apiKey: string;
@@ -121,5 +122,5 @@ export interface PromptAnalysis {
   structure: 'poor' | 'fair' | 'good' | 'excellent';
   missingElements: string[];
   strengths: string[];
-    weaknesses: string[];
+  weaknesses: string[];
 }

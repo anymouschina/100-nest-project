@@ -150,31 +150,39 @@ export class OrderService {
       try {
         // 获取订单详情，使用任意类型来避免类型冲突
         const order = await tx.order.findFirst({
-          where: { orderId }
+          where: { orderId },
         });
 
         if (!order) return { error: { message: 'Order was not found' } };
 
         // 尝试获取关联的预约
-        const orderWithAppointment = await tx.$queryRaw`
+        const orderWithAppointment = (await tx.$queryRaw`
           SELECT o.*, a.id as appointment_id 
           FROM "Order" o
           LEFT JOIN "Appointment" a ON o."appointmentId" = a.id
           WHERE o."orderId" = ${orderId}
-        ` as any[];
+        `) as any[];
 
         // 只有未完成的订单才能更新状态
         const orderStatus = String(order.status);
         const newStatus = String(updateOrderDto.status);
         const completedStatuses = ['DELIVERED', 'COMPLETED', 'CANCELLED'];
-        
+
         if (completedStatuses.includes(orderStatus)) {
-          return { error: { message: `The order has already been ${orderStatus.toLowerCase()}, cannot change status` } };
+          return {
+            error: {
+              message: `The order has already been ${orderStatus.toLowerCase()}, cannot change status`,
+            },
+          };
         }
 
         // 检查状态转换是否有效
         if (!this.isValidStatusTransition(orderStatus, newStatus)) {
-          return { error: { message: `Cannot change status from ${orderStatus} to ${newStatus}` } };
+          return {
+            error: {
+              message: `Cannot change status from ${orderStatus} to ${newStatus}`,
+            },
+          };
         }
 
         // 如果是CANCELLED状态且有原因，先更新appointmentInfo
@@ -185,7 +193,7 @@ export class OrderService {
             SET "appointmentInfo" = COALESCE("appointmentInfo", '{}'::jsonb) || 
                 ${JSON.stringify({
                   cancelReason: updateOrderDto.reason,
-                  cancelledAt: new Date()
+                  cancelledAt: new Date(),
                 })}::jsonb
             WHERE "orderId" = ${orderId}
           `;
@@ -198,10 +206,10 @@ export class OrderService {
           include: {
             items: {
               include: {
-                product: true
-              }
-            }
-          }
+                product: true,
+              },
+            },
+          },
         });
 
         return updatedOrder;
@@ -219,15 +227,18 @@ export class OrderService {
    * @param newStatus - 新状态
    * @returns 状态转换是否有效
    */
-  private isValidStatusTransition(currentStatus: string, newStatus: string): boolean {
+  private isValidStatusTransition(
+    currentStatus: string,
+    newStatus: string,
+  ): boolean {
     // 定义状态转换规则
     const validTransitions: Record<string, string[]> = {
-      'PENDING': ['ACCEPTED', 'CANCELLED'],
-      'ACCEPTED': ['PROCESSING', 'CANCELLED'],
-      'PROCESSING': ['COMPLETED', 'CANCELLED'],
-      'COMPLETED': [], // 已完成状态不能再改变
-      'CANCELLED': [], // 已取消状态不能再改变
-      'DELIVERED': []  // 已交付状态不能再改变
+      PENDING: ['ACCEPTED', 'CANCELLED'],
+      ACCEPTED: ['PROCESSING', 'CANCELLED'],
+      PROCESSING: ['COMPLETED', 'CANCELLED'],
+      COMPLETED: [], // 已完成状态不能再改变
+      CANCELLED: [], // 已取消状态不能再改变
+      DELIVERED: [], // 已交付状态不能再改变
     };
 
     return validTransitions[currentStatus]?.includes(newStatus) || false;
@@ -304,10 +315,10 @@ export class OrderService {
           include: {
             items: {
               include: {
-                product: true
-              }
-            }
-          }
+                product: true,
+              },
+            },
+          },
         });
 
         if (!order) {
@@ -321,22 +332,24 @@ export class OrderService {
         }
 
         // 准备更新数据
-        const appointmentInfo = order.appointmentInfo as Record<string, any> || {};
+        const appointmentInfo =
+          (order.appointmentInfo as Record<string, any>) || {};
         const updateData: any = {
           status: 'CANCELLED',
           appointmentInfo: {
             ...appointmentInfo,
             cancelReason: cancelOrderDto.reason || '用户取消',
-            cancelledAt: new Date()
-          }
+            cancelledAt: new Date(),
+          },
         };
 
         // 处理退款逻辑
-        const needRefund = cancelOrderDto.needRefund !== false && order.paymentStatus === 'PAID';
+        const needRefund =
+          cancelOrderDto.needRefund !== false && order.paymentStatus === 'PAID';
         if (needRefund) {
           // 这里应该调用实际的支付网关API进行退款
           // 示例：await this.paymentService.refund(orderId, order.total);
-          
+
           // 更新支付状态为已退款
           updateData.paymentStatus = 'REFUNDED';
         }
@@ -348,10 +361,10 @@ export class OrderService {
           include: {
             items: {
               include: {
-                product: true
-              }
-            }
-          }
+                product: true,
+              },
+            },
+          },
         });
 
         // 恢复商品库存
@@ -360,9 +373,9 @@ export class OrderService {
             where: { productId: item.productId },
             data: {
               stock: {
-                increment: item.quantity
-              }
-            }
+                increment: item.quantity,
+              },
+            },
           });
         }
 
@@ -385,44 +398,44 @@ export class OrderService {
    * @returns 包含各种统计数据的对象
    */
   async getStatistics(
-    timeRange?: 'day' | 'week' | 'month' | 'year', 
-    startDate?: string, 
+    timeRange?: 'day' | 'week' | 'month' | 'year',
+    startDate?: string,
     endDate?: string,
-    isLocalFallback: boolean = false // 添加标记，表示是否为本地回退调用
+    isLocalFallback: boolean = false, // 添加标记，表示是否为本地回退调用
   ) {
     try {
       // 准备时间条件
       let dateFilter: any = {
         createdAt: {
-          gte: new Date(new Date().getTime() - 30 * 24 * 60 * 60 * 1000) // 最近30天
-        }
+          gte: new Date(new Date().getTime() - 30 * 24 * 60 * 60 * 1000), // 最近30天
+        },
       };
-      
+
       // 如果提供了开始日期和结束日期，使用它们来过滤数据
       if (startDate && endDate) {
         dateFilter = {
           createdAt: {
             gte: new Date(startDate),
-            lte: new Date(endDate)
-          }
+            lte: new Date(endDate),
+          },
         };
       } else if (startDate) {
         dateFilter = {
           createdAt: {
-            gte: new Date(startDate)
-          }
+            gte: new Date(startDate),
+          },
         };
       } else if (endDate) {
         dateFilter = {
           createdAt: {
-            lte: new Date(endDate)
-          }
+            lte: new Date(endDate),
+          },
         };
       }
 
       // 使用Prisma获取订单总数
       const totalOrders = await this.databaseService.order.count({
-        where: dateFilter
+        where: dateFilter,
       });
 
       // 获取所有符合条件的订单
@@ -430,8 +443,8 @@ export class OrderService {
         where: dateFilter,
         select: {
           status: true,
-          paymentStatus: true
-        }
+          paymentStatus: true,
+        },
       });
 
       // 统计订单状态
@@ -444,7 +457,7 @@ export class OrderService {
       // 统计支付状态
       let paidOrders = 0;
       let unpaidOrders = 0;
-      
+
       for (const order of orders) {
         if (order.paymentStatus === 'PAID') {
           paidOrders++;
@@ -454,65 +467,75 @@ export class OrderService {
       }
 
       // 格式化订单状态统计结果
-      const orderStatusStats = Object.entries(statusCount).map(([status, count]) => ({
-        status,
-        count
-      }));
+      const orderStatusStats = Object.entries(statusCount).map(
+        ([status, count]) => ({
+          status,
+          count,
+        }),
+      );
 
       return {
-        message: "统计查询成功",
+        message: '统计查询成功',
         totalOrders,
         orderStatusStats,
         paymentStats: {
           paid: paidOrders,
-          unpaid: unpaidOrders
+          unpaid: unpaidOrders,
         },
         parameters: {
           timeRange,
           startDate,
-          endDate
-        }
+          endDate,
+        },
       };
     } catch (error) {
       console.error('Error getting order statistics:', error);
       return {
         error: 'Failed to get order statistics',
-        details: error.message
+        details: error.message,
       };
     }
   }
 
-  async findAll(status?: string, userId?: number, page: number = 1, pageSize: number = 20) {
+  async findAll(
+    status?: string,
+    userId?: number,
+    page: number = 1,
+    pageSize: number = 20,
+  ) {
     try {
       // 计算偏移量
       const offset = (page - 1) * pageSize;
-      
+
       // 构建查询条件
       let whereClause = `WHERE 1=1`;
       const params = [];
-      
+
       // 如果提供了状态，添加状态筛选（添加类型转换）
       if (status) {
         whereClause += ` AND o.status = $${params.length + 1}::"Status"`;
         params.push(status.toUpperCase());
       }
-      
+
       // 如果提供了用户ID，添加用户筛选
       if (userId) {
         whereClause += ` AND o."userId" = $${params.length + 1}`;
         params.push(userId);
       }
-      
+
       // 计算总记录数
       const countQuery = `
         SELECT COUNT(*) as total 
         FROM "Order" o
         ${whereClause}
       `;
-      
-      const totalResult = await this.databaseService.$queryRawUnsafe(countQuery, ...params);
+
+      const totalResult = await this.databaseService.$queryRawUnsafe(
+        countQuery,
+        ...params,
+      );
       const total = parseInt(totalResult[0].total);
-      
+
       // 查询订单数据
       const dataQuery = `
         SELECT o.*, 
@@ -561,22 +584,25 @@ export class OrderService {
         ORDER BY o."createdAt" DESC
         LIMIT $${params.length + 1} OFFSET $${params.length + 2}
       `;
-      
+
       // 添加分页参数
       params.push(pageSize, offset);
-      
+
       // 执行查询
-      const orders = await this.databaseService.$queryRawUnsafe(dataQuery, ...params);
-      
+      const orders = await this.databaseService.$queryRawUnsafe(
+        dataQuery,
+        ...params,
+      );
+
       return {
         orders,
-        total
+        total,
       };
     } catch (error) {
       console.error('Error fetching orders:', error);
       return {
         orders: [],
-        total: 0
+        total: 0,
       };
     }
   }

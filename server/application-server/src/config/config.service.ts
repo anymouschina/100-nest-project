@@ -20,12 +20,12 @@ export class AppConfigService {
   get wechatAppSecret(): string {
     return this.configService.get<string>('wechat.appSecret');
   }
-  
+
   get jwtSecret(): string {
     return this.configService.get<string>('jwt.secret');
   }
-  
+
   get jwtExpiresIn(): string {
     return this.configService.get<string>('jwt.expiresIn');
   }
-} 
+}

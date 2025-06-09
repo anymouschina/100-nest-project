@@ -159,7 +159,7 @@ export class AiController {
     @Body() setPreferencesDto: SetPreferencesDto,
   ) {
     const userId = req.user.userId;
-    this.chatService.setUserPreferences(userId, setPreferencesDto);
+    await this.chatService.setUserPreferences(userId, setPreferencesDto);
     return { updated: true };
   }
 
@@ -168,7 +168,7 @@ export class AiController {
   @ApiResponse({ status: HttpStatus.OK, description: '获取成功' })
   async getPreferences(@Request() req: any) {
     const userId = req.user.userId;
-    return this.chatService.getUserPreferences(userId);
+    return await this.chatService.getUserPreferences(userId);
   }
 
   @Get('stats')

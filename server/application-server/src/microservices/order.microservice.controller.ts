@@ -9,7 +9,15 @@ export class OrderMicroserviceController {
   constructor(private readonly orderService: OrderService) {}
 
   @MessagePattern(OrderMicroservicePatterns.FIND_ALL)
-  async findAll(@Payload() data: { status?: string; userId?: number; page?: number; pageSize?: number }) {
+  async findAll(
+    @Payload()
+    data: {
+      status?: string;
+      userId?: number;
+      page?: number;
+      pageSize?: number;
+    },
+  ) {
     const { status, userId, page = 1, pageSize = 20 } = data;
     return this.orderService.findAll(status, userId, page, pageSize);
   }
@@ -20,11 +28,13 @@ export class OrderMicroserviceController {
   }
 
   @MessagePattern(OrderMicroservicePatterns.UPDATE_STATUS)
-  async updateStatus(@Payload() data: { id: number; status: string; reason?: string }) {
+  async updateStatus(
+    @Payload() data: { id: number; status: string; reason?: string },
+  ) {
     const { id, status, reason } = data;
-    return this.orderService.updateStatus(id, { 
-      status: status.toUpperCase() as $Enums.Status, 
-      reason 
+    return this.orderService.updateStatus(id, {
+      status: status.toUpperCase() as $Enums.Status,
+      reason,
     });
   }
 
@@ -42,7 +52,7 @@ export class OrderMicroserviceController {
       data.timeRange,
       data.startDate,
       data.endDate,
-      true // 确保微服务内部调用不会形成循环依赖
+      true, // 确保微服务内部调用不会形成循环依赖
     );
   }
 }

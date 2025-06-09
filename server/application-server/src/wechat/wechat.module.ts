@@ -6,13 +6,9 @@ import { DatabaseModule } from '../database/database.module';
 import { HttpModule } from '@nestjs/axios';
 
 @Module({
-  imports: [
-    ConfigModule,
-    DatabaseModule,
-    HttpModule,
-  ],
+  imports: [ConfigModule, DatabaseModule, HttpModule],
   controllers: [WechatController],
   providers: [WechatService],
   exports: [WechatService],
 })
-export class WechatModule {} 
+export class WechatModule {}

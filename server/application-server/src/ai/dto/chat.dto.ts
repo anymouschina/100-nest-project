@@ -32,13 +32,27 @@ export class OptimizePromptDto {
   @ApiProperty({ description: '原始提示词' })
   @IsString()
   @IsNotEmpty()
-  originalPrompt: string;
+  prompt: string;
 
   @ApiProperty({
     description: '优化类型',
-    enum: ['basic', 'role-based', 'few-shot', 'chain-of-thought', 'domain-specific', 'multimodal'],
+    enum: [
+      'basic',
+      'rolePlay',
+      'fewShot',
+      'chainOfThought',
+      'domainSpecific',
+      'multiModal',
+    ],
   })
-  @IsEnum(['basic', 'role-based', 'few-shot', 'chain-of-thought', 'domain-specific', 'multimodal'])
+  @IsEnum([
+    'basic',
+    'rolePlay',
+    'fewShot',
+    'chainOfThought',
+    'domainSpecific',
+    'multiModal',
+  ])
   optimizationType: OptimizationType;
 
   @ApiPropertyOptional({
@@ -94,9 +108,23 @@ export class BatchOptimizeDto {
 
   @ApiProperty({
     description: '优化类型',
-    enum: ['basic', 'role-based', 'few-shot', 'chain-of-thought', 'domain-specific', 'multimodal'],
+    enum: [
+      'basic',
+      'rolePlay',
+      'fewShot',
+      'chainOfThought',
+      'domainSpecific',
+      'multiModal',
+    ],
   })
-  @IsEnum(['basic', 'role-based', 'few-shot', 'chain-of-thought', 'domain-specific', 'multimodal'])
+  @IsEnum([
+    'basic',
+    'rolePlay',
+    'fewShot',
+    'chainOfThought',
+    'domainSpecific',
+    'multiModal',
+  ])
   optimizationType: OptimizationType;
 
   @ApiPropertyOptional({ description: '专业领域' })
@@ -129,6 +157,16 @@ export class SetPreferencesDto {
   @ApiPropertyOptional({ description: '偏好的优化类型列表' })
   @IsOptional()
   @IsArray()
-  @IsEnum(['basic', 'role-based', 'few-shot', 'chain-of-thought', 'domain-specific', 'multimodal'], { each: true })
+  @IsEnum(
+    [
+      'basic',
+      'rolePlay',
+      'fewShot',
+      'chainOfThought',
+      'domainSpecific',
+      'multiModal',
+    ],
+    { each: true },
+  )
   preferredOptimizationTypes?: OptimizationType[];
-} 
+}

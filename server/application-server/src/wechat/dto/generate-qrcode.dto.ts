@@ -1,5 +1,12 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString, IsOptional, IsNumber, MaxLength, IsEnum } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsString,
+  IsOptional,
+  IsNumber,
+  MaxLength,
+  IsEnum,
+} from 'class-validator';
 
 export class GenerateQrCodeDto {
   @ApiProperty({
@@ -28,7 +35,7 @@ export class GenerateQrCodeDto {
   @IsOptional()
   @IsNumber({}, { message: '宽度必须是数字' })
   width?: number = 430;
-  
+
   @ApiProperty({
     description: '小程序环境版本',
     example: 'release',
@@ -37,6 +44,8 @@ export class GenerateQrCodeDto {
     enum: ['release', 'trial', 'develop'],
   })
   @IsOptional()
-  @IsEnum(['release', 'trial', 'develop'], { message: '环境版本必须是 release、trial 或 develop 之一' })
+  @IsEnum(['release', 'trial', 'develop'], {
+    message: '环境版本必须是 release、trial 或 develop 之一',
+  })
   envVersion?: 'release' | 'trial' | 'develop' = 'release';
-} 
+}

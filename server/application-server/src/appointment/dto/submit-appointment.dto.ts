@@ -1,4 +1,10 @@
-import { IsArray, IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
+import {
+  IsArray,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class SubmitAppointmentDto {
@@ -28,23 +34,23 @@ export class SubmitAppointmentDto {
   @IsString()
   @IsNotEmpty()
   location: string;
-  
+
   @IsNumber()
   @IsOptional()
   @Type(() => Number)
   latitude?: number;
-  
+
   @IsNumber()
   @IsOptional()
   @Type(() => Number)
   longitude?: number;
-  
+
   @IsString()
   @IsOptional()
   description?: string;
-  
+
   @IsArray()
   @IsString({ each: true })
   @IsOptional()
   imageUrls?: string[];
-} 
+}
