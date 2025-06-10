@@ -171,18 +171,18 @@ export class AIClient {
     return await aiRequest.get('/ai/stats')
   }
 
-  // =================== AI代理编排系统相关方法 ===================
+  // =================== 日志分析相关方法 ===================
 
   /**
-   * 快速日志分析 (推荐) - 使用AI代理编排系统
+   * 快速日志分析 (推荐) - 使用智能日志分析引擎
    */
   static async quickAnalysis(data: QuickAnalysisRequest): Promise<QuickAnalysisResponse> {
-    return await aiRequest.post<QuickAnalysisResponse>('/api/agent-orchestrator/analyze/quick', data)
+    return await aiRequest.post<QuickAnalysisResponse>('/api/log-analysis/analyze/quick', data)
   }
 
   /**
    * 简化版快速日志分析 - 直接接受字符串数组格式
-   * 与测试命令格式匹配：curl -X POST "http://localhost:3000/api/agent-orchestrator/analyze/quick"
+   * 与测试命令格式匹配：curl -X POST "http://localhost:3000/api/log-analysis/analyze/quick"
    */
   static async quickAnalysisSimple(data: QuickAnalysisSimpleRequest): Promise<QuickAnalysisResponse> {
     // 将字符串数组转换为AgentLogEntry格式
@@ -204,42 +204,42 @@ export class AIClient {
       }
     }
 
-    return await aiRequest.post<QuickAnalysisResponse>('/api/agent-orchestrator/analyze/quick', request)
+    return await aiRequest.post<QuickAnalysisResponse>('/api/log-analysis/analyze/quick', request)
   }
 
   /**
    * 错误专门分析
    */
   static async errorAnalysis(data: ErrorAnalysisRequest): Promise<QuickAnalysisResponse> {
-    return await aiRequest.post<QuickAnalysisResponse>('/api/agent-orchestrator/analyze/errors', data)
+    return await aiRequest.post<QuickAnalysisResponse>('/api/log-analysis/analyze/errors', data)
   }
 
   /**
    * 综合AI分析
    */
   static async comprehensiveAnalysis(data: ComprehensiveAnalysisRequest): Promise<QuickAnalysisResponse> {
-    return await aiRequest.post<QuickAnalysisResponse>('/api/agent-orchestrator/analyze/comprehensive', data)
+    return await aiRequest.post<QuickAnalysisResponse>('/api/log-analysis/analyze/comprehensive', data)
   }
 
   /**
-   * 获取AI代理列表
+   * 获取分析引擎列表
    */
   static async getAgents(): Promise<AgentInfo[]> {
-    return await aiRequest.get<AgentInfo[]>('/api/agent-orchestrator/agents')
+    return await aiRequest.get<AgentInfo[]>('/api/log-analysis/agents')
   }
 
   /**
-   * 获取代理健康状态
+   * 获取分析引擎健康状态
    */
   static async getAgentHealth(agentName: string): Promise<{ status: string; details: any }> {
-    return await aiRequest.get(`/api/agent-orchestrator/agents/${agentName}/health`)
+    return await aiRequest.get(`/api/log-analysis/agents/${agentName}/health`)
   }
 
   /**
    * 获取系统性能统计
    */
   static async getPerformanceStats(): Promise<PerformanceStats> {
-    return await aiRequest.get<PerformanceStats>('/api/agent-orchestrator/stats/performance')
+    return await aiRequest.get<PerformanceStats>('/api/log-analysis/stats/performance')
   }
 
   // =================== 深度分析任务相关方法 ===================
@@ -515,7 +515,7 @@ export const aiClient = {
     stats: AIClient.getStats,
   },
   logAnalysis: {
-    // 新的AI代理编排系统方法 (推荐)
+    // 新的智能日志分析系统方法 (推荐)
     quickAnalysis: AIClient.quickAnalysis,
     quickAnalysisSimple: AIClient.quickAnalysisSimple,
     errorAnalysis: AIClient.errorAnalysis,

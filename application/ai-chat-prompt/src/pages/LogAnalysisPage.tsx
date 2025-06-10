@@ -285,17 +285,17 @@ function ManualAnalysisTab({ onTaskCreated }: { onTaskCreated: () => void }) {
         })
       }
       
-      // 使用新的AI代理编排系统响应数据
+      // 使用新的智能日志分析系统响应数据
       setAnalysisResult({
         taskId: result.taskId,
-        message: `AI代理分析完成，总用时 ${result.totalProcessingTime}ms`,
+        message: `智能分析完成，总用时 ${result.totalProcessingTime}ms`,
         analysis: result.analysis || null,
         agentResults: result.agentResults,
         summary: result.summary,
         quickInsights: result.quickInsights
       })
 
-      toast.success(`AI代理分析完成！使用了${result.summary.totalAgents}个专业代理，成功率${Math.round(result.summary.overallConfidence * 100)}%`)
+      toast.success(`智能分析完成！使用了${result.summary.totalAgents}个专业分析引擎，成功率${Math.round(result.summary.overallConfidence * 100)}%`)
       
       // 新的AI代理编排系统是实时返回结果的，不需要轮询
       if (!result.analysis && result.taskId) {

@@ -1,8 +1,8 @@
 import { aiClient } from '@/utils/aiClient'
 
-// AI代理编排系统日志分析API - 使用aiClient进行统一管理
+// 智能日志分析系统API - 使用aiClient进行统一管理
 export const logAnalysisAPI = {
-  // === 新的AI代理编排系统方法 (推荐使用) ===
+  // === 新的智能日志分析系统方法 (推荐使用) ===
   
   // 快速日志分析 - 主要推荐使用的接口
   quickAnalysis: aiClient.logAnalysis.quickAnalysis,
@@ -16,10 +16,10 @@ export const logAnalysisAPI = {
   // 综合AI分析
   comprehensiveAnalysis: aiClient.logAnalysis.comprehensiveAnalysis,
   
-  // 获取AI代理列表
+  // 获取分析引擎列表
   getAgents: aiClient.logAnalysis.getAgents,
   
-  // 获取代理健康状态
+  // 获取分析引擎健康状态
   getAgentHealth: aiClient.logAnalysis.getAgentHealth,
   
   // 获取系统性能统计

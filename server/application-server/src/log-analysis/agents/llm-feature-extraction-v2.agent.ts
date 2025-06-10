@@ -222,14 +222,13 @@ export class LLMFeatureExtractionV2Agent implements Agent {
   ): Promise<LLMFeatureExtractionResult[]> {
     const prompt = this.buildOptimizedPrompt(logEntries);
 
-    const response = await this.aiProviderService.generateCompletion({
-      prompt,
+    const response = await this.aiProviderService.generateCompletion(prompt, {
       maxTokens: 2000,
       temperature: 0.1, // 更低温度提高一致性
-      model: 'gpt-3.5-turbo',
+      modelName: 'gpt-3.5-turbo',
     });
 
-    return this.parseLLMResponse(response.content, logEntries);
+    return this.parseLLMResponse(response, logEntries);
   }
 
   // 🔥 优化的提示词生成

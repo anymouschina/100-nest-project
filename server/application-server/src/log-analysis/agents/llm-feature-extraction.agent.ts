@@ -74,6 +74,15 @@ export class LLMFeatureExtractionAgent implements Agent {
 
   private readonly logger = new Logger(LLMFeatureExtractionAgent.name);
   private readonly batchProcessor = new BatchProcessor(DEFAULT_CONFIG);
+  // 添加批次配置属性
+  private readonly batchConfig: BatchProcessingConfig = {
+    baseBatchSize: 35,
+    maxBatchSize: 150,
+    minBatchSize: 10,
+    maxConcurrency: 10,
+    intelligentSampling: true,
+    prioritizedProcessing: true,
+  };
 
   constructor(private readonly aiProviderService: LangChainAIProviderService) {}
 
@@ -185,49 +194,33 @@ export class LLMFeatureExtractionAgent implements Agent {
 
   // 🔥 优化LLM提示词生成
   private buildLLMPrompt(logEntries: any[]): string {
-    const tiers: LogTier[] = [
-      {
-        priority: 1,
-        logs: [],
-        batchSize: this.batchConfig.maxBatchSize,
-        description: '关键错误和异常 (CRITICAL/ERROR)',
-      },
-      {
-        priority: 2,
-        logs: [],
-        batchSize: this.batchConfig.baseBatchSize * 2,
-        description: '警告和重要信息 (WARN/重要INFO)',
-      },
-      {
-        priority: 3,
-        logs: [],
-        batchSize: this.batchConfig.baseBatchSize * 3,
-        description: '一般信息和调试 (INFO/DEBUG)',
-      },
-    ];
+    const maxExamples = Math.min(logEntries.length, 8); 
+    const examples = logEntries
+      .slice(0, maxExamples)
+      .map((log, index) => {
+        const logStr = typeof log === 'string' ? log : JSON.stringify(log);
+        return `[${index + 1}] ${logStr}`;
+      })
+      .join('\n');
 
-    // 分层逻辑
-    logData.forEach(log => {
-      const logStr = typeof log === 'string' ? log : JSON.stringify(log);
-      const level = this.extractLogLevel(log, logStr);
-      
-      if (level === 'FATAL' || level === 'ERROR' || level === 'CRITICAL') {
-        tiers[0].logs.push(log);
-      } else if (level === 'WARN' || this.isImportantInfo(logStr)) {
-        tiers[1].logs.push(log);
-      } else {
-        tiers[2].logs.push(log);
-      }
-    });
+    const batchInfo =
+      logEntries.length > maxExamples
+        ? `\n\n📝 注意: 此批次包含 ${logEntries.length} 条日志，上面仅显示前 ${maxExamples} 条作为示例，请基于全部日志进行分析。`
+        : '';
 
-    // 🔥 智能采样: 如果第三层级数据太多，进行采样
-    if (tiers[2].logs.length > 500 && this.batchConfig.intelligentSampling) {
-      const sampledLogs = this.intelligentSample(tiers[2].logs, 300);
-      this.logger.log(`第三层级日志采样: ${tiers[2].logs.length} → ${sampledLogs.length}`);
-      tiers[2].logs = sampledLogs;
-    }
+    return `🔍 请分析以下 ${logEntries.length} 条日志，用中文简要描述发现的问题和建议：
 
-    return tiers;
+${examples}${batchInfo}
+
+📋 重点分析内容：
+1. 🏷️ 错误类别识别（网络/数据库/认证/业务逻辑/系统）
+2. 🚨 严重程度评估（低/中/高/严重）
+3. 👤 用户行为模式分析
+4. ⚙️ 技术问题定位
+5. 😊 整体情感倾向
+6. ⏰ 紧急程度判断
+
+🎯 请用简洁的中文描述您的发现和改进建议。`;
   }
 
   // 🔥 新增：智能采样
@@ -337,38 +330,6 @@ export class LLMFeatureExtractionAgent implements Agent {
       batches.push(array.slice(i, i + batchSize));
     }
     return batches;
-  }
-
-  // 🔥 优化：构建LLM提示词 - 根据批次大小动态调整
-  private buildLLMPrompt(logEntries: any[]): string {
-    // 根据批次大小决定显示的日志数量
-    const maxExamples = Math.min(logEntries.length, logEntries.length <= 10 ? logEntries.length : 5);
-    
-    const examples = logEntries
-      .slice(0, maxExamples)
-      .map((log, index) => {
-        const logStr = typeof log === 'string' ? log : JSON.stringify(log);
-        return `Log ${index + 1}: ${logStr}`;
-      })
-      .join('\n\n');
-
-    const batchInfo = logEntries.length > maxExamples 
-      ? `\n\n注意: 这个批次包含${logEntries.length}条日志，上面显示了前${maxExamples}条作为示例。请基于所有日志进行分析。`
-      : '';
-
-    return `请分析以下${logEntries.length}条日志，用自然语言描述你的发现：
-
-${examples}${batchInfo}
-
-请重点分析：
-1. 错误类别：网络、数据库、认证、业务逻辑、系统等
-2. 严重程度：低、中等、高、严重
-3. 用户行为模式
-4. 技术问题指标
-5. 整体情感倾向
-6. 紧急程度评估
-
-用中文简要描述你的发现和建议。`;
   }
 
   // 🔥 新增：辅助方法
@@ -915,5 +876,50 @@ ${examples}${batchInfo}
       results: this.processWithRules(logData.slice(0, 10)),
       totalProcessed: Math.min(logData.length, 10),
     };
+  }
+
+  // 修复分层策略方法
+  private buildLLMPromptStratified(logEntries: any[]): string {
+    const tiers: LogTier[] = [
+      {
+        priority: 1,
+        logs: [],
+        batchSize: this.batchConfig.maxBatchSize,
+        description: '关键错误和异常 (CRITICAL/ERROR)',
+      },
+      {
+        priority: 2,
+        logs: [],
+        batchSize: this.batchConfig.baseBatchSize * 2,
+        description: '警告和重要信息 (WARN/重要INFO)',
+      },
+      {
+        priority: 3,
+        logs: [],
+        batchSize: this.batchConfig.baseBatchSize * 3,
+        description: '一般信息 (INFO/DEBUG/TRACE)',
+      },
+    ];
+
+    // 分类日志
+    logEntries.forEach(log => {
+      const logStr = typeof log === 'string' ? log : JSON.stringify(log);
+      const level = this.extractLogLevel(log, logStr).toUpperCase();
+      
+      if (level.includes('ERROR') || level.includes('CRITICAL') || level.includes('SEVERE')) {
+        tiers[0].logs.push(log);
+      } else if (level.includes('WARN') || this.isImportantInfo(logStr)) {
+        tiers[1].logs.push(log);
+      } else {
+        tiers[2].logs.push(log);
+      }
+    });
+
+    // 对大量日志进行智能采样
+    if (tiers[2].logs.length > 500 && this.batchConfig.intelligentSampling) {
+      tiers[2].logs = this.intelligentSample(tiers[2].logs, 200);
+    }
+    
+    return this.buildLLMPrompt(logEntries);
   }
 } 

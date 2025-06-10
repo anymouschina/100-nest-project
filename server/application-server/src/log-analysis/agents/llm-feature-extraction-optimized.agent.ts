@@ -159,15 +159,14 @@ export class LLMFeatureExtractionOptimizedAgent implements Agent {
       const prompt = this.buildOptimizedPrompt(batch);
       
       // 🔥 调用LLM
-      const response = await this.aiProviderService.generateCompletion({
-        prompt,
+      const response = await this.aiProviderService.generateCompletion(prompt, {
         maxTokens: Math.min(3000, batch.length * 50), // 动态调整token数
         temperature: 0.1,
-        model: 'gpt-3.5-turbo',
+        modelName: 'gpt-3.5-turbo',
       });
 
       // 🔥 解析响应
-      return this.parseResponse(response.content, batch);
+      return this.parseResponse(response, batch);
       
     } catch (error) {
       this.logger.warn(`LLM处理失败，使用规则引擎: ${error.message}`);
