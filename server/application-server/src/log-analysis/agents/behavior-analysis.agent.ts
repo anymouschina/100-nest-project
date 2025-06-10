@@ -16,6 +16,16 @@ export interface BehaviorAnalysisResult {
       users: string[];
       isAnomaly: boolean;
     }>;
+    uiBlockingPatterns?: Array<{
+      userId: string;
+      action: string;
+      repeatCount: number;
+      timeWindow: number;
+      avgInterval: number;
+      confidence: number;
+      isUIBlocking: boolean;
+      description: string;
+    }>;
   };
   accessPatterns: {
     ipAnalysis: {
@@ -152,6 +162,9 @@ export class BehaviorAnalysisAgent implements Agent {
     // 分析行为模式
     const behaviorPatterns = this.extractBehaviorPatterns(userLogs);
 
+    // 🔥 新增：UI阻塞检测
+    const uiBlockingPatterns = this.detectUIBlockingPatterns(userLogs);
+
     // 活跃用户计算（最近一小时有活动的用户）
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
     const recentUserIds = new Set(
@@ -166,6 +179,7 @@ export class BehaviorAnalysisAgent implements Agent {
       activeUsers,
       userSessionStats,
       behaviorPatterns,
+      uiBlockingPatterns,
     };
   }
 
@@ -244,6 +258,20 @@ export class BehaviorAnalysisAgent implements Agent {
   ): any[] {
     const anomalies = [];
 
+    // 🔥 UI阻塞异常检测（新增）
+    if (userBehavior.uiBlockingPatterns && userBehavior.uiBlockingPatterns.length > 0) {
+      userBehavior.uiBlockingPatterns.forEach(pattern => {
+        anomalies.push({
+          type: 'UI_BLOCKING_DETECTED',
+          severity: pattern.confidence > 0.8 ? 'HIGH' : 'MEDIUM',
+          description: pattern.description,
+          userId: pattern.userId,
+          action: pattern.action,
+          confidence: pattern.confidence,
+        });
+      });
+    }
+
     // 用户行为异常
     if (userBehavior.userSessionStats.avgSessionDuration > 10800000) { // 3小时
       anomalies.push({
@@ -303,28 +331,38 @@ export class BehaviorAnalysisAgent implements Agent {
   ): number {
     let score = 0;
 
-    // 安全风险评分 (0-40)
+    // 🔥 UI阻塞风险评分 (0-25) - 新增高权重
+    if (userBehavior.uiBlockingPatterns && userBehavior.uiBlockingPatterns.length > 0) {
+      userBehavior.uiBlockingPatterns.forEach(pattern => {
+        // 根据置信度和重复次数计算风险
+        const patternScore = pattern.confidence * 10 + Math.min(pattern.repeatCount / 5, 5);
+        score += patternScore;
+      });
+      score = Math.min(score, 25); // UI阻塞最多25分
+    }
+
+    // 安全风险评分 (0-30)
     score += Math.min(securityIndicators.failedLogins / 10, 10); // 失败登录
     score += securityIndicators.bruteForceAttempts.length * 5; // 暴力破解
     score += securityIndicators.suspiciousActivities.length * 2; // 可疑活动
     score += accessPatterns.ipAnalysis.suspiciousIPs.length * 3; // 可疑IP
 
-    // 异常风险评分 (0-30)
+    // 异常风险评分 (0-25)
     const criticalAnomalies = anomalies.filter(a => a.severity === 'CRITICAL').length;
     const highAnomalies = anomalies.filter(a => a.severity === 'HIGH').length;
     const mediumAnomalies = anomalies.filter(a => a.severity === 'MEDIUM').length;
     
-    score += criticalAnomalies * 10;
-    score += highAnomalies * 5;
-    score += mediumAnomalies * 2;
+    score += criticalAnomalies * 8;
+    score += highAnomalies * 4;
+    score += mediumAnomalies * 1.5;
 
-    // 性能风险评分 (0-20)
-    score += Math.min(performanceIndicators.slowRequests.length / 5, 10);
-    score += Math.min(performanceIndicators.errorPatterns.length / 2, 10);
+    // 性能风险评分 (0-15)
+    score += Math.min(performanceIndicators.slowRequests.length / 5, 8);
+    score += Math.min(performanceIndicators.errorPatterns.length / 2, 7);
 
-    // 行为风险评分 (0-10)
-    if (userBehavior.userSessionStats.avgSessionDuration > 7200000) score += 5; // 2小时
-    if (userBehavior.activeUsers / userBehavior.totalUsers < 0.1) score += 5; // 活跃度低
+    // 行为风险评分 (0-5)
+    if (userBehavior.userSessionStats.avgSessionDuration > 7200000) score += 2.5; // 2小时
+    if (userBehavior.activeUsers / userBehavior.totalUsers < 0.1) score += 2.5; // 活跃度低
 
     return Math.min(score, 100); // 最大100分
   }
@@ -667,5 +705,158 @@ export class BehaviorAnalysisAgent implements Agent {
     maxScore += 25;
 
     return maxScore > 0 ? score / maxScore : 0;
+  }
+
+  /**
+   * 🔥 UI阻塞模式检测
+   * 检测用户重复操作同一个动作，但后端请求都成功的情况
+   */
+  private detectUIBlockingPatterns(userLogs: any[]): any[] {
+    const uiBlockingPatterns = [];
+    
+    // 按用户分组
+    const userGroups = new Map<string, any[]>();
+    userLogs.forEach(log => {
+      const userId = log.metadata?.userId;
+      if (!userId) return;
+      
+      if (!userGroups.has(userId)) {
+        userGroups.set(userId, []);
+      }
+      userGroups.get(userId)!.push(log);
+    });
+
+    // 分析每个用户的行为模式
+    for (const [userId, logs] of userGroups.entries()) {
+      // 按动作分组
+      const actionGroups = new Map<string, any[]>();
+      logs.forEach(log => {
+        const action = log.metadata?.action || 'unknown';
+        if (!actionGroups.has(action)) {
+          actionGroups.set(action, []);
+        }
+        actionGroups.get(action)!.push(log);
+      });
+
+      // 检测重复动作模式
+      for (const [action, actionLogs] of actionGroups.entries()) {
+        const pattern = this.analyzeActionPattern(userId, action, actionLogs);
+        if (pattern && pattern.isUIBlocking) {
+          uiBlockingPatterns.push(pattern);
+        }
+      }
+    }
+
+    return uiBlockingPatterns;
+  }
+
+  /**
+   * 分析单个动作的重复模式
+   */
+  private analyzeActionPattern(userId: string, action: string, actionLogs: any[]): any | null {
+    // 至少需要3次重复才考虑为异常
+    if (actionLogs.length < 3) return null;
+
+    // 计算时间窗口
+    const timestamps = actionLogs.map(log => new Date(log.timestamp).getTime());
+    timestamps.sort((a, b) => a - b);
+    const timeWindow = timestamps[timestamps.length - 1] - timestamps[0];
+    
+    // 计算平均间隔
+    const intervals = [];
+    for (let i = 1; i < timestamps.length; i++) {
+      intervals.push(timestamps[i] - timestamps[i - 1]);
+    }
+    const avgInterval = intervals.reduce((sum, interval) => sum + interval, 0) / intervals.length;
+
+    // UI阻塞判断逻辑
+    const isUIBlocking = this.isUIBlockingPattern(actionLogs, timeWindow, avgInterval);
+    
+    if (!isUIBlocking) return null;
+
+    // 计算置信度
+    const confidence = this.calculateUIBlockingConfidence(actionLogs, timeWindow, avgInterval);
+
+    return {
+      userId,
+      action,
+      repeatCount: actionLogs.length,
+      timeWindow,
+      avgInterval,
+      confidence,
+      isUIBlocking,
+      description: this.generateUIBlockingDescription(action, actionLogs.length, timeWindow, confidence),
+    };
+  }
+
+  /**
+   * 判断是否为UI阻塞模式
+   */
+  private isUIBlockingPattern(actionLogs: any[], timeWindow: number, avgInterval: number): boolean {
+    // 条件1: 短时间内多次重复（时间窗口小于5分钟，重复5次以上）
+    const isShortTimeRepeated = timeWindow < 300000 && actionLogs.length >= 5; // 5分钟，5次
+
+    // 条件2: 平均间隔在1-10秒之间（用户手动重试的典型间隔）
+    const isTypicalRetryInterval = avgInterval >= 1000 && avgInterval <= 10000;
+
+    // 条件3: 所有后端请求都成功（排除服务器错误）
+    const allRequestsSuccessful = actionLogs.every(log => {
+      const httpStatus = log.metadata?.http_status || log.metadata?.retCode;
+      return !httpStatus || httpStatus === 200 || httpStatus === 0;
+    });
+
+    // 条件4: 同一用户、同一会话
+    const sameSession = actionLogs.every(log => 
+      log.metadata?.sessionId === actionLogs[0].metadata?.sessionId
+    );
+
+    return isShortTimeRepeated && isTypicalRetryInterval && allRequestsSuccessful && sameSession;
+  }
+
+  /**
+   * 计算UI阻塞检测的置信度
+   */
+  private calculateUIBlockingConfidence(actionLogs: any[], timeWindow: number, avgInterval: number): number {
+    let confidence = 0.5; // 基础置信度
+
+    // 重复次数越多，置信度越高
+    if (actionLogs.length >= 10) confidence += 0.3;
+    else if (actionLogs.length >= 7) confidence += 0.2;
+    else if (actionLogs.length >= 5) confidence += 0.1;
+
+    // 时间窗口越短，重复越密集，置信度越高
+    if (timeWindow < 60000) confidence += 0.2; // 1分钟内
+    else if (timeWindow < 180000) confidence += 0.1; // 3分钟内
+
+    // 平均间隔在2-5秒之间是最典型的用户重试模式
+    if (avgInterval >= 2000 && avgInterval <= 5000) confidence += 0.2;
+    else if (avgInterval >= 1000 && avgInterval <= 10000) confidence += 0.1;
+
+    // 检查是否有frontend + backend配对模式（更强的UI阻塞证据）
+    const hasFrontendBackendPair = this.hasFrontendBackendPattern(actionLogs);
+    if (hasFrontendBackendPair) confidence += 0.15;
+
+    return Math.min(confidence, 0.95); // 最高95%置信度
+  }
+
+  /**
+   * 检查是否有前端+后端配对模式
+   */
+  private hasFrontendBackendPattern(actionLogs: any[]): boolean {
+    const frontendLogs = actionLogs.filter(log => log.source === 'frontend');
+    const backendLogs = actionLogs.filter(log => log.source === 'backend');
+    
+    // 前端和后端日志数量应该大致相等
+    return Math.abs(frontendLogs.length - backendLogs.length) <= 1;
+  }
+
+  /**
+   * 生成UI阻塞描述
+   */
+  private generateUIBlockingDescription(action: string, repeatCount: number, timeWindow: number, confidence: number): string {
+    const timeWindowSec = Math.round(timeWindow / 1000);
+    const confidencePercent = Math.round(confidence * 100);
+    
+    return `检测到UI阻塞: 用户在${timeWindowSec}秒内重复执行"${action}"动作${repeatCount}次，置信度${confidencePercent}%`;
   }
 }

@@ -216,6 +216,32 @@ export class ReportGenerationAgent implements Agent {
     const longTerm = [];
     const monitoring = [];
 
+    // 🔥 UI阻塞问题检测和建议（新增）
+    if (analysisResults.behaviorAnalysis?.uiBlockingPatterns?.length > 0) {
+      const uiPatterns = analysisResults.behaviorAnalysis.uiBlockingPatterns;
+      
+      // 紧急修复建议
+      immediate.push('立即修复前端UI响应问题，添加按钮防抖机制');
+      immediate.push('为所有异步操作添加Loading状态指示');
+      
+      // 短期优化建议
+      shortTerm.push('检查前端JavaScript错误处理逻辑');
+      shortTerm.push('优化API响应时间，确保UI及时更新');
+      shortTerm.push('实现用户操作反馈机制（成功/失败提示）');
+      shortTerm.push('添加前端网络请求重试机制');
+      
+      // 具体代码修复建议
+      uiPatterns.forEach(pattern => {
+        if (pattern.action === 'login_attempt') {
+          immediate.push('修复登录按钮：添加disabled状态和loading指示');
+        } else if (pattern.action === 'get_profile') {
+          shortTerm.push('优化用户信息获取：缓存机制避免重复请求');
+        } else if (pattern.action === 'refresh_token') {
+          shortTerm.push('令牌刷新优化：自动重试机制和错误处理');
+        }
+      });
+    }
+
     // 从各个分析结果中提取建议
     if (analysisResults.errorAnalysis?.recommendations) {
       immediate.push(...analysisResults.errorAnalysis.recommendations.filter(r => r.includes('立即') || r.includes('紧急')));
@@ -234,11 +260,25 @@ export class ReportGenerationAgent implements Agent {
     longTerm.push('建立完善的日志监控和告警机制');
     longTerm.push('定期进行日志分析和安全评估');
     longTerm.push('优化日志收集和存储策略');
+    
+    // UI阻塞相关的长期建议
+    if (analysisResults.behaviorAnalysis?.uiBlockingPatterns?.length > 0) {
+      longTerm.push('建立前端性能监控体系');
+      longTerm.push('实施自动化UI测试，防止回归问题');
+      longTerm.push('建立用户体验监控和反馈机制');
+    }
 
     // 监控建议
     monitoring.push('设置异常检测告警阈值');
     monitoring.push('定期检查日志质量和完整性');
     monitoring.push('监控关键性能指标趋势');
+    
+    // UI阻塞相关的监控建议
+    if (analysisResults.behaviorAnalysis?.uiBlockingPatterns?.length > 0) {
+      monitoring.push('监控前端按钮重复点击模式');
+      monitoring.push('设置API响应时间告警');
+      monitoring.push('追踪用户交互成功率指标');
+    }
 
     return {
       immediate: [...new Set(immediate)],
@@ -316,6 +356,22 @@ export class ReportGenerationAgent implements Agent {
 
   private extractKeyFindings(analysisResults: any): string[] {
     const findings = [];
+
+    // 🔥 UI阻塞问题关键发现（新增优先级最高）
+    if (analysisResults.behaviorAnalysis?.uiBlockingPatterns?.length > 0) {
+      const uiPatterns = analysisResults.behaviorAnalysis.uiBlockingPatterns;
+      const totalPatterns = uiPatterns.length;
+      const highConfidencePatterns = uiPatterns.filter(p => p.confidence > 0.8).length;
+      
+      findings.push(`🚨 检测到 ${totalPatterns} 个UI阻塞问题，其中 ${highConfidencePatterns} 个高置信度`);
+      
+      // 具体问题描述
+      uiPatterns.forEach(pattern => {
+        if (pattern.confidence > 0.7) {
+          findings.push(`用户在${Math.round(pattern.timeWindow/1000)}秒内重复执行"${pattern.action}"操作${pattern.repeatCount}次`);
+        }
+      });
+    }
 
     if (analysisResults.errorAnalysis) {
       const errorSummary = analysisResults.errorAnalysis.errorSummary;

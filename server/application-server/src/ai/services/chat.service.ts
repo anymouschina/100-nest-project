@@ -1,22 +1,15 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { ChatOpenAI } from '@langchain/openai';
-import { ConversationChain } from 'langchain/chains';
-import {
-  BufferMemory,
-  ConversationSummaryBufferMemory,
-} from 'langchain/memory';
-import { PromptTemplate } from '@langchain/core/prompts';
 import { ConfigService } from '@nestjs/config';
 import { Cron } from '@nestjs/schedule';
-import { MoonshotService } from './moonshot.service';
+import { LangChainAIProviderService } from './langchain-ai-provider.service';
 import { DatabaseService } from '../../database/database.service';
+import { ChatMessage } from '../interfaces/ai.interface';
 
 interface ChatSession {
   sessionId: string;
   userId: number;
   title: string;
-  memory: BufferMemory | ConversationSummaryBufferMemory;
-  chain: ConversationChain;
+  messages: Array<{ role: 'user' | 'assistant'; content: string; timestamp: Date }>;
   createdAt: Date;
   updatedAt: Date;
   messageCount: number;
@@ -28,9 +21,10 @@ export interface UserPreferences {
   responseStyle: string;
   maxResponseLength: number;
   preferredOptimizationTypes: string[];
-  memoryType: 'buffer' | 'summary' | 'summary_buffer';
   maxTokens: number;
   maxHistoryMessages: number;
+  useAnalysisModel?: boolean;
+  fastMode?: boolean;
 }
 
 @Injectable()
@@ -42,7 +36,7 @@ export class ChatService {
   private readonly MAX_SESSIONS_PER_USER = 50;
 
   constructor(
-    private readonly moonshotService: MoonshotService,
+    private readonly aiProviderService: LangChainAIProviderService,
     private readonly databaseService: DatabaseService,
     private readonly configService: ConfigService,
   ) {
@@ -90,10 +84,34 @@ export class ChatService {
         // 构建增强的提示词
         const enhancedMessage = this.buildEnhancedPrompt(message, context);
 
-        // 使用LangChain进行对话
-        const response = await session.chain.call({
-          input: enhancedMessage,
-        });
+        // 构建对话历史
+        const conversationHistory = this.buildConversationHistory(session, preferences);
+        
+        // 添加当前用户消息
+        conversationHistory.push({ role: 'user', content: enhancedMessage });
+
+        // 使用AI提供商服务进行对话
+        const aiResponse = await this.aiProviderService.chat(
+          conversationHistory,
+          {
+            temperature: 0.7,
+            maxTokens: preferences.maxTokens,
+            useAnalysisModel: preferences.useAnalysisModel,
+            fastMode: preferences.fastMode,
+          },
+        );
+
+        // 添加消息到会话历史
+        const timestamp = new Date();
+        session.messages.push(
+          { role: 'user', content: message, timestamp },
+          { role: 'assistant', content: aiResponse.content, timestamp }
+        );
+
+        // 限制历史消息数量
+        if (session.messages.length > preferences.maxHistoryMessages * 2) {
+          session.messages = session.messages.slice(-preferences.maxHistoryMessages * 2);
+        }
 
         // 更新会话信息
         session.updatedAt = new Date();
@@ -105,24 +123,22 @@ export class ChatService {
           session.sessionId,
           userId,
           message,
-          response.response,
+          aiResponse.content,
         );
 
         // 返回响应
         return {
-          response: response.response,
+          response: aiResponse.content,
           sessionId: session.sessionId,
           messageCount: session.messageCount,
           usage: {
             promptTokens: this.estimateTokens(enhancedMessage),
-            completionTokens: this.estimateTokens(response.response),
-            totalTokens: this.estimateTokens(
-              enhancedMessage + response.response,
-            ),
+            completionTokens: this.estimateTokens(aiResponse.content),
+            totalTokens: this.estimateTokens(enhancedMessage + aiResponse.content),
           },
           context: {
-            memoryType: preferences.memoryType,
             conversationLength: session.messageCount,
+            historyLength: session.messages.length,
           },
         };
       } catch (error) {
@@ -203,7 +219,7 @@ export class ChatService {
           messageCount: session.messageCount,
         }));
 
-      // 去重并合并
+      // 合并并去重
       const sessionMap = new Map();
       [...dbSessions, ...memorySessions].forEach((session) => {
         sessionMap.set(session.sessionId, session);
@@ -214,85 +230,88 @@ export class ChatService {
       );
     } catch (error) {
       this.logger.error(`获取用户会话失败: ${error.message}`, error.stack);
-      throw new Error(`获取会话列表失败: ${error.message}`);
+      throw new Error(`获取用户会话失败: ${error.message}`);
     }
   }
 
   /**
-   * 获取指定会话详情
+   * 获取会话详情
    */
   async getSession(sessionId: string): Promise<any> {
     try {
-      let session = this.sessions.get(sessionId);
-
-      if (!session) {
-        // 尝试从数据库恢复
-        const dbSession = await (
-          this.databaseService as any
-        ).chatSession.findUnique({
-          where: { sessionId },
-          include: { messages: { orderBy: { createdAt: 'asc' } } },
-        });
-
-        if (!dbSession) {
-          throw new NotFoundException('会话不存在');
-        }
-
-        // 恢复会话到内存
-        session = await this.restoreSessionFromDatabase(
-          sessionId,
-          dbSession.userId,
-        );
+      const session = this.sessions.get(sessionId);
+      if (session) {
+        return {
+          sessionId: session.sessionId,
+          title: session.title,
+          userId: session.userId,
+          createdAt: session.createdAt,
+          updatedAt: session.updatedAt,
+          messageCount: session.messageCount,
+          messages: session.messages.slice(-20), // 返回最近20条消息
+        };
       }
 
-      // 获取会话历史
-      const history = await this.getSessionHistory(sessionId);
+      // 从数据库查询
+      const dbSession = await (this.databaseService as any).chatSession.findUnique({
+        where: { sessionId },
+      });
 
-      return {
-        sessionId: session.sessionId,
-        title: session.title,
-        createdAt: session.createdAt,
-        updatedAt: session.updatedAt,
-        messageCount: session.messageCount,
-        history,
-        memoryType: session.memory.constructor.name,
-      };
+      if (!dbSession) {
+        throw new NotFoundException(`会话 ${sessionId} 不存在`);
+      }
+
+      // 恢复会话到内存
+      const restoredSession = await this.restoreSessionFromDatabase(
+        sessionId,
+        dbSession.userId,
+      );
+
+      if (restoredSession) {
+        return {
+          sessionId: restoredSession.sessionId,
+          title: restoredSession.title,
+          userId: restoredSession.userId,
+          createdAt: restoredSession.createdAt,
+          updatedAt: restoredSession.updatedAt,
+          messageCount: restoredSession.messageCount,
+          messages: restoredSession.messages.slice(-20),
+        };
+      }
+
+      return dbSession;
     } catch (error) {
-      this.logger.error(`获取会话详情失败: ${error.message}`, error.stack);
+      this.logger.error(`获取会话失败: ${error.message}`, error.stack);
       throw error;
     }
   }
 
   /**
-   * 更新会话信息
+   * 更新会话
    */
   async updateSession(sessionId: string, updateData: any): Promise<any> {
     try {
       const session = this.sessions.get(sessionId);
-      if (!session) {
-        throw new NotFoundException('会话不存在');
+      if (session) {
+        if (updateData.title) {
+          session.title = updateData.title;
+          session.updatedAt = new Date();
+        }
       }
 
-      if (updateData.title) {
-        session.title = updateData.title;
+      // 更新数据库
+      const updatedSession = await (this.databaseService as any).chatSession.update({
+        where: { sessionId },
+        data: {
+          ...updateData,
+          updatedAt: new Date(),
+        },
+      });
 
-        // 更新数据库
-        await (this.databaseService as any).chatSession.update({
-          where: { sessionId },
-          data: { title: updateData.title, updatedAt: new Date() },
-        });
-      }
-
-      session.updatedAt = new Date();
-
-      return {
-        sessionId: session.sessionId,
-        title: session.title,
-        updatedAt: session.updatedAt,
-      };
+      return updatedSession;
     } catch (error) {
       this.logger.error(`更新会话失败: ${error.message}`, error.stack);
-      throw error;
+      throw new Error(`更新会话失败: ${error.message}`);
     }
   }
 
@@ -301,13 +320,8 @@ export class ChatService {
    */
   async deleteSession(sessionId: string): Promise<void> {
     try {
-      const session = this.sessions.get(sessionId);
-
-      if (session) {
-        // 清理内存
-        await session.memory.clear();
-        this.sessions.delete(sessionId);
-      }
+      // 从内存中删除
+      this.sessions.delete(sessionId);
 
       // 从数据库删除
       await this.deleteSessionFromDatabase(sessionId);
@@ -318,24 +332,23 @@ export class ChatService {
   }
 
   /**
-   * 清空用户所有会话
+   * 清除用户所有会话
    */
   async clearUserSessions(userId: number): Promise<void> {
     try {
-      const userSessions = Array.from(this.sessions.entries()).filter(
-        ([, session]) => session.userId === userId,
+      // 从内存中删除该用户的所有会话
+      const userSessions = Array.from(this.sessions.values()).filter(
+        (session) => session.userId === userId,
       );
+      userSessions.forEach((session) => {
+        this.sessions.delete(session.sessionId);
+      });
 
-      for (const [sessionId, session] of userSessions) {
-        await session.memory.clear();
-        this.sessions.delete(sessionId);
-      }
-
-      // 从数据库清理
+      // 从数据库删除
       await this.clearUserSessionsFromDatabase(userId);
     } catch (error) {
-      this.logger.error(`清空用户会话失败: ${error.message}`, error.stack);
-      throw new Error(`清空会话失败: ${error.message}`);
+      this.logger.error(`清除用户会话失败: ${error.message}`, error.stack);
+      throw new Error(`清除用户会话失败: ${error.message}`);
     }
   }
 
@@ -355,12 +368,12 @@ export class ChatService {
       // 保存到数据库
       await (this.databaseService as any).userPreference.upsert({
         where: { userId },
-        update: { preferences: updatedPreferences, updatedAt: new Date() },
+        update: { preferences: updatedPreferences },
         create: { userId, preferences: updatedPreferences },
       });
     } catch (error) {
       this.logger.error(`设置用户偏好失败: ${error.message}`, error.stack);
-      throw new Error(`设置偏好失败: ${error.message}`);
+      throw new Error(`设置用户偏好失败: ${error.message}`);
     }
   }
 
@@ -369,29 +382,34 @@ export class ChatService {
    */
   async getUserPreferences(userId: number): Promise<UserPreferences> {
     try {
-      // 先从内存获取
-      let preferences = this.userPreferences.get(userId);
-
-      if (!preferences) {
-        // 从数据库获取
-        const dbPreferences = await (
-          this.databaseService as any
-        ).userPreference.findUnique({
-          where: { userId },
-        });
-
-        preferences = (dbPreferences?.preferences as UserPreferences) || {
-          language: 'zh',
-          responseStyle: 'professional',
-          maxResponseLength: 2000,
-          preferredOptimizationTypes: ['basic', 'role-based'],
-          memoryType: 'buffer',
-          maxTokens: 4000,
-          maxHistoryMessages: 20,
-        };
-
-        this.userPreferences.set(userId, preferences);
+      // 优先从内存获取
+      const cached = this.userPreferences.get(userId);
+      if (cached) {
+        return cached;
       }
+
+      // 从数据库获取
+      const dbPreferences = await (this.databaseService as any).userPreference.findUnique({
+        where: { userId },
+      });
+
+      const defaultPreferences: UserPreferences = {
+        language: this.configService.get<string>('app.defaultLanguage') || 'zh',
+        responseStyle: 'balanced',
+        maxResponseLength: 2000,
+        preferredOptimizationTypes: ['performance', 'security'],
+        maxTokens: 2000,
+        maxHistoryMessages: 10,
+        useAnalysisModel: false,
+        fastMode: false,
+      };
+
+      const preferences = dbPreferences
+        ? { ...defaultPreferences, ...dbPreferences.preferences }
+        : defaultPreferences;
+
+      // 缓存到内存
+      this.userPreferences.set(userId, preferences);
 
       return preferences;
     } catch (error) {
@@ -399,62 +417,68 @@ export class ChatService {
       // 返回默认偏好
       return {
         language: 'zh',
-        responseStyle: 'professional',
+        responseStyle: 'balanced',
         maxResponseLength: 2000,
-        preferredOptimizationTypes: ['basic', 'role-based'],
-        memoryType: 'buffer',
-        maxTokens: 4000,
-        maxHistoryMessages: 20,
+        preferredOptimizationTypes: ['performance', 'security'],
+        maxTokens: 2000,
+        maxHistoryMessages: 10,
+        useAnalysisModel: false,
+        fastMode: false,
       };
     }
   }
 
   /**
-   * 获取会话统计
+   * 获取会话统计信息
    */
   async getSessionStats(userId: number): Promise<any> {
     try {
-      const stats = await (this.databaseService as any).chatSession.aggregate({
+      const userSessions = Array.from(this.sessions.values()).filter(
+        (session) => session.userId === userId,
+      );
+
+      const dbStats = await (this.databaseService as any).chatSession.aggregate({
         where: { userId },
         _count: { sessionId: true },
         _sum: { messageCount: true },
-        _avg: { messageCount: true },
       });
 
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      const totalMessages = userSessions.reduce(
+        (sum, session) => sum + session.messageCount,
+        0,
+      );
 
-      const todayStats = await (this.databaseService as any).chatSession.count({
-        where: {
-          userId,
-          createdAt: { gte: today },
-        },
-      });
-
-      const hourAgo = new Date(Date.now() - 60 * 60 * 1000);
-      const activeSessionsCount = Array.from(this.sessions.values()).filter(
+      const activeSessionsToday = userSessions.filter(
         (session) =>
-          session.userId === userId && session.lastAccessTime >= hourAgo,
+          session.lastAccessTime.getTime() > Date.now() - 24 * 60 * 60 * 1000,
       ).length;
 
       return {
-        totalSessions: stats._count.sessionId || 0,
-        totalMessages: stats._sum.messageCount || 0,
-        avgMessagesPerSession:
-          Math.round((stats._avg.messageCount || 0) * 100) / 100,
-        todaySessions: todayStats,
-        activeSessionsCount,
+        totalSessions: Math.max(userSessions.length, dbStats._count.sessionId || 0),
+        totalMessages: Math.max(totalMessages, dbStats._sum.messageCount || 0),
+        activeSessions: userSessions.length,
+        activeSessionsToday,
+        averageMessagesPerSession:
+          userSessions.length > 0
+            ? Math.round(totalMessages / userSessions.length)
+            : 0,
       };
     } catch (error) {
       this.logger.error(`获取会话统计失败: ${error.message}`, error.stack);
-      throw new Error(`获取统计信息失败: ${error.message}`);
+      return {
+        totalSessions: 0,
+        totalMessages: 0,
+        activeSessions: 0,
+        activeSessionsToday: 0,
+        averageMessagesPerSession: 0,
+      };
     }
   }
 
   /**
-   * 定期清理过期会话
+   * 定时清理过期会话
    */
-  @Cron('0 */6 * * *') // 每6小时执行一次
+  @Cron('0 2 * * *') // 每天凌晨2点执行
   async cleanupExpiredSessions(): Promise<void> {
     try {
       const expiredTime = new Date(Date.now() - this.SESSION_TIMEOUT);
@@ -463,64 +487,55 @@ export class ChatService {
       // 清理内存中的过期会话
       for (const [sessionId, session] of this.sessions.entries()) {
         if (session.lastAccessTime < expiredTime) {
-          await session.memory.clear();
           this.sessions.delete(sessionId);
           cleanedCount++;
         }
       }
 
       // 清理数据库中的过期会话
-      const dbCleanResult = await (
-        this.databaseService as any
-      ).chatSession.deleteMany({
+      const dbResult = await (this.databaseService as any).chatSession.deleteMany({
         where: {
           updatedAt: { lt: expiredTime },
         },
       });
 
       this.logger.log(
-        `清理过期会话完成: 内存清理 ${cleanedCount} 个，数据库清理 ${dbCleanResult.count} 个`,
+        `清理过期会话完成: 内存${cleanedCount}个, 数据库${dbResult.count}个`,
       );
     } catch (error) {
       this.logger.error(`清理过期会话失败: ${error.message}`, error.stack);
     }
   }
 
-  /**
-   * 检查用户会话数量限制
-   */
+  // 私有方法
+
   private async checkUserSessionLimit(userId: number): Promise<void> {
-    const userSessionCount = Array.from(this.sessions.values()).filter(
+    const userSessions = Array.from(this.sessions.values()).filter(
       (session) => session.userId === userId,
-    ).length;
+    );
 
-    if (userSessionCount >= this.MAX_SESSIONS_PER_USER) {
-      // 删除最旧的会话
-      const oldestSession = Array.from(this.sessions.values())
-        .filter((session) => session.userId === userId)
-        .sort(
-          (a, b) => a.lastAccessTime.getTime() - b.lastAccessTime.getTime(),
-        )[0];
+    if (userSessions.length >= this.MAX_SESSIONS_PER_USER) {
+      // 删除最老的会话
+      const oldestSession = userSessions.sort(
+        (a, b) => a.lastAccessTime.getTime() - b.lastAccessTime.getTime(),
+      )[0];
 
-      if (oldestSession) {
-        await this.deleteSession(oldestSession.sessionId);
-      }
+      await this.deleteSession(oldestSession.sessionId);
+      this.logger.log(
+        `用户 ${userId} 达到会话数量限制，删除最老会话 ${oldestSession.sessionId}`,
+      );
     }
   }
 
-  /**
-   * 获取或创建会话
-   */
   private async getOrCreateSession(
     sessionId: string,
     userId: number,
   ): Promise<ChatSession> {
     let session = this.sessions.get(sessionId);
     if (!session) {
-      // 尝试从数据库恢复会话
       session = await this.restoreSessionFromDatabase(sessionId, userId);
       if (!session) {
-        throw new NotFoundException('会话不存在');
+        throw new NotFoundException(`会话 ${sessionId} 不存在`);
       }
     }
 
@@ -529,47 +544,18 @@ export class ChatService {
     return session;
   }
 
-  /**
-   * 创建新会话
-   */
   private async createNewSession(
     userId: number,
     title: string,
   ): Promise<ChatSession> {
     const sessionId = this.generateSessionId();
-    const preferences = await this.getUserPreferences(userId);
-
-    // 创建记忆组件
-    const memory = this.createMemory(preferences);
-
-    // 获取API密钥
-    const apiKey = this.configService.get<string>('ai.moonshotApiKey');
-
-    // 创建LangChain聊天模型
-    const llm = new ChatOpenAI({
-      apiKey,
-      modelName: 'moonshot-v1-8k',
-      temperature: 0.7,
-      maxTokens: preferences.maxTokens,
-      configuration: {
-        baseURL: 'https://api.moonshot.cn/v1',
-      },
-    });
-
-    // 创建对话链
-    const chain = new ConversationChain({
-      llm,
-      memory,
-      prompt: this.createPromptTemplate(preferences),
-    });
 
     const now = new Date();
     const session: ChatSession = {
       sessionId,
       userId,
       title,
-      memory,
-      chain,
+      messages: [],
       createdAt: now,
       updatedAt: now,
       lastAccessTime: now,
@@ -593,69 +579,34 @@ export class ChatService {
     return session;
   }
 
-  /**
-   * 创建记忆组件
-   */
-  private createMemory(
+  private buildConversationHistory(
+    session: ChatSession,
     preferences: UserPreferences,
-  ): BufferMemory | ConversationSummaryBufferMemory {
-    switch (preferences.memoryType) {
-      case 'buffer':
-        return new BufferMemory({
-          returnMessages: true,
-          memoryKey: 'history',
-        });
+  ): ChatMessage[] {
+    // 构建系统提示词
+    const systemPrompt = this.buildSystemPrompt(preferences);
+    const history: ChatMessage[] = [
+      { role: 'system', content: systemPrompt }
+    ];
 
-      case 'summary_buffer':
-        // 获取API密钥
-        const apiKey = this.configService.get<string>('ai.moonshotApiKey');
+    // 添加历史消息（限制数量）
+    const recentMessages = session.messages.slice(-preferences.maxHistoryMessages * 2);
+    recentMessages.forEach(msg => {
+      history.push({ role: msg.role, content: msg.content });
+    });
 
-        const llm = new ChatOpenAI({
-          apiKey,
-          modelName: 'moonshot-v1-8k',
-          temperature: 0.3,
-          configuration: {
-            baseURL: 'https://api.moonshot.cn/v1',
-          },
-        });
-
-        return new ConversationSummaryBufferMemory({
-          llm,
-          maxTokenLimit: 2000,
-          returnMessages: true,
-          memoryKey: 'history',
-        });
-
-      default:
-        return new BufferMemory({
-          returnMessages: true,
-          memoryKey: 'history',
-        });
-    }
+    return history;
   }
 
-  /**
-   * 创建提示词模板
-   */
-  private createPromptTemplate(preferences: UserPreferences): PromptTemplate {
-    const template = `你是一个专业的AI助手，具有以下特点：
+  private buildSystemPrompt(preferences: UserPreferences): string {
+    return `你是一个专业的AI助手，具有以下特点：
 - 语言风格：${preferences.responseStyle === 'professional' ? '专业严谨' : preferences.responseStyle === 'casual' ? '轻松友好' : '平衡适中'}
 - 回复语言：${preferences.language === 'zh' ? '中文' : '英文'}
 - 回复长度：控制在${preferences.maxResponseLength}字符以内
 
-请基于以下对话历史，为用户提供有帮助的回复：
-
-{history}
-
-用户: {input}
-AI助手:`;
-
-    return PromptTemplate.fromTemplate(template);
+请为用户提供有帮助、准确、友好的回复。`;
   }
 
-  /**
-   * 构建增强的提示词
-   */
   private buildEnhancedPrompt(message: string, context?: any): string {
     let enhancedMessage = message;
 
@@ -666,16 +617,10 @@ AI助手:`;
     return enhancedMessage;
   }
 
-  /**
-   * 生成会话ID
-   */
   private generateSessionId(): string {
     return `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
 
-  /**
-   * 估算token数量
-   */
   private estimateTokens(text: string): number {
     // 简单估算：中文字符约1.5个token，英文单词约1个token
     const chineseChars = (text.match(/[\u4e00-\u9fff]/g) || []).length;
@@ -685,16 +630,10 @@ AI助手:`;
     return Math.ceil(chineseChars * 1.5 + englishWords);
   }
 
-  /**
-   * 延迟函数
-   */
   private delay(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
-  /**
-   * 恢复活跃会话
-   */
   private async restoreActiveSessions(): Promise<void> {
     try {
       const recentTime = new Date(Date.now() - 60 * 60 * 1000); // 1小时内的会话
@@ -726,9 +665,6 @@ AI助手:`;
     }
   }
 
-  /**
-   * 保存消息到数据库
-   */
   private async saveMessageToDatabase(
     sessionId: string,
     userId: number,
@@ -736,88 +672,69 @@ AI助手:`;
     aiResponse: string,
   ): Promise<void> {
     try {
+      const now = new Date();
+
+      // 保存用户消息
       await (this.databaseService as any).chatMessage.create({
         data: {
           sessionId,
           userId,
-          userMessage,
-          aiResponse,
-          createdAt: new Date(),
+          role: 'user',
+          content: userMessage,
+          createdAt: now,
         },
       });
 
-      // 更新会话的消息计数
+      // 保存AI回复
+      await (this.databaseService as any).chatMessage.create({
+        data: {
+          sessionId,
+          userId,
+          role: 'assistant',
+          content: aiResponse,
+          createdAt: now,
+        },
+      });
+
+      // 更新会话统计
       await (this.databaseService as any).chatSession.update({
         where: { sessionId },
         data: {
           messageCount: { increment: 1 },
-          updatedAt: new Date(),
+          updatedAt: now,
         },
       });
     } catch (error) {
-      this.logger.error(`保存消息失败: ${error.message}`, error.stack);
-      // 不抛出异常，避免影响用户体验
+      this.logger.error(`保存消息到数据库失败: ${error.message}`, error.stack);
+      // 不抛出错误，避免影响用户体验
     }
   }
 
-  /**
-   * 从数据库恢复会话
-   */
   private async restoreSessionFromDatabase(
     sessionId: string,
     userId: number,
   ): Promise<ChatSession | null> {
     try {
-      const dbSession = await (
-        this.databaseService as any
-      ).chatSession.findUnique({
+      const dbSession = await (this.databaseService as any).chatSession.findUnique({
         where: { sessionId },
-        include: {
-          messages: {
-            orderBy: { createdAt: 'asc' },
-            take: 50, // 限制恢复的消息数量
-          },
-        },
       });
 
       if (!dbSession || dbSession.userId !== userId) {
         return null;
       }
 
-      const userPreferences = await this.getUserPreferences(userId);
-      const memory = this.createMemory(userPreferences);
-
-      // 恢复对话历史到内存
-      for (const message of dbSession.messages) {
-        await memory.saveContext(
-          { input: message.userMessage },
-          { output: message.aiResponse },
-        );
-      }
-
-      const apiKey = this.configService.get<string>('ai.moonshotApiKey');
-      const llm = new ChatOpenAI({
-        apiKey,
-        modelName: 'moonshot-v1-8k',
-        temperature: 0.7,
-        maxTokens: userPreferences.maxTokens,
-        configuration: {
-          baseURL: 'https://api.moonshot.cn/v1',
-        },
-      });
-
-      const chain = new ConversationChain({
-        llm,
-        memory,
-        prompt: this.createPromptTemplate(userPreferences),
-      });
+      // 获取会话历史消息
+      const messages = await this.getSessionHistory(sessionId);
 
       const session: ChatSession = {
         sessionId: dbSession.sessionId,
         userId: dbSession.userId,
         title: dbSession.title,
-        memory,
-        chain,
+        messages: messages.map(msg => ({
+          role: msg.role,
+          content: msg.content,
+          timestamp: msg.createdAt,
+        })),
         createdAt: dbSession.createdAt,
         updatedAt: dbSession.updatedAt,
         lastAccessTime: new Date(),
@@ -827,54 +744,37 @@ AI助手:`;
       this.sessions.set(sessionId, session);
       return session;
     } catch (error) {
-      this.logger.error(`恢复会话失败: ${error.message}`, error.stack);
+      this.logger.error(
+        `从数据库恢复会话失败 ${sessionId}: ${error.message}`,
+        error.stack,
+      );
       return null;
     }
   }
 
-  /**
-   * 获取会话历史
-   */
   private async getSessionHistory(sessionId: string): Promise<any[]> {
     try {
-      const messages = await (this.databaseService as any).chatMessage.findMany(
-        {
-          where: { sessionId },
-          orderBy: { createdAt: 'asc' },
-          take: 100, // 限制返回数量
+      return await (this.databaseService as any).chatMessage.findMany({
+        where: { sessionId },
+        orderBy: { createdAt: 'asc' },
+        select: {
+          role: true,
+          content: true,
+          createdAt: true,
         },
-      );
-
-      return messages.map((msg) => ({
-        userMessage: msg.userMessage,
-        aiResponse: msg.aiResponse,
-        createdAt: msg.createdAt,
-      }));
+      });
     } catch (error) {
-      this.logger.error(`获取会话历史失败: ${error.message}`, error.stack);
-
-      // 尝试从内存获取
-      const session = this.sessions.get(sessionId);
-      if (session) {
-        try {
-          const memoryVariables = await session.memory.loadMemoryVariables({});
-          const history = memoryVariables.history || [];
-          return Array.isArray(history) ? history : [];
-        } catch (memError) {
-          this.logger.error(`从内存获取历史失败: ${memError.message}`);
-        }
-      }
-
+      this.logger.error(
+        `获取会话历史失败 ${sessionId}: ${error.message}`,
+        error.stack,
+      );
       return [];
     }
   }
 
-  /**
-   * 从数据库删除会话
-   */
   private async deleteSessionFromDatabase(sessionId: string): Promise<void> {
     try {
-      // 删除会话相关的消息
+      // 删除会话消息
       await (this.databaseService as any).chatMessage.deleteMany({
         where: { sessionId },
       });
@@ -884,38 +784,29 @@ AI助手:`;
         where: { sessionId },
       });
     } catch (error) {
-      this.logger.error(`删除会话失败: ${error.message}`, error.stack);
-      // 不抛出异常，避免影响用户体验
+      this.logger.error(
+        `从数据库删除会话失败 ${sessionId}: ${error.message}`,
+        error.stack,
+      );
     }
   }
 
-  /**
-   * 清空用户会话
-   */
   private async clearUserSessionsFromDatabase(userId: number): Promise<void> {
     try {
-      // 获取用户所有会话ID
-      const userSessions = await (
-        this.databaseService as any
-      ).chatSession.findMany({
-        where: { userId },
-        select: { sessionId: true },
-      });
-
-      const sessionIds = userSessions.map((s) => s.sessionId);
-
-      // 删除所有消息
+      // 删除用户所有消息
       await (this.databaseService as any).chatMessage.deleteMany({
-        where: { sessionId: { in: sessionIds } },
+        where: { userId },
       });
 
-      // 删除所有会话
+      // 删除用户所有会话
       await (this.databaseService as any).chatSession.deleteMany({
         where: { userId },
       });
     } catch (error) {
-      this.logger.error(`清空用户会话失败: ${error.message}`, error.stack);
-      throw error;
+      this.logger.error(
+        `从数据库清除用户会话失败 ${userId}: ${error.message}`,
+        error.stack,
+      );
     }
   }
 }

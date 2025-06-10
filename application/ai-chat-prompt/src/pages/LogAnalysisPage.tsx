@@ -14,7 +14,9 @@ import type {
   ManualLogAnalysisRequest,
   UserLogAnalysisRequest,
   QuickLogCheckRequest,
-  LogAnalysisTask
+  LogAnalysisTask,
+  DeepAnalysisTask,
+  ManualDeepAnalysisRequest
 } from '@/types'
 import toast from 'react-hot-toast'
 
@@ -147,10 +149,7 @@ export default function LogAnalysisPage() {
           <ManualAnalysisTab onTaskCreated={fetchTasks} />
         )}
         {activeTab === 'user-logs' && (
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">用户日志分析</h2>
-            <p className="text-gray-600">此功能正在开发中，敬请期待...</p>
-          </div>
+          <UserLogAnalysisTab />
         )}
         {activeTab === 'quick-check' && (
           <div className="bg-white rounded-lg border border-gray-200 p-6">
@@ -264,16 +263,27 @@ function ManualAnalysisTab({ onTaskCreated }: { onTaskCreated: () => void }) {
 
     setIsAnalyzing(true)
     try {
-      // 直接使用新的快速分析API
-      const result = await logAnalysisAPI.quickAnalysis({
-        userFeedback: userFeedback.trim(),
-        logData,
-        options: {
-          pipeline: 'PARALLEL',
-          priority: 'HIGH',
-          analysisType: 'REAL_TIME'
-        }
-      })
+      let result
+      
+      // 如果是字符串数组格式，使用简化版API
+      if (logDataType === 'strings') {
+        const stringLogArray = stringLogData.split('\n').filter(line => line.trim())
+        result = await logAnalysisAPI.quickAnalysisSimple({
+          userFeedback: userFeedback.trim(),
+          logData: stringLogArray
+        })
+      } else {
+        // 结构化数据使用完整API
+        result = await logAnalysisAPI.quickAnalysis({
+          userFeedback: userFeedback.trim(),
+          logData,
+          options: {
+            pipeline: 'PARALLEL',
+            priority: 'HIGH',
+            analysisType: 'REAL_TIME'
+          }
+        })
+      }
       
       // 使用新的AI代理编排系统响应数据
       setAnalysisResult({
@@ -849,6 +859,768 @@ ${analysisResult.agentResults.map((agent: any) => `• ${agent.agentName}: ${age
               关闭结果
             </button>
           </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// 用户日志分析标签页组件
+function UserLogAnalysisTab() {
+  const [formData, setFormData] = useState({
+    userId: '',
+    userFeedback: '',
+    startTime: '',
+    endTime: '',
+    logSources: [] as string[],
+    keywords: [] as string[],
+    priority: 'HIGH' as 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'
+  })
+  const [analysisMode, setAnalysisMode] = useState<'automatic' | 'manual'>('automatic')
+  const [manualLogData, setManualLogData] = useState('')
+  const [analysisOptions, setAnalysisOptions] = useState({
+    enableDeepAnalysis: true,
+    enableRootCauseAnalysis: true,
+    enableSemanticAnalysis: true,
+    enablePatternAnalysis: false,
+    enableAnomalyDetection: false
+  })
+  const [tasks, setTasks] = useState<DeepAnalysisTask[]>([])
+  const [selectedTask, setSelectedTask] = useState<DeepAnalysisTask | null>(null)
+  const [isCreating, setIsCreating] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [activeView, setActiveView] = useState<'create' | 'list' | 'detail'>('create')
+
+  // 获取任务列表
+  const fetchTasks = async () => {
+    setIsLoading(true)
+    try {
+      const response = await logAnalysisAPI.getDeepAnalysisTasks({ pageSize: 20 })
+      setTasks(response.tasks)
+    } catch (error: any) {
+      console.error('获取任务列表失败:', error)
+      toast.error('获取任务列表失败')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (activeView === 'list') {
+      fetchTasks()
+    }
+  }, [activeView])
+
+  // 创建深度分析任务
+  const handleCreateTask = async () => {
+    if (analysisMode === 'automatic') {
+      // 自动深度分析模式
+      if (!formData.userId || !formData.userFeedback || !formData.startTime || !formData.endTime) {
+        toast.error('请填写所有必需字段')
+        return
+      }
+
+      setIsCreating(true)
+      try {
+        const task = await logAnalysisAPI.createDeepAnalysisTask({
+          userId: parseInt(formData.userId),
+          userFeedback: formData.userFeedback,
+          timeRange: {
+            startTime: formData.startTime,
+            endTime: formData.endTime
+          },
+          logSources: formData.logSources.length > 0 ? formData.logSources : ['backend', 'frontend', 'mobile'],
+          keywords: formData.keywords,
+          priority: formData.priority
+        })
+        
+        toast.success(`深度分析任务已创建！任务ID: ${task.taskId}`)
+        setActiveView('list')
+        fetchTasks()
+      } catch (error: any) {
+        console.error('创建任务失败:', error)
+        toast.error(error.response?.data?.message || '创建任务失败')
+      } finally {
+        setIsCreating(false)
+      }
+    } else {
+      // 手动深度分析模式
+      if (!formData.userFeedback || !manualLogData.trim()) {
+        toast.error('请填写用户反馈和日志数据')
+        return
+      }
+
+      setIsCreating(true)
+      try {
+        // 解析手动输入的日志数据
+        let logDataArray: any[]
+        try {
+          logDataArray = JSON.parse(manualLogData)
+          if (!Array.isArray(logDataArray)) {
+            logDataArray = [logDataArray]
+          }
+        } catch (parseError) {
+          // 如果不是JSON格式，按行分割并构造简单的日志条目
+          const lines = manualLogData.split('\n').filter(line => line.trim())
+          logDataArray = lines.map((line, index) => ({
+            level: 'INFO',
+            source: 'manual-input',
+            message: line.trim(),
+            timestamp: new Date().toISOString()
+          }))
+        }
+
+        const request: ManualDeepAnalysisRequest = {
+          userFeedback: formData.userFeedback,
+          manualLogData: logDataArray.map(log => ({
+            level: log.level || 'INFO',
+            source: log.source || 'manual-input',
+            message: log.message || log.toString(),
+            metadata: log.metadata,
+            timestamp: log.timestamp || new Date().toISOString()
+          })),
+          priority: formData.priority,
+          analysisOptions
+        }
+
+        const task = await logAnalysisAPI.createManualDeepAnalysisTask(request)
+        
+        toast.success(`手动深度分析任务已创建！任务ID: ${task.taskId}`)
+        setActiveView('list')
+        fetchTasks()
+      } catch (error: any) {
+        console.error('创建手动深度分析任务失败:', error)
+        toast.error(error.response?.data?.message || '创建手动深度分析任务失败')
+      } finally {
+        setIsCreating(false)
+      }
+    }
+  }
+
+  // 查看任务详情
+  const handleViewTask = async (taskId: string) => {
+    try {
+      const task = await logAnalysisAPI.getDeepAnalysisTask(taskId)
+      setSelectedTask(task)
+      setActiveView('detail')
+    } catch (error: any) {
+      console.error('获取任务详情失败:', error)
+      toast.error('获取任务详情失败')
+    }
+  }
+
+  // 删除任务
+  const handleDeleteTask = async (taskId: string) => {
+    if (!confirm('确定要删除这个任务吗？')) {
+      return
+    }
+    
+    try {
+      await logAnalysisAPI.deleteDeepAnalysisTask(taskId)
+      toast.success('任务已删除')
+      fetchTasks()
+    } catch (error: any) {
+      console.error('删除任务失败:', error)
+      toast.error('删除任务失败')
+    }
+  }
+
+  // 获取状态颜色
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'COMPLETED':
+        return 'text-green-600 bg-green-50 border-green-200'
+      case 'PROCESSING':
+        return 'text-blue-600 bg-blue-50 border-blue-200'
+      case 'FAILED':
+        return 'text-red-600 bg-red-50 border-red-200'
+      default:
+        return 'text-gray-600 bg-gray-50 border-gray-200'
+    }
+  }
+
+  // 获取优先级颜色
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'URGENT':
+        return 'text-red-600 bg-red-50'
+      case 'HIGH':
+        return 'text-orange-600 bg-orange-50'
+      case 'MEDIUM':
+        return 'text-yellow-600 bg-yellow-50'
+      default:
+        return 'text-blue-600 bg-blue-50'
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* 操作导航 */}
+      <div className="bg-white rounded-lg border border-gray-200 p-4">
+        <div className="flex space-x-4">
+          <button
+            onClick={() => setActiveView('create')}
+            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              activeView === 'create' 
+                ? 'bg-primary-100 text-primary-700' 
+                : 'text-gray-600 hover:bg-gray-100'
+            }`}
+          >
+            创建任务
+          </button>
+          <button
+            onClick={() => setActiveView('list')}
+            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              activeView === 'list' 
+                ? 'bg-primary-100 text-primary-700' 
+                : 'text-gray-600 hover:bg-gray-100'
+            }`}
+          >
+            任务列表
+          </button>
+          {selectedTask && (
+            <button
+              onClick={() => setActiveView('detail')}
+              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                activeView === 'detail' 
+                  ? 'bg-primary-100 text-primary-700' 
+                  : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              任务详情
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* 创建任务表单 */}
+      {activeView === 'create' && (
+        <div className="bg-white rounded-lg border border-gray-200 p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-6">创建深度分析任务</h3>
+          
+          {/* 分析模式选择 */}
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 mb-3">分析模式</label>
+            <div className="flex space-x-4">
+              <label className="flex items-center">
+                <input
+                  type="radio"
+                  value="automatic"
+                  checked={analysisMode === 'automatic'}
+                  onChange={(e) => setAnalysisMode(e.target.value as 'automatic')}
+                  className="mr-2"
+                />
+                <span className="text-sm">自动分析（基于用户ID和时间范围）</span>
+              </label>
+              <label className="flex items-center">
+                <input
+                  type="radio"
+                  value="manual"
+                  checked={analysisMode === 'manual'}
+                  onChange={(e) => setAnalysisMode(e.target.value as 'manual')}
+                  className="mr-2"
+                />
+                <span className="text-sm">手动分析（用户提供日志数据）</span>
+              </label>
+            </div>
+          </div>
+          
+          {/* 自动分析模式的字段 */}
+          {analysisMode === 'automatic' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* 用户ID */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  用户ID <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  value={formData.userId}
+                  onChange={(e) => setFormData(prev => ({ ...prev, userId: e.target.value }))}
+                  placeholder="输入用户ID，例如: 12345"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                />
+              </div>
+
+              {/* 优先级 */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">优先级</label>
+                <select
+                  value={formData.priority}
+                  onChange={(e) => setFormData(prev => ({ ...prev, priority: e.target.value as any }))}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                >
+                  <option value="LOW">低</option>
+                  <option value="MEDIUM">中</option>
+                  <option value="HIGH">高</option>
+                  <option value="URGENT">紧急</option>
+                </select>
+              </div>
+
+              {/* 开始时间 */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  开始时间 <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="datetime-local"
+                  value={formData.startTime}
+                  onChange={(e) => setFormData(prev => ({ ...prev, startTime: e.target.value }))}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                />
+              </div>
+
+              {/* 结束时间 */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  结束时间 <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="datetime-local"
+                  value={formData.endTime}
+                  onChange={(e) => setFormData(prev => ({ ...prev, endTime: e.target.value }))}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* 手动分析模式的字段 */}
+          {analysisMode === 'manual' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* 优先级 */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">优先级</label>
+                <select
+                  value={formData.priority}
+                  onChange={(e) => setFormData(prev => ({ ...prev, priority: e.target.value as any }))}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                >
+                  <option value="LOW">低</option>
+                  <option value="MEDIUM">中</option>
+                  <option value="HIGH">高</option>
+                  <option value="URGENT">紧急</option>
+                </select>
+              </div>
+            </div>
+          )}
+
+          {/* 用户反馈 */}
+          <div className="mt-6">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              用户反馈 <span className="text-red-500">*</span>
+            </label>
+            <textarea
+              value={formData.userFeedback}
+              onChange={(e) => setFormData(prev => ({ ...prev, userFeedback: e.target.value }))}
+              placeholder={analysisMode === 'manual' 
+                ? "用户反馈登录失败，支付超时，希望分析具体原因"
+                : "用户反馈系统响应缓慢，登录经常失败，请深度分析最近的日志"
+              }
+              rows={4}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
+            />
+          </div>
+
+          {/* 手动日志数据输入 */}
+          {analysisMode === 'manual' && (
+            <div className="mt-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                日志数据 <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                value={manualLogData}
+                onChange={(e) => setManualLogData(e.target.value)}
+                placeholder={`请输入日志数据，支持以下格式：
+
+1. JSON数组格式：
+[
+  {
+    "level": "ERROR",
+    "source": "auth-service", 
+    "message": "Database connection timeout during user authentication",
+    "metadata": {"userId": 12345, "duration": "30s"}
+  },
+  {
+    "level": "ERROR",
+    "source": "payment-service",
+    "message": "Payment gateway timeout for order processing", 
+    "metadata": {"orderId": "ORD-789", "amount": 299.99}
+  }
+]
+
+2. 简单文本格式（每行一条日志）：
+ERROR [auth-service] Database connection timeout during user authentication
+ERROR [payment-service] Payment gateway timeout for order processing`}
+                rows={12}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none font-mono text-sm"
+              />
+              <div className="mt-2 text-sm text-gray-500">
+                <strong>提示：</strong>支持JSON格式或简单文本格式。JSON格式可以提供更详细的元数据信息。
+              </div>
+            </div>
+          )}
+
+          {/* 分析选项 */}
+          {analysisMode === 'manual' && (
+            <div className="mt-6">
+              <label className="block text-sm font-medium text-gray-700 mb-3">分析选项</label>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={analysisOptions.enableDeepAnalysis}
+                    onChange={(e) => setAnalysisOptions(prev => ({
+                      ...prev,
+                      enableDeepAnalysis: e.target.checked
+                    }))}
+                    className="mr-2"
+                  />
+                  <span className="text-sm">深度分析</span>
+                </label>
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={analysisOptions.enableRootCauseAnalysis}
+                    onChange={(e) => setAnalysisOptions(prev => ({
+                      ...prev,
+                      enableRootCauseAnalysis: e.target.checked
+                    }))}
+                    className="mr-2"
+                  />
+                  <span className="text-sm">根因分析</span>
+                </label>
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={analysisOptions.enableSemanticAnalysis}
+                    onChange={(e) => setAnalysisOptions(prev => ({
+                      ...prev,
+                      enableSemanticAnalysis: e.target.checked
+                    }))}
+                    className="mr-2"
+                  />
+                  <span className="text-sm">语义分析</span>
+                </label>
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={analysisOptions.enablePatternAnalysis}
+                    onChange={(e) => setAnalysisOptions(prev => ({
+                      ...prev,
+                      enablePatternAnalysis: e.target.checked
+                    }))}
+                    className="mr-2"
+                  />
+                  <span className="text-sm">模式分析</span>
+                </label>
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={analysisOptions.enableAnomalyDetection}
+                    onChange={(e) => setAnalysisOptions(prev => ({
+                      ...prev,
+                      enableAnomalyDetection: e.target.checked
+                    }))}
+                    className="mr-2"
+                  />
+                  <span className="text-sm">异常检测</span>
+                </label>
+              </div>
+            </div>
+          )}
+
+          {/* 日志源 - 仅自动模式 */}
+          {analysisMode === 'automatic' && (
+            <div className="mt-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">日志源</label>
+              <div className="flex flex-wrap gap-3">
+                {['backend', 'frontend', 'mobile', 'database', 'payment', 'notification'].map((source) => (
+                  <label key={source} className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={formData.logSources.includes(source)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setFormData(prev => ({ ...prev, logSources: [...prev.logSources, source] }))
+                        } else {
+                          setFormData(prev => ({ ...prev, logSources: prev.logSources.filter(s => s !== source) }))
+                        }
+                      }}
+                      className="mr-2"
+                    />
+                    <span className="capitalize">{source}</span>
+                  </label>
+                ))}
+              </div>
+              <p className="text-sm text-gray-500 mt-2">未选择时将使用默认源: backend, frontend, mobile</p>
+            </div>
+          )}
+
+          {/* 关键词 - 仅自动模式 */}
+          {analysisMode === 'automatic' && (
+            <div className="mt-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">关键词</label>
+              <input
+                type="text"
+                placeholder="输入关键词，用逗号分隔，例如: timeout, error, login, slow"
+                onChange={(e) => {
+                  const keywords = e.target.value.split(',').map(k => k.trim()).filter(k => k)
+                  setFormData(prev => ({ ...prev, keywords }))
+                }}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              />
+              <p className="text-sm text-gray-500 mt-1">用逗号分隔多个关键词</p>
+            </div>
+          )}
+
+          <div className="mt-8 flex space-x-4">
+            <button
+              onClick={handleCreateTask}
+              disabled={isCreating}
+              className="px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
+            >
+              {isCreating ? (
+                <RefreshCw className="w-5 h-5 animate-spin" />
+              ) : (
+                <User className="w-5 h-5" />
+              )}
+              <span>{isCreating ? '创建中...' : (analysisMode === 'manual' ? '创建手动深度分析任务' : '创建深度分析任务')}</span>
+            </button>
+            <button
+              onClick={() => {
+                setFormData({
+                  userId: '',
+                  userFeedback: '',
+                  startTime: '',
+                  endTime: '',
+                  logSources: [],
+                  keywords: [] as string[],
+                  priority: 'HIGH'
+                })
+                setManualLogData('')
+                setAnalysisOptions({
+                  enableDeepAnalysis: true,
+                  enableRootCauseAnalysis: true,
+                  enableSemanticAnalysis: true,
+                  enablePatternAnalysis: false,
+                  enableAnomalyDetection: false
+                })
+              }}
+              className="px-6 py-3 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              清空表单
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 任务列表 */}
+      {activeView === 'list' && (
+        <div className="bg-white rounded-lg border border-gray-200 p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-lg font-semibold text-gray-900">深度分析任务列表</h3>
+            <button
+              onClick={fetchTasks}
+              disabled={isLoading}
+              className="px-4 py-2 text-primary-600 border border-primary-300 rounded-lg hover:bg-primary-50 transition-colors flex items-center space-x-2"
+            >
+              <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+              <span>刷新</span>
+            </button>
+          </div>
+
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <RefreshCw className="w-8 h-8 animate-spin text-primary-600" />
+              <span className="ml-2 text-gray-600">加载中...</span>
+            </div>
+          ) : tasks.length === 0 ? (
+            <div className="text-center py-12">
+              <User className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-600">暂无深度分析任务</p>
+              <button
+                onClick={() => setActiveView('create')}
+                className="mt-4 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+              >
+                创建第一个任务
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {tasks.map((task) => (
+                <div key={task.taskId} className="border border-gray-200 rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center space-x-3">
+                      <span className="font-medium text-gray-900">任务 {task.taskId}</span>
+                      <span className={`px-2 py-1 rounded text-xs font-medium border ${getStatusColor(task.status)}`}>
+                        {task.status}
+                      </span>
+                      <span className={`px-2 py-1 rounded text-xs font-medium ${getPriorityColor(task.priority)}`}>
+                        {task.priority}
+                      </span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => handleViewTask(task.taskId)}
+                        className="px-3 py-1 text-sm text-primary-600 border border-primary-300 rounded hover:bg-primary-50 transition-colors"
+                      >
+                        查看详情
+                      </button>
+                      <button
+                        onClick={() => handleDeleteTask(task.taskId)}
+                        className="px-3 py-1 text-sm text-red-600 border border-red-300 rounded hover:bg-red-50 transition-colors"
+                      >
+                        删除
+                      </button>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                    <div>
+                      <span className="text-gray-500">用户ID:</span>
+                      <span className="ml-1 font-medium">{task.userId}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">创建时间:</span>
+                      <span className="ml-1">{new Date(task.createdAt).toLocaleDateString()}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">时间范围:</span>
+                      <span className="ml-1">{new Date(task.timeRange.startTime).toLocaleDateString()}</span>
+                    </div>
+                    {task.progress !== undefined && (
+                      <div>
+                        <span className="text-gray-500">进度:</span>
+                        <span className="ml-1">{task.progress}%</span>
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-sm text-gray-600 mt-2 line-clamp-2">{task.userFeedback}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 任务详情 */}
+      {activeView === 'detail' && selectedTask && (
+        <div className="bg-white rounded-lg border border-gray-200 p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-lg font-semibold text-gray-900">任务详情</h3>
+            <button
+              onClick={() => setActiveView('list')}
+              className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              返回列表
+            </button>
+          </div>
+
+          {/* 任务基本信息 */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium text-gray-700">任务ID</label>
+                <p className="text-gray-900 font-mono">{selectedTask.taskId}</p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700">状态</label>
+                <div className="mt-1">
+                  <span className={`px-2 py-1 rounded text-xs font-medium border ${getStatusColor(selectedTask.status)}`}>
+                    {selectedTask.status}
+                  </span>
+                </div>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700">优先级</label>
+                <div className="mt-1">
+                  <span className={`px-2 py-1 rounded text-xs font-medium ${getPriorityColor(selectedTask.priority)}`}>
+                    {selectedTask.priority}
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium text-gray-700">用户ID</label>
+                <p className="text-gray-900">{selectedTask.userId}</p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700">创建时间</label>
+                <p className="text-gray-900">{new Date(selectedTask.createdAt).toLocaleString()}</p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700">更新时间</label>
+                <p className="text-gray-900">{new Date(selectedTask.updatedAt).toLocaleString()}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* 分析结果 */}
+          {selectedTask.result && (
+            <div className="space-y-6">
+              <h4 className="text-md font-semibold text-gray-900">分析结果</h4>
+              
+              {/* 摘要统计 */}
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                {Object.entries(selectedTask.result.summary).map(([key, value]) => (
+                  <div key={key} className="bg-gray-50 p-3 rounded-lg text-center">
+                    <div className="text-2xl font-bold text-gray-900">{value as number}</div>
+                    <div className="text-xs text-gray-500 capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* 关键发现 */}
+              {selectedTask.result.keyFindings && selectedTask.result.keyFindings.length > 0 && (
+                <div>
+                  <h5 className="font-medium text-gray-900 mb-3">关键发现</h5>
+                  <div className="space-y-3">
+                    {selectedTask.result.keyFindings.map((finding: any, index: number) => (
+                      <div key={index} className="border border-gray-200 rounded-lg p-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="font-medium text-gray-900">{finding.title}</span>
+                          <SeverityBadge severity={finding.severity} />
+                        </div>
+                        <p className="text-sm text-gray-600 mb-2">{finding.description}</p>
+                        <p className="text-sm text-gray-700 mb-3"><strong>影响:</strong> {finding.impact}</p>
+                        {finding.recommendations && finding.recommendations.length > 0 && (
+                          <div>
+                            <strong className="text-sm text-gray-700">建议:</strong>
+                            <ul className="text-sm text-gray-600 mt-1">
+                              {finding.recommendations.map((rec: string, i: number) => (
+                                <li key={i} className="ml-4">• {rec}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {selectedTask.status === 'PROCESSING' && (
+            <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+              <div className="flex items-center">
+                <RefreshCw className="w-5 h-5 animate-spin text-blue-600 mr-2" />
+                <span className="text-blue-700">任务正在处理中...</span>
+              </div>
+              {selectedTask.progress !== undefined && (
+                <div className="mt-2">
+                  <div className="bg-blue-200 rounded-full h-2">
+                    <div 
+                      className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                      style={{ width: `${selectedTask.progress}%` }}
+                    ></div>
+                  </div>
+                  <span className="text-sm text-blue-600 mt-1 block">{selectedTask.progress}% 已完成</span>
+                </div>
+              )}
             </div>
           )}
         </div>

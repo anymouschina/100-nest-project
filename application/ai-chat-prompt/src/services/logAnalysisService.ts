@@ -7,6 +7,9 @@ export const logAnalysisAPI = {
   // 快速日志分析 - 主要推荐使用的接口
   quickAnalysis: aiClient.logAnalysis.quickAnalysis,
   
+  // 简化版快速日志分析 - 直接接受字符串数组格式 (与测试命令格式匹配)
+  quickAnalysisSimple: aiClient.logAnalysis.quickAnalysisSimple,
+  
   // 错误专门分析
   errorAnalysis: aiClient.logAnalysis.errorAnalysis,
   
@@ -21,6 +24,23 @@ export const logAnalysisAPI = {
   
   // 获取系统性能统计
   getPerformanceStats: aiClient.logAnalysis.getPerformanceStats,
+
+  // === 深度分析任务方法 ===
+  
+  // 创建深度分析任务
+  createDeepAnalysisTask: aiClient.logAnalysis.createDeepAnalysisTask,
+  
+  // 获取深度分析任务列表
+  getDeepAnalysisTasks: aiClient.logAnalysis.getDeepAnalysisTasks,
+  
+  // 获取指定深度分析任务
+  getDeepAnalysisTask: aiClient.logAnalysis.getDeepAnalysisTask,
+  
+  // 删除深度分析任务
+  deleteDeepAnalysisTask: aiClient.logAnalysis.deleteDeepAnalysisTask,
+  
+  // 创建手动深度分析任务
+  createManualDeepAnalysisTask: aiClient.logAnalysis.createManualDeepAnalysisTask,
 
   // === 兼容旧接口的方法 ===
   

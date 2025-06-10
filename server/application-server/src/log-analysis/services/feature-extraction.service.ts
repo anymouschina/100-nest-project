@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { DatabaseService } from '../../database/database.service';
 import { VectorKnowledgeService } from '../../ai/services/vector-knowledge.service';
-import { EmbeddingService } from '../../ai/services/embedding.service';
+import { OllamaUniversalEmbeddingService } from '../../ai/services/ollama-universal-embedding.service';
 
 export interface ExtractedFeature {
   featureType: string;
@@ -33,7 +33,7 @@ export class FeatureExtractionService {
   constructor(
     private readonly databaseService: DatabaseService,
     private readonly vectorService: VectorKnowledgeService,
-    private readonly embeddingService: EmbeddingService,
+    private readonly embeddingService: OllamaUniversalEmbeddingService,
   ) {
     this.initializeKnownPatterns();
   }
@@ -620,7 +620,7 @@ export class FeatureExtractionService {
     logEntry: any,
     features: ExtractedFeature[],
   ): Promise<number[]> {
-    // 生成综合向量表示
+    // 生成综合向量表示 - 使用Ollama
     const text = `${logEntry.message} ${logEntry.source} ${logEntry.level}`;
     const embeddingResult = await this.embeddingService.generateEmbedding(text);
     return embeddingResult.vector;

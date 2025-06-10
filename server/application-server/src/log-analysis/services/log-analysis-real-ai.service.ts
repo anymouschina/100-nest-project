@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { VectorKnowledgeService } from '../../ai/services/vector-knowledge.service';
-import { EmbeddingService } from '../../ai/services/embedding.service';
+import { OllamaUniversalEmbeddingService } from '../../ai/services/ollama-universal-embedding.service';
 
 export interface RealAIAnalysisResult {
   analysisResult: {
@@ -31,7 +31,7 @@ export class LogAnalysisRealAIService {
 
   constructor(
     private readonly vectorService: VectorKnowledgeService,
-    private readonly embeddingService: EmbeddingService,
+    private readonly embeddingService: OllamaUniversalEmbeddingService,
   ) {}
 
   /**

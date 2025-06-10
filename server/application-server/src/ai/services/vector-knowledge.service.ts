@@ -2,7 +2,7 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DatabaseService } from '../../database/database.service';
 import { QdrantService, QdrantPoint } from './qdrant.service';
-import { EmbeddingService } from './embedding.service';
+import { OllamaUniversalEmbeddingService } from './ollama-universal-embedding.service';
 
 // 向量数据库接口定义
 export interface VectorDocument {
@@ -41,7 +41,7 @@ export class VectorKnowledgeService {
     private readonly databaseService: DatabaseService,
     private readonly configService: ConfigService,
     private readonly qdrantService: QdrantService,
-    private readonly embeddingService: EmbeddingService,
+    private readonly embeddingService: OllamaUniversalEmbeddingService,
   ) {
     this.initializeVectorStore();
   }
@@ -277,25 +277,16 @@ export class VectorKnowledgeService {
   }
 
   /**
-   * 生成文本嵌入向量
+   * 生成文本嵌入向量 - 只使用Ollama，不使用模拟向量
    */
   private async generateEmbedding(text: string): Promise<number[]> {
     try {
-      // 使用真实的embedding服务
+      // 只使用Ollama embedding服务，失败时直接抛出错误
       const embeddingResult = await this.embeddingService.generateEmbedding(text);
       return embeddingResult.vector;
     } catch (error) {
-      this.logger.warn('使用embedding服务失败，降级到简单向量生成', error.message);
-      
-      // 降级到简单的hash-based embedding
-      const hash = this.simpleHash(text);
-      const vector = new Array(384)
-        .fill(0)
-        .map(
-          (_, i) => (Math.sin(hash + i) * Math.cos(hash * i)) / Math.sqrt(384),
-        );
-
-      return this.normalizeVector(vector);
+      this.logger.error(`Ollama嵌入向量生成失败: ${error.message}`, error.stack);
+      throw new Error(`嵌入服务不可用，请确保Ollama服务正常运行: ${error.message}`);
     }
   }
 

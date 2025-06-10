@@ -9,6 +9,7 @@ import { Transport, MicroserviceOptions } from '@nestjs/microservices';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import * as path from 'path';
 import { Logger } from '@nestjs/common';
+import * as express from 'express';
 
 async function bootstrap() {
   // 创建全局日志实例
@@ -20,7 +21,12 @@ async function bootstrap() {
   try {
     const app = await NestFactory.create<NestExpressApplication>(AppModule, {
       logger: ['error', 'warn', 'log', 'debug', 'verbose'],
+      bodyParser: true,
     });
+
+    // 配置全局请求体大小限制，支持大数据量的日志分析
+    app.use(express.json({ limit: '10mb' }));
+    app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
     // 创建微服务
     app.connectMicroservice<MicroserviceOptions>({

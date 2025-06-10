@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { OpenAI } from 'openai';
+import { OllamaUniversalEmbeddingService } from './ollama-universal-embedding.service';
 
 export interface EmbeddingOptions {
   model?: string;
@@ -21,7 +22,10 @@ export class EmbeddingService {
   private readonly defaultModel = 'text-embedding-3-small';
   private readonly defaultDimensions = 384;
 
-  constructor(private readonly configService: ConfigService) {
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly ollamaEmbedding: OllamaUniversalEmbeddingService,
+  ) {
     this.initializeOpenAI();
   }
 
@@ -48,28 +52,44 @@ export class EmbeddingService {
   }
 
   /**
-   * 生成文本嵌入向量
+   * 生成文本嵌入向量 - 优先使用Ollama
    */
   async generateEmbedding(
     text: string,
     options: EmbeddingOptions = {},
   ): Promise<EmbeddingResult> {
-    const { model = this.defaultModel, dimensions = this.defaultDimensions } =
-      options;
+    const { model, dimensions } = options;
 
     try {
+      // 首先尝试使用Ollama
+      const ollamaResult = await this.ollamaEmbedding.generateEmbedding(text, {
+        model,
+        dimensions,
+      });
+      
+      return {
+        vector: ollamaResult.vector,
+        tokenCount: ollamaResult.tokenCount,
+        model: ollamaResult.model,
+      };
+    } catch (ollamaError) {
+      this.logger.warn(`Ollama嵌入失败，尝试OpenAI: ${ollamaError.message}`);
+      
+      // 降级到OpenAI
       if (this.openaiClient) {
-        return await this.generateOpenAIEmbedding(text, model, dimensions);
+        try {
+          return await this.generateOpenAIEmbedding(
+            text,
+            model || this.defaultModel,
+            dimensions || this.defaultDimensions,
+          );
+        } catch (openaiError) {
+          this.logger.error(`OpenAI嵌入也失败: ${openaiError.message}`);
+          throw new Error(`所有嵌入服务都不可用: Ollama(${ollamaError.message}), OpenAI(${openaiError.message})`);
+        }
       } else {
-        return await this.generateSimulatedEmbedding(text, dimensions);
+        throw new Error(`嵌入服务不可用: ${ollamaError.message}`);
       }
-    } catch (error) {
-      this.logger.error(
-        `生成嵌入向量失败: ${text.substring(0, 50)}...`,
-        error.message,
-      );
-      // 降级到模拟向量
-      return await this.generateSimulatedEmbedding(text, dimensions);
     }
   }
 
@@ -122,46 +142,7 @@ export class EmbeddingService {
     };
   }
 
-  /**
-   * 生成模拟嵌入向量（用于开发和测试）
-   */
-  private async generateSimulatedEmbedding(
-    text: string,
-    dimensions: number,
-  ): Promise<EmbeddingResult> {
-    // 基于文本内容生成稳定的伪随机向量
-    const hash = this.stringToHash(text);
-    const vector: number[] = [];
 
-    for (let i = 0; i < dimensions; i++) {
-      const seed = hash + i;
-      const value =
-        (Math.sin(seed) * Math.cos(seed * 0.5)) / Math.sqrt(dimensions);
-      vector.push(value);
-    }
-
-    // 归一化向量
-    const normalizedVector = this.normalizeVector(vector);
-
-    return {
-      vector: normalizedVector,
-      tokenCount: Math.ceil(text.length / 4), // 估算token数量
-      model: 'simulated',
-    };
-  }
-
-  /**
-   * 字符串转哈希
-   */
-  private stringToHash(str: string): number {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      const char = str.charCodeAt(i);
-      hash = (hash << 5) - hash + char;
-      hash = hash & hash; // 转换为32位整数
-    }
-    return Math.abs(hash);
-  }
 
   /**
    * 向量归一化

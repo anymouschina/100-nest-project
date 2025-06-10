@@ -52,7 +52,9 @@ export interface AIResponse {
     totalTokens: number;
   };
   model: string;
-  finishReason: string;
+  provider?: string;
+  finishReason?: string;
+  processingTime?: number;
 }
 
 export interface ConversationContext {

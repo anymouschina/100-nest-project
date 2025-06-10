@@ -1,0 +1,32 @@
+{
+  "总日志条数": 1000,
+  "日志级别分布": {
+    "DEBUG": 190,
+    "INFO": 189,
+    "WARN": 188,
+    "ERROR": 210,
+    "FATAL": 223
+  },
+  "服务分布": {
+    "user-service": 72,
+    "order-service": 221,
+    "payment-gateway": 118,
+    "inventory-service": 62,
+    "notification-service": 0,
+    "auth-service": 57,
+    "log-service": 0,
+    "file-service": 0,
+    "wechat-service": 74,
+    "mysql": 59,
+    "redis": 62,
+    "rabbitmq": 0,
+    "nginx": 63,
+    "api-gateway": 65
+  },
+  "时间范围": {
+    "最早时间": 1746929378627,
+    "最晚时间": 1749519114938
+  },
+  "测试用例数量": 5,
+  "生成时间": "2025-06-10T02:00:42.987Z"
+}

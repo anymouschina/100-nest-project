@@ -198,6 +198,22 @@ Here are the additional features that has been added to the application:
     - 智能知识库系统，支持无限扩展依赖数据
     - 对话上下文管理，支持长期记忆和个性化偏好
     - 提示词质量评分系统，包含清晰度、具体性、完整性、一致性、有效性等维度
+- **🔍 AI智能日志分析模块** (已升级为本地Ollama模型):
+    - 🦙 **本地AI模型**: 使用Ollama本地运行，零API成本，完全私有化
+    - 🤖 **智能模型选择**: qwen2.5:14b(对话) + deepseek-coder:6.7b(分析) + nomic-embed-text(向量)
+    - 多代理协作分析: `POST /api/agent-orchestrator/analyze/quick`
+    - 8个专业AI代理：标准化、问题识别、异常检测、特征提取、错误分析、行为分析、语义分析、报告生成
+    - 3种执行模式：并行(PARALLEL)、顺序(SEQUENTIAL)、条件(CONDITIONAL)
+    - 4个优先级别：LOW、MEDIUM、HIGH、URGENT
+    - 多格式日志支持：结构化JSON、半结构化文本、非结构化字符串
+    - 智能置信度计算：基于8个代理的加权置信度评估
+    - 实时异常检测：毫秒级响应的智能异常识别
+    - 根因分析：深度分析问题根本原因和影响链路
+    - 安全威胁检测：识别潜在安全威胁和异常行为
+    - 性能瓶颈分析：系统性能监控和容量预测
+    - 业务运营分析：用户行为分析和业务流程优化
+    - 详细功能说明：[📖 AI日志分析系统完整指南](./AI_LOG_ANALYSIS_GUIDE.md)
+    - 本地部署指南：[🦙 Ollama模型配置指南](./OLLAMA_SETUP_GUIDE.md)
     - 需要用户认证，支持游客模式快速体验
 
 ## AI模块完善记录 (v2.0)
@@ -567,9 +583,52 @@ DATABASE_URL=postgresql://username:password@localhost:5432/database_name
 - 性能监控日志
 - 安全审计日志
 
+### AI日志分析测试数据
+
+为了全面测试AI日志分析功能，系统提供了丰富的测试数据生成工具。
+
+#### 生成测试数据
+```bash
+# 生成1000条半结构化测试日志数据
+npx ts-node scripts/generate-test-logs.ts
+```
+
+#### 测试数据特点
+- **1000条日志记录**：涵盖最近30天的业务数据
+- **5种业务场景**：订单创建、支付处理、用户认证、数据库操作、系统性能
+- **多种数据格式**：完整结构化、字符串格式、混合格式
+- **真实业务特征**：基于电商订单管理系统的实际场景
+
+#### 运行测试
+```bash
+# 使用生成的测试数据进行API测试
+./test-log-analysis-with-generated-data.sh
+```
+
+#### 测试用例包含
+1. **支付系统故障分析** - 使用支付相关日志数据
+2. **数据库性能问题诊断** - 使用数据库操作日志
+3. **用户认证异常排查** - 使用认证失败日志
+4. **系统整体健康状况评估** - 使用综合系统日志
+5. **错误专门分析** - 使用错误级别日志
+
+#### 数据文件结构
+```
+test-data/
+├── structured-logs.json     # 1000条完整结构化日志
+├── string-logs.json         # 1000条字符串格式日志
+├── mixed-logs.json          # 1000条混合格式日志
+├── test-cases.json          # 5个预定义测试用例
+├── data-statistics.json     # 数据统计报告
+└── README.md               # 详细使用说明
+```
+
+详细使用说明请参考：[AI日志分析测试数据文档](./test-data/README.md)
+
 ### 版本历史
 - **v1.0** (2024-11): 基础AI对话功能，内存存储
 - **v2.0** (2024-12): 企业级升级，数据持久化，智能缓存，自动管理
+- **v2.1** (2025-06): 新增AI日志分析测试数据生成工具，支持1000条半结构化测试数据
 
 ### 未来规划
 - 支持更多AI模型接入
@@ -577,6 +636,7 @@ DATABASE_URL=postgresql://username:password@localhost:5432/database_name
 - 添加实时对话功能
 - 增强安全防护机制
 - 优化大规模并发处理
+- 扩展日志分析测试数据场景
 
 ## Dummy Data
 

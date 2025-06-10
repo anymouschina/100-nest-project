@@ -251,6 +251,11 @@ export interface QuickAnalysisRequest {
   }
 }
 
+export interface QuickAnalysisSimpleRequest {
+  userFeedback: string
+  logData: string[]
+}
+
 export interface ErrorAnalysisRequest {
   userFeedback: string
   logData: AgentLogEntry[]
@@ -367,6 +372,154 @@ export interface UserLogAnalysisRequest {
   logSources?: string[]
   priority?: 'LOW' | 'MEDIUM' | 'HIGH'
   userFeedback?: string
+}
+
+// 新的深度分析任务类型
+export interface DeepAnalysisTaskRequest {
+  userId: number
+  userFeedback: string
+  timeRange: {
+    startTime: string
+    endTime: string
+  }
+  logSources?: string[]
+  keywords?: string[]
+  priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'
+}
+
+export interface DeepAnalysisTask {
+  taskId: string
+  userId: number
+  userFeedback: string
+  timeRange: {
+    startTime: string
+    endTime: string
+  }
+  logSources: string[]
+  keywords: string[]
+  priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'
+  status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED'
+  progress?: number
+  result?: DeepAnalysisResult
+  createdAt: string
+  updatedAt: string
+  estimatedCompletionTime?: string
+}
+
+export interface DeepAnalysisResult {
+  summary: {
+    totalLogsAnalyzed: number
+    issuesFound: number
+    criticalIssues: number
+    performanceIssues: number
+    securityIssues: number
+    userExperienceIssues: number
+  }
+  keyFindings: Array<{
+    category: 'PERFORMANCE' | 'SECURITY' | 'USER_EXPERIENCE' | 'SYSTEM_ERROR' | 'BUSINESS_LOGIC'
+    severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'
+    title: string
+    description: string
+    impact: string
+    evidence: string[]
+    recommendations: string[]
+    affectedUsers?: number
+    frequency?: number
+  }>
+  timelineAnalysis: Array<{
+    timeWindow: string
+    errorRate: number
+    responseTime: number
+    userSessions: number
+    keyEvents: string[]
+  }>
+  userImpactAnalysis: {
+    affectedUsers: number
+    sessionFailureRate: number
+    averageResponseTime: number
+    mostCommonErrors: string[]
+    userBehaviorPatterns: string[]
+  }
+  rootCauseAnalysis: {
+    primaryCauses: string[]
+    contributingFactors: string[]
+    systemDependencies: string[]
+    businessImpact: string
+  }
+  actionPlan: {
+    immediateActions: Array<{
+      action: string
+      priority: 'HIGH' | 'MEDIUM' | 'LOW'
+      estimatedTime: string
+      owner: string
+    }>
+    mediumTermActions: Array<{
+      action: string
+      priority: 'HIGH' | 'MEDIUM' | 'LOW'
+      estimatedTime: string
+      owner: string
+    }>
+    longTermActions: Array<{
+      action: string
+      priority: 'HIGH' | 'MEDIUM' | 'LOW'
+      estimatedTime: string
+      owner: string
+    }>
+  }
+}
+
+export interface DeepAnalysisTasksResponse {
+  tasks: DeepAnalysisTask[]
+  total: number
+  page: number
+  pageSize: number
+  hasMore: boolean
+}
+
+// 手动深度分析相关类型
+export interface ManualDeepAnalysisRequest {
+  userFeedback: string
+  manualLogData: Array<{
+    level: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR' | 'FATAL'
+    source: string
+    message: string
+    metadata?: Record<string, any>
+    timestamp?: string
+  }>
+  priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'
+  analysisOptions?: {
+    enableDeepAnalysis?: boolean
+    enableRootCauseAnalysis?: boolean
+    enableSemanticAnalysis?: boolean
+    enablePatternAnalysis?: boolean
+    enableAnomalyDetection?: boolean
+  }
+}
+
+export interface ManualDeepAnalysisTask {
+  taskId: string
+  userFeedback: string
+  manualLogData: Array<{
+    level: string
+    source: string
+    message: string
+    metadata?: Record<string, any>
+    timestamp?: string
+  }>
+  priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'
+  analysisOptions: {
+    enableDeepAnalysis: boolean
+    enableRootCauseAnalysis: boolean
+    enableSemanticAnalysis: boolean
+    enablePatternAnalysis: boolean
+    enableAnomalyDetection: boolean
+  }
+  status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED'
+  progress?: number
+  result?: DeepAnalysisResult
+  createdAt: string
+  updatedAt: string
+  estimatedCompletionTime?: string
 }
 
 export interface QuickLogCheckRequest {

@@ -20,12 +20,18 @@ import type {
   UserLogsResponse,
   LogAnalysisTask,
   QuickAnalysisRequest,
+  QuickAnalysisSimpleRequest,
   QuickAnalysisResponse,
   ErrorAnalysisRequest,
   ComprehensiveAnalysisRequest,
   AgentLogEntry,
   AgentInfo,
-  PerformanceStats
+  PerformanceStats,
+  DeepAnalysisTaskRequest,
+  DeepAnalysisTask,
+  DeepAnalysisTasksResponse,
+  ManualDeepAnalysisRequest,
+  ManualDeepAnalysisTask
 } from '@/types'
 
 /**
@@ -171,42 +177,122 @@ export class AIClient {
    * 快速日志分析 (推荐) - 使用AI代理编排系统
    */
   static async quickAnalysis(data: QuickAnalysisRequest): Promise<QuickAnalysisResponse> {
-    return await aiRequest.post<QuickAnalysisResponse>('/agent-orchestrator/analyze/quick', data)
+    return await aiRequest.post<QuickAnalysisResponse>('/api/agent-orchestrator/analyze/quick', data)
+  }
+
+  /**
+   * 简化版快速日志分析 - 直接接受字符串数组格式
+   * 与测试命令格式匹配：curl -X POST "http://localhost:3000/api/agent-orchestrator/analyze/quick"
+   */
+  static async quickAnalysisSimple(data: QuickAnalysisSimpleRequest): Promise<QuickAnalysisResponse> {
+    // 将字符串数组转换为AgentLogEntry格式
+    const logEntries: AgentLogEntry[] = data.logData.map((logString, index) => ({
+      id: `log-${index}`,
+      timestamp: new Date().toISOString(),
+      level: 'ERROR' as const, // 默认为ERROR级别，可以根据内容智能识别
+      source: 'unknown',
+      message: logString
+    }))
+
+    const request: QuickAnalysisRequest = {
+      userFeedback: data.userFeedback,
+      logData: logEntries,
+      options: {
+        pipeline: 'PARALLEL',
+        priority: 'HIGH',
+        analysisType: 'REAL_TIME'
+      }
+    }
+
+    return await aiRequest.post<QuickAnalysisResponse>('/api/agent-orchestrator/analyze/quick', request)
   }
 
   /**
    * 错误专门分析
    */
   static async errorAnalysis(data: ErrorAnalysisRequest): Promise<QuickAnalysisResponse> {
-    return await aiRequest.post<QuickAnalysisResponse>('/agent-orchestrator/analyze/errors', data)
+    return await aiRequest.post<QuickAnalysisResponse>('/api/agent-orchestrator/analyze/errors', data)
   }
 
   /**
    * 综合AI分析
    */
   static async comprehensiveAnalysis(data: ComprehensiveAnalysisRequest): Promise<QuickAnalysisResponse> {
-    return await aiRequest.post<QuickAnalysisResponse>('/agent-orchestrator/analyze/comprehensive', data)
+    return await aiRequest.post<QuickAnalysisResponse>('/api/agent-orchestrator/analyze/comprehensive', data)
   }
 
   /**
    * 获取AI代理列表
    */
   static async getAgents(): Promise<AgentInfo[]> {
-    return await aiRequest.get<AgentInfo[]>('/agent-orchestrator/agents')
+    return await aiRequest.get<AgentInfo[]>('/api/agent-orchestrator/agents')
   }
 
   /**
    * 获取代理健康状态
    */
   static async getAgentHealth(agentName: string): Promise<{ status: string; details: any }> {
-    return await aiRequest.get(`/agent-orchestrator/agents/${agentName}/health`)
+    return await aiRequest.get(`/api/agent-orchestrator/agents/${agentName}/health`)
   }
 
   /**
    * 获取系统性能统计
    */
   static async getPerformanceStats(): Promise<PerformanceStats> {
-    return await aiRequest.get<PerformanceStats>('/agent-orchestrator/stats/performance')
+    return await aiRequest.get<PerformanceStats>('/api/agent-orchestrator/stats/performance')
+  }
+
+  // =================== 深度分析任务相关方法 ===================
+
+  /**
+   * 创建深度分析任务
+   */
+  static async createDeepAnalysisTask(data: DeepAnalysisTaskRequest): Promise<DeepAnalysisTask> {
+    return await aiRequest.post<DeepAnalysisTask>('/api/log-analysis/tasks', data)
+  }
+
+  /**
+   * 获取深度分析任务列表
+   */
+  static async getDeepAnalysisTasks(params?: {
+    userId?: number
+    status?: string
+    priority?: string
+    page?: number
+    pageSize?: number
+  }): Promise<DeepAnalysisTasksResponse> {
+    const queryParams = new URLSearchParams()
+    if (params?.userId) queryParams.append('userId', params.userId.toString())
+    if (params?.status) queryParams.append('status', params.status)
+    if (params?.priority) queryParams.append('priority', params.priority)
+    if (params?.page) queryParams.append('page', params.page.toString())
+    if (params?.pageSize) queryParams.append('pageSize', params.pageSize.toString())
+
+    const queryString = queryParams.toString()
+    const url = queryString ? `/api/log-analysis/tasks?${queryString}` : '/api/log-analysis/tasks'
+    
+    return await aiRequest.get<DeepAnalysisTasksResponse>(url)
+  }
+
+  /**
+   * 获取指定深度分析任务
+   */
+  static async getDeepAnalysisTask(taskId: string): Promise<DeepAnalysisTask> {
+    return await aiRequest.get<DeepAnalysisTask>(`/api/log-analysis/tasks/${taskId}`)
+  }
+
+  /**
+   * 删除深度分析任务
+   */
+  static async deleteDeepAnalysisTask(taskId: string): Promise<void> {
+    await aiRequest.delete(`/api/log-analysis/tasks/${taskId}`)
+  }
+
+  /**
+   * 创建手动深度分析任务
+   */
+  static async createManualDeepAnalysisTask(data: ManualDeepAnalysisRequest): Promise<ManualDeepAnalysisTask> {
+    return await aiRequest.post<ManualDeepAnalysisTask>('/api/log-analysis/tasks/manual-deep-analysis', data)
   }
 
   // =================== 兼容旧接口的方法 ===================
@@ -431,11 +517,21 @@ export const aiClient = {
   logAnalysis: {
     // 新的AI代理编排系统方法 (推荐)
     quickAnalysis: AIClient.quickAnalysis,
+    quickAnalysisSimple: AIClient.quickAnalysisSimple,
     errorAnalysis: AIClient.errorAnalysis,
     comprehensiveAnalysis: AIClient.comprehensiveAnalysis,
     getAgents: AIClient.getAgents,
     getAgentHealth: AIClient.getAgentHealth,
     getPerformanceStats: AIClient.getPerformanceStats,
+    
+    // 深度分析任务方法
+    createDeepAnalysisTask: AIClient.createDeepAnalysisTask,
+    getDeepAnalysisTasks: AIClient.getDeepAnalysisTasks,
+    getDeepAnalysisTask: AIClient.getDeepAnalysisTask,
+    deleteDeepAnalysisTask: AIClient.deleteDeepAnalysisTask,
+    
+    // 手动深度分析方法
+    createManualDeepAnalysisTask: AIClient.createManualDeepAnalysisTask,
     
     // 兼容旧接口的方法
     analyzeManual: AIClient.analyzeManualLogs,

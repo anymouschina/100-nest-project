@@ -9,6 +9,8 @@ import {
   HttpCode,
   HttpStatus,
   Request,
+  HttpException,
+  Logger,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -20,19 +22,44 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { LogAnalysisService } from '../services/log-analysis.service';
 import { LogAnalysisSimplifiedService } from '../services/log-analysis-simplified.service';
 import { LogAnalysisImprovedService } from '../services/log-analysis-improved.service';
+import { LogAnalysisRealAIService } from '../services/log-analysis-real-ai.service';
 import { VectorKnowledgeService } from '../../ai/services/vector-knowledge.service';
 
 // DTO定义
 export class CreateLogAnalysisTaskDto {
   userId: number;
   userFeedback: string;
+  
+  // 数据库日志查询方式 (原有方式)
   timeRange?: {
     startTime: Date;
     endTime: Date;
   };
   logSources?: string[];
   keywords?: string[];
+  
+  // 手动输入日志方式 (新增)
+  manualLogData?: Array<{
+    timestamp?: Date;
+    level: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR' | 'FATAL';
+    source: string; // backend, frontend, mobile
+    service?: string;
+    message: string;
+    stackTrace?: string;
+    metadata?: Record<string, any>;
+  }>;
+  
+  // 通用配置
   priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  analysisOptions?: {
+    enableFeatureExtraction?: boolean;
+    enableSimilarSearch?: boolean;
+    enableAnomalyDetection?: boolean;
+    enableDeepAnalysis?: boolean;
+  };
+  
+  // 分析类型
+  analysisType?: 'DATABASE_QUERY' | 'MANUAL_INPUT' | 'HYBRID';
 }
 
 export class LogAnalysisResultDto {
@@ -93,10 +120,12 @@ export class ManualLogAnalysisDto {
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class LogAnalysisController {
+  private readonly logger = new Logger(LogAnalysisController.name);
   constructor(
     private readonly logAnalysisService: LogAnalysisService,
     private readonly logAnalysisSimplifiedService: LogAnalysisSimplifiedService,
     private readonly improvedService: LogAnalysisImprovedService,
+    private readonly realAIService: LogAnalysisRealAIService,
     private readonly vectorService: VectorKnowledgeService,
   ) {}
 
@@ -123,6 +152,98 @@ export class LogAnalysisController {
     return {
       taskId,
       message: '日志分析任务已创建，正在后台处理中...',
+    };
+  }
+
+  /**
+   * 创建手动输入日志的深度分析任务
+   */
+  @Post('tasks/manual-deep-analysis')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: '创建手动输入日志的深度分析任务' })
+  @ApiResponse({
+    status: 201,
+    description: '深度分析任务创建成功',
+    schema: {
+      type: 'object',
+      properties: {
+        taskId: { type: 'string', description: '任务ID' },
+        message: { type: 'string', description: '返回消息' },
+        analysisPreview: {
+          type: 'object',
+          description: '分析预览信息',
+          properties: {
+            logCount: { type: 'number' },
+            severityDistribution: { type: 'object' },
+            estimatedProcessingTime: { type: 'string' },
+          },
+        },
+      },
+    },
+  })
+  async createManualDeepAnalysisTask(
+    @Body()
+    body: {
+      userFeedback: string;
+      manualLogData: Array<{
+        timestamp?: Date;
+        level: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR' | 'FATAL';
+        source: string;
+        service?: string;
+        message: string;
+        stackTrace?: string;
+        metadata?: Record<string, any>;
+      }>;
+      priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+      analysisOptions?: {
+        enableFeatureExtraction?: boolean;
+        enableSimilarSearch?: boolean;
+        enableAnomalyDetection?: boolean;
+        enableDeepAnalysis?: boolean;
+        enableSemanticAnalysis?: boolean;
+        enableRootCauseAnalysis?: boolean;
+      };
+    },
+    @Request() req: any,
+  ) {
+    // 从JWT获取用户ID
+    const userId = req.user?.sub || req.user?.userId;
+    if (!userId) {
+      throw new HttpException(
+        'Unable to determine user ID from authentication',
+        HttpStatus.UNAUTHORIZED,
+      );
+    }
+
+    // 构建完整的DTO
+    const taskDto: CreateLogAnalysisTaskDto = {
+      userId,
+      userFeedback: body.userFeedback,
+      manualLogData: body.manualLogData,
+      priority: body.priority || 'MEDIUM',
+      analysisType: 'MANUAL_INPUT',
+      analysisOptions: {
+        enableFeatureExtraction: true,
+        enableSimilarSearch: true,
+        enableAnomalyDetection: true,
+        enableDeepAnalysis: true,
+        ...body.analysisOptions,
+      },
+    };
+
+    // 生成分析预览
+    const analysisPreview = {
+      logCount: body.manualLogData.length,
+      severityDistribution: this.generateSeverityDistribution(body.manualLogData),
+      estimatedProcessingTime: this.estimateProcessingTime(body.manualLogData.length),
+    };
+
+    const taskId = await this.logAnalysisService.createAnalysisTask(taskDto);
+
+    return {
+      taskId,
+      message: `手动日志深度分析任务已创建，正在AI分析 ${body.manualLogData.length} 条日志...`,
+      analysisPreview,
     };
   }
 
@@ -620,6 +741,121 @@ export class LogAnalysisController {
   }
 
   /**
+   * 真正的AI + 多代理日志分析 (无需用户ID)
+   */
+  @Post('analyze/ai-multi-agent')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ 
+    summary: '真正的AI + 多代理日志分析，使用LLM和向量相似性搜索，无需用户ID' 
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'AI分析完成',
+    schema: {
+      type: 'object',
+      properties: {
+        analysisResult: {
+          type: 'object',
+          description: 'AI分析结果',
+          properties: {
+            issueType: { type: 'string' },
+            severity: { type: 'string' },
+            confidence: { type: 'number' },
+            aiInsights: { type: 'object' },
+          },
+        },
+        suggestions: { type: 'array', description: 'AI生成的建议' },
+        similarIssues: { type: 'array', description: '语义相似的历史问题' },
+        riskLevel: { type: 'string', description: 'AI评估的风险等级' },
+        aiMetadata: {
+          type: 'object',
+          description: 'AI处理元数据',
+          properties: {
+            modelUsed: { type: 'string' },
+            processingTime: { type: 'number' },
+            featureVector: { type: 'array' },
+            normalizationApplied: { type: 'array' },
+          },
+        },
+      },
+    },
+  })
+  async analyzeWithAIMultiAgent(
+    @Body()
+    body: {
+      userFeedback: string;
+      logData: string[] | {
+        timestamp?: Date;
+        level: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR' | 'FATAL';
+        source: string;
+        service?: string;
+        message: string;
+        stackTrace?: string;
+        metadata?: Record<string, any>;
+      };
+      aiOptions?: {
+        useSemanticSearch?: boolean;
+        useAnomalyDetection?: boolean;
+        useFeatureExtraction?: boolean;
+        useLogNormalization?: boolean;
+      };
+    },
+  ) {
+    try {
+      this.logger.log('开始真正的AI + 多代理日志分析', {
+        userFeedback: body.userFeedback.substring(0, 100),
+        logDataType: Array.isArray(body.logData) ? 'array' : typeof body.logData,
+        aiOptions: body.aiOptions,
+      });
+
+      const result = await this.realAIService.analyzeLogWithRealAI({
+        userFeedback: body.userFeedback,
+        logData: body.logData,
+        aiOptions: {
+          useSemanticSearch: true,
+          useAnomalyDetection: true,
+          useFeatureExtraction: true,
+          useLogNormalization: true,
+          ...body.aiOptions,
+        },
+      });
+
+      this.logger.log('AI + 多代理分析完成', {
+        issueType: result.analysisResult.issueType,
+        confidence: result.analysisResult.confidence,
+        riskLevel: result.riskLevel,
+        processingTime: result.aiMetadata.processingTime,
+      });
+
+      return {
+        success: true,
+        data: result,
+        meta: {
+          analysisType: 'AI_MULTI_AGENT',
+          modelUsed: result.aiMetadata.modelUsed,
+          processingTime: `${result.aiMetadata.processingTime}ms`,
+          features: {
+            semanticSearch: body.aiOptions?.useSemanticSearch !== false,
+            anomalyDetection: body.aiOptions?.useAnomalyDetection !== false,
+            featureExtraction: body.aiOptions?.useFeatureExtraction !== false,
+            logNormalization: body.aiOptions?.useLogNormalization !== false,
+          },
+        },
+      };
+    } catch (error) {
+      this.logger.error('AI + 多代理日志分析失败', error.stack);
+      throw new HttpException(
+        {
+          success: false,
+          message: 'AI日志分析失败',
+          error: error.message,
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  /**
    * 获取当前用户的历史日志
    */
   @Get('logs/user')
@@ -715,5 +951,45 @@ export class LogAnalysisController {
     },
   ) {
     return await this.logAnalysisSimplifiedService.quickLogCheck(body);
+  }
+
+  /**
+   * 生成严重程度分布统计
+   */
+  private generateSeverityDistribution(logData: Array<{ level: string }>) {
+    const distribution = {
+      DEBUG: 0,
+      INFO: 0,
+      WARN: 0,
+      ERROR: 0,
+      FATAL: 0,
+    };
+
+    logData.forEach((log) => {
+      const level = log.level.toUpperCase();
+      if (distribution.hasOwnProperty(level)) {
+        distribution[level]++;
+      }
+    });
+
+    return distribution;
+  }
+
+  /**
+   * 估算处理时间
+   */
+  private estimateProcessingTime(logCount: number): string {
+    // 基于日志数量估算处理时间
+    if (logCount <= 10) {
+      return '1-2分钟';
+    } else if (logCount <= 50) {
+      return '3-5分钟';
+    } else if (logCount <= 100) {
+      return '5-10分钟';
+    } else if (logCount <= 500) {
+      return '10-20分钟';
+    } else {
+      return '20-30分钟';
+    }
   }
 }
