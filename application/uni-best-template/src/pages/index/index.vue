@@ -11,14 +11,14 @@
   <view class="page-container">
     <image
       @click="navigateToService('waterproof')"
-      src="https://linkxspace.cn/nest-admin//upload/2025-06-06/1749223711269-662960777-r7NZ0iGwXvvhab6995f82c02a702eb4c65d6cf491deb.jpg"
+      src="/static/home.jpg"
       mode="widthFix"
       class="banner-img"
     ></image>
 
     <!-- 顶部banner轮播图 -->
-    <view class="banner-swiper-section mb-5 h-400rpx">
-      <wd-swiper
+    <!-- <view class="banner-swiper-section mb-5 h-400rpx"> -->
+    <!-- <wd-swiper
         class="banner-swiper"
         height="400rpx"
         :autoplay="true"
@@ -28,14 +28,14 @@
         indicator-active-color="#2c722c"
         indicator-position="bottom"
         @click="handleBannerClick"
-      ></wd-swiper>
-      <!-- 科技感装饰元素 -->
-      <view class="tech-decoration">
+      ></wd-swiper> -->
+    <!-- 科技感装饰元素 -->
+    <!-- <view class="tech-decoration">
         <view class="tech-dot tech-dot-1"></view>
         <view class="tech-dot tech-dot-2"></view>
         <view class="tech-dot tech-dot-3"></view>
-      </view>
-    </view>
+      </view> -->
+    <!-- </view> -->
 
     <!-- 品牌标识卡片 -->
     <view class="brand-card">
@@ -46,7 +46,7 @@
             <view class="logo-glow"></view>
           </view>
           <view class="brand-info">
-            <text class="brand-name">三棵树防水修缮</text>
+            <text class="brand-name">华建修缮防水修缮</text>
             <view class="brand-tags">
               <text class="tag">专业认证</text>
               <text class="tag">品质保障</text>
@@ -67,9 +67,9 @@
       </view>
 
       <!-- 一键预约按钮 -->
-      <view class="quick-appointment" @click="navigateToAppointment">
+      <view class="quick-appointment" @click="connectToService">
         <wd-icon name="service" size="40rpx" color="#fff"></wd-icon>
-        <text>一键预约</text>
+        <text>材料选购</text>
       </view>
     </view>
 
@@ -252,7 +252,7 @@ import {
   associateUserReferral,
 } from '@/api/home'
 import useRequest from '@/hooks/useRequest'
-import { onLoad } from '@dcloudio/uni-app'
+import { onLoad, onShareAppMessage, onShareTimeline } from '@dcloudio/uni-app'
 import { useUserStore } from '@/store'
 
 const hasLogin = ref(false)
@@ -267,6 +267,12 @@ const handleLogin = async () => {
   // #ifndef MP-WEIXIN
   uni.navigateTo({ url: '/pages/login/index' })
   // #endif
+}
+
+const connectToService = () => {
+  uni.makePhoneCall({
+    phoneNumber: '400-998-0618',
+  })
 }
 
 onLoad(async (options) => {
@@ -514,6 +520,24 @@ const handleServiceAppointment = (serviceId: string, event: Event) => {
 onMounted(() => {
   console.log('首页组件挂载')
 })
+
+// 小程序分享配置
+onShareAppMessage(() => {
+  return {
+    title: '华建修缮防水 - 专业防水补漏服务，值得信赖',
+    path: '/pages/index/index',
+    imageUrl: '/static/share-image.jpg', // 可以根据实际情况修改
+  }
+})
+
+// 分享到朋友圈（如果支持）
+onShareTimeline(() => {
+  return {
+    title: '华建修缮防水 - 专业防水补漏服务，快速上门，品质保障',
+    query: '',
+    imageUrl: '/static/share-image.jpg', // 可以根据实际情况修改
+  }
+})
 </script>
 
 <style lang="scss">
@@ -594,7 +618,7 @@ onMounted(() => {
 
 // 品牌标识卡片
 .brand-card {
-  margin: -25rpx 25rpx 25rpx;
+  margin: 25rpx 25rpx 25rpx;
   background: #fff;
   border-radius: 25rpx;
   padding: 35rpx;
@@ -604,8 +628,8 @@ onMounted(() => {
 
   // 一键预约按钮样式
   .quick-appointment {
-    position: absolute;
-    top: -30rpx;
+    position: fixed;
+    bottom: 300rpx;
     right: 20rpx;
     display: flex;
     align-items: center;

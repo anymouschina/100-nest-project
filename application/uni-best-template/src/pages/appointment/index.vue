@@ -2,20 +2,20 @@
 {
   style: {
     navigationBarTitleText: '服务预约',
-    navigationStyle: 'custom'
+    navigationStyle: 'custom',
   },
 }
 </route>
 
 <template>
-  <view class="form-container">    
+  <view class="form-container">
     <view class="banner">
       <view class="banner-text">
         <view class="cn-text">中 国 奥 委 会</view>
         <view class="supplier-text">官方涂料独家供应商</view>
       </view>
     </view>
-    
+
     <wd-form :model="formData" label-width="50%" ref="appointmentForm" validate-trigger="submit">
       <!-- 问题类型 -->
       <wd-cell-group border>
@@ -29,7 +29,7 @@
           :rules="[{ required: true, message: '请选择问题类型' }]"
           @confirm="handleProblemTypeChange"
         ></wd-picker>
-        
+
         <!-- 子类型（多选） -->
         <wd-select-picker
           v-if="showSceneOptions && subTypeOptions.length > 0"
@@ -42,7 +42,7 @@
           mode="multiple"
           :rules="[{ required: true, message: `请选择${subTypeLabel}` }]"
         ></wd-select-picker>
-        
+
         <!-- 问题描述 -->
         <wd-input
           v-if="formData.problemType === 'other'"
@@ -54,20 +54,19 @@
           :rules="[{ required: true, message: '请输入问题描述' }]"
         ></wd-input>
       </wd-cell-group>
-      
+
       <!-- 联系人信息 -->
       <wd-cell-group border>
-                <!-- 预约人 -->
-        <wd-input 
+        <!-- 预约人 -->
+        <wd-input
           label="预约人"
-          v-model="formData.name" 
+          v-model="formData.name"
           prop="name"
           align-right
-          placeholder="请填写姓氏" 
+          placeholder="请填写姓氏"
           :rules="[{ required: true, message: '请输入预约人姓氏' }]"
-        >
-        </wd-input>
-        
+        ></wd-input>
+
         <!-- 性别选择 -->
         <wd-radio-group
           label="称谓"
@@ -77,36 +76,42 @@
           cell
           :rules="[{ required: true, message: '请选择称谓' }]"
         >
-          <wd-radio :value="'male'" >先生</wd-radio>
-          <wd-radio :value="'female'" >女士</wd-radio>
+          <wd-radio :value="'male'">先生</wd-radio>
+          <wd-radio :value="'female'">女士</wd-radio>
         </wd-radio-group>
-          
+
         <!-- 联系电话 -->
-        <wd-input 
+        <wd-input
           label="联系电话"
-          v-model="formData.phone" 
+          v-model="formData.phone"
           prop="phone"
           align-right
-          placeholder="请填写" 
-          type="tel" 
+          placeholder="请填写"
+          type="tel"
           :rules="[
             { required: true, message: '请输入联系电话' },
-            { pattern: /^1\d{10}$/, message: '请输入正确的手机号码' }
+            { pattern: /^1\d{10}$/, message: '请输入正确的手机号码' },
           ]"
         >
           <template #suffix>
-            <wd-icon name="phone" size="36rpx" color="#999" v-if="!formData.phone" @click.stop="chooseContact"></wd-icon>
+            <wd-icon
+              name="phone"
+              size="36rpx"
+              color="#999"
+              v-if="!formData.phone"
+              @click.stop="chooseContact"
+            ></wd-icon>
           </template>
         </wd-input>
-        
+
         <!-- 小区位置 -->
-        <wd-input 
+        <wd-input
           label="小区位置"
-          v-model="formData.location" 
+          v-model="formData.location"
           prop="location"
           align-right
-          placeholder="点击选择" 
-          readonly 
+          placeholder="点击选择"
+          readonly
           @click="chooseLocation"
           :rules="[{ required: true, message: '请选择小区位置' }]"
         >
@@ -114,22 +119,27 @@
             <wd-icon name="location" size="36rpx" color="#2c722c"></wd-icon>
           </template>
         </wd-input>
-        
+
         <!-- 详细地址 -->
-        <wd-input 
+        <wd-input
           label="详细地址"
-          v-model="formData.address" 
+          v-model="formData.address"
           prop="address"
           align-right
-          placeholder="例如：小区名称X栋X单元X号" 
+          placeholder="例如：小区名称X栋X单元X号"
           :rules="[{ required: true, message: '请输入详细地址' }]"
         >
           <template #suffix>
-            <wd-icon name="edit-outline" size="36rpx" color="#999" v-if="!formData.address"></wd-icon>
+            <wd-icon
+              name="edit-outline"
+              size="36rpx"
+              color="#999"
+              v-if="!formData.address"
+            ></wd-icon>
           </template>
         </wd-input>
       </wd-cell-group>
-      
+
       <!-- 上传照片 -->
       <wd-cell-group border>
         <wd-cell title="上传照片">
@@ -148,10 +158,10 @@
         </wd-cell>
       </wd-cell-group>
     </wd-form>
-    
+
     <!-- 添加底部占位，防止内容被提交按钮遮挡 -->
-    <view style="height: 160rpx;"></view>
-    
+    <view style="height: 160rpx"></view>
+
     <!-- 调试信息 -->
     <view v-if="formData.images && formData.images.length > 0" class="debug-info">
       <view class="debug-title">上传图片列表:</view>
@@ -159,9 +169,11 @@
         {{ index + 1 }}. {{ img }}
       </view>
     </view>
-    
+
     <view class="submit-wrapper">
-      <wd-button size="large" type="primary" block custom-class="submit-btn" @click="submitForm">确认预约</wd-button>
+      <wd-button size="large" type="primary" block custom-class="submit-btn" @click="submitForm">
+        确认预约
+      </wd-button>
       <view class="safe-area-inset-bottom"></view>
     </view>
   </view>
@@ -170,7 +182,12 @@
 <script lang="ts" setup>
 import { ref, reactive, onMounted } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
-import { getServiceTypes, getSceneTypes, submitAppointment, type IAppointmentForm } from '@/api/appointment'
+import {
+  getServiceTypes,
+  getSceneTypes,
+  submitAppointment,
+  type IAppointmentForm,
+} from '@/api/appointment'
 import useRequest from '@/hooks/useRequest'
 import { useUpload } from 'wot-design-uni'
 
@@ -183,28 +200,29 @@ const uploadHeader = { 'Content-Type': 'multipart/form-data' }
 const uploadData = { businessType: 'appointment' } // 额外的表单数据
 const uploadStatusKey = 'status' // 状态字段名
 
-
 function handleChange({ fileList: files }) {
   try {
-    uploadImgs.value = Array.from(files).map((item: any) => {
-      // 安全地解析响应数据
-      try {
-        if (typeof item.response === 'string') {
-          const parsed = JSON.parse(item.response);
-          return parsed.url || (parsed.data && parsed.data.url) || '';
-        } else if (item.response && typeof item.response === 'object') {
-          return item.response.url || (item.response.data && item.response.data.url) || '';
+    uploadImgs.value = Array.from(files)
+      .map((item: any) => {
+        // 安全地解析响应数据
+        try {
+          if (typeof item.response === 'string') {
+            const parsed = JSON.parse(item.response)
+            return parsed.url || (parsed.data && parsed.data.url) || ''
+          } else if (item.response && typeof item.response === 'object') {
+            return item.response.url || (item.response.data && item.response.data.url) || ''
+          }
+          return item.url || ''
+        } catch (e) {
+          console.error('解析上传响应失败:', e)
+          return item.url || ''
         }
-        return item.url || '';
-      } catch (e) {
-        console.error('解析上传响应失败:', e);
-        return item.url || '';
-      }
-    }).filter(Boolean);
-    
-    console.log('处理后的上传图片URLs:', uploadImgs.value);
+      })
+      .filter(Boolean)
+
+    console.log('处理后的上传图片URLs:', uploadImgs.value)
   } catch (error) {
-    console.error('处理上传文件列表失败:', error);
+    console.error('处理上传文件列表失败:', error)
   }
 }
 
@@ -227,7 +245,7 @@ const formData = reactive<IAppointmentForm>({
   location: '',
   latitude: '',
   longitude: '',
-  images: []
+  images: [],
 })
 
 // 手机号验证
@@ -240,7 +258,7 @@ const problemTypes = ref([
   { value: 'waterproof', label: '防水补漏' },
   { value: 'wallRenovation', label: '墙面翻新' },
   { value: 'tileRepair', label: '瓷砖修复' },
-  { value: 'other', label: '其它问题' }
+  { value: 'other', label: '其它问题' },
 ])
 
 // 子类型选项映射
@@ -253,14 +271,14 @@ const subTypeOptionsMap = reactive({
     { value: 'exteriorWall', label: '外墙' },
     { value: 'roof', label: '屋面' },
     { value: 'basement', label: '地下室' },
-    { value: 'other', label: '其它' }
+    { value: 'other', label: '其它' },
   ],
   // 墙面翻新的子类型
   wallRenovation: [
     { value: 'wholeHouse', label: '全屋翻新' },
     { value: 'partial', label: '局部翻新' },
     { value: 'repair', label: '墙面维修' },
-    { value: 'other', label: '其它' }
+    { value: 'other', label: '其它' },
   ],
   // 瓷砖修复的子类型
   tileRepair: [
@@ -268,10 +286,10 @@ const subTypeOptionsMap = reactive({
     { value: 'falling', label: '瓷砖脱落' },
     { value: 'broken', label: '瓷砖破损' },
     { value: 'recolor', label: '瓷砖改色' },
-    { value: 'other', label: '其它' }
+    { value: 'other', label: '其它' },
   ],
   // 其他问题没有子类型
-  other: []
+  other: [],
 })
 
 // 当前选择的子类型选项
@@ -309,9 +327,9 @@ const { loading: submitLoading, run: submitAppointmentRequest } = useRequest(
       uni.showToast({
         title: `预约成功！`,
         icon: 'none',
-        duration: 3000
+        duration: 3000,
       })
-      
+
       // 跳转到订单详情或首页
       setTimeout(() => {
         uni.navigateTo({ url: '/pages/orders/index' })
@@ -321,21 +339,21 @@ const { loading: submitLoading, run: submitAppointmentRequest } = useRequest(
       console.error('预约提交失败', error)
       uni.showToast({
         title: '预约提交失败，请重试',
-        icon: 'none'
+        icon: 'none',
       })
-    }
-  }
+    },
+  },
 )
 
 // 从URL参数获取服务类型并设置默认值
 onLoad((options) => {
   console.log('预约页面接收到的参数:', options)
-  
+
   // 处理服务类型参数
   if (options && options.serviceType) {
     // 处理参数映射，确保能匹配到选项
     let problemType = options.serviceType
-    
+
     // 特殊处理：映射旧参数到新类型
     if (problemType === 'repair' || problemType === 'waterproof') {
       problemType = 'waterproof'
@@ -346,18 +364,18 @@ onLoad((options) => {
     } else if (problemType === 'unsure' || !problemType) {
       problemType = 'other'
     }
-    
+
     console.log('设置问题类型:', problemType)
     // 设置默认选中的问题类型
     formData.problemType = problemType
   }
-  
+
   // 处理其他可能的参数
   if (options && options.sceneType) {
     // 设置子类型
     formData.subType = options.sceneType
   }
-  
+
   // 如果有其他预填充数据，也可以在这里处理
   if (options && options.name) {
     // 尝试解析姓名和性别
@@ -371,7 +389,7 @@ onLoad((options) => {
       formData.name = options.name
     }
   }
-  
+
   if (options && options.phone) {
     formData.phone = options.phone
   }
@@ -385,7 +403,7 @@ onMounted(() => {
       if (res.safeAreaInsets) {
         safeAreaBottom.value = res.safeAreaInsets.bottom || 0
       }
-    }
+    },
   })
 })
 
@@ -395,9 +413,9 @@ const chooseLocation = () => {
   // 先获取当前位置
   uni.showLoading({
     title: '定位中...',
-    mask: true
+    mask: true,
   })
-  
+
   // 打开位置选择器的方法
   const openLocationChooser = (options = {}) => {
     uni.chooseLocation({
@@ -417,45 +435,45 @@ const chooseLocation = () => {
         if (err.errMsg.includes('auth')) {
           uni.showToast({
             title: '请授权位置权限',
-            icon: 'none'
+            icon: 'none',
           })
         } else {
           uni.showToast({
             title: '选择位置失败',
-            icon: 'none'
+            icon: 'none',
           })
         }
-      }
+      },
     })
   }
-  
+
   // 获取当前位置，然后打开位置选择器
   uni.getLocation({
     type: 'gcj02', // 使用gcj02坐标系
     success: (res) => {
       uni.hideLoading()
       console.log('获取当前位置成功', res)
-      
+
       // 使用当前位置打开位置选择器
       openLocationChooser({
         latitude: res.latitude,
-        longitude: res.longitude
+        longitude: res.longitude,
       })
     },
     fail: (err) => {
       uni.hideLoading()
       console.log('获取当前位置失败', err)
-      
+
       // 如果获取当前位置失败，直接打开位置选择器
       openLocationChooser()
-    }
+    },
   })
   // #endif
-  
+
   // #ifndef MP-WEIXIN
   uni.showToast({
     title: '仅微信小程序支持此功能',
-    icon: 'none'
+    icon: 'none',
   })
   // #endif
 }
@@ -463,22 +481,25 @@ const chooseLocation = () => {
 // 提交表单
 const submitForm = () => {
   // 使用wd-form进行表单验证
-  appointmentForm.value.validate().then(({ valid, errors }) => {
-    if (valid) {
-      // 处理图片数据格式，确保能够正确提交
-      // wot-design-uni上传组件可能会以对象形式存储图片信息
-      // 设置上传的图片数组
-      formData.images = uploadImgs.value
-      
-      // 表单验证通过，调用接口提交数据
-      console.log('提交预约数据:', formData, Array.from(new Set(uploadImgs.value)))
-      submitAppointmentRequest()
-    } else {
-      console.log('表单验证失败', errors)
-    }
-  }).catch(error => {
-    console.log('验证出错', error)
-  })
+  appointmentForm.value
+    .validate()
+    .then(({ valid, errors }) => {
+      if (valid) {
+        // 处理图片数据格式，确保能够正确提交
+        // wot-design-uni上传组件可能会以对象形式存储图片信息
+        // 设置上传的图片数组
+        formData.images = uploadImgs.value
+
+        // 表单验证通过，调用接口提交数据
+        console.log('提交预约数据:', formData, Array.from(new Set(uploadImgs.value)))
+        submitAppointmentRequest()
+      } else {
+        console.log('表单验证失败', errors)
+      }
+    })
+    .catch((error) => {
+      console.log('验证出错', error)
+    })
 }
 
 // 这里不需要任何代码，我们已经在前面定义了所有需要的上传处理函数
@@ -496,7 +517,7 @@ const chooseContact = () => {
         uni.showToast({
           title: '已自动填写联系电话',
           icon: 'success',
-          duration: 2000
+          duration: 2000,
         })
       } else {
         // 如果没有找到符合格式的手机号，直接使用返回的号码
@@ -504,10 +525,10 @@ const chooseContact = () => {
         uni.showToast({
           title: '请确认电话号码格式是否正确',
           icon: 'none',
-          duration: 2000
+          duration: 2000,
         })
       }
-      
+
       // 如果有姓名且用户还没填写姓名，自动填充姓名
       if (res.displayName && !formData.name) {
         formData.name = res.displayName
@@ -517,16 +538,16 @@ const chooseContact = () => {
       console.error('选择联系人失败:', err)
       uni.showToast({
         title: '选择联系人失败',
-        icon: 'none'
+        icon: 'none',
       })
-    }
+    },
   })
   // #endif
-  
+
   // #ifndef MP-WEIXIN
   uni.showToast({
     title: '该功能仅在微信小程序中可用',
-    icon: 'none'
+    icon: 'none',
   })
   // #endif
 }
@@ -550,18 +571,18 @@ const chooseContact = () => {
   align-items: center;
   justify-content: center;
   margin-bottom: 20rpx;
-  
+
   .banner-text {
     text-align: center;
     color: #fff;
-    
+
     .cn-text {
       font-size: 36rpx;
       letter-spacing: 12rpx;
       margin-bottom: 10rpx;
       font-weight: bold;
     }
-    
+
     .supplier-text {
       font-size: 30rpx;
     }
@@ -585,12 +606,12 @@ const chooseContact = () => {
 }
 
 .gender-radio {
-  flex:1;
-  
+  flex: 1;
+
   :deep(.wd-radio__shape) {
     margin-right: 8rpx;
   }
-  
+
   :deep(.wd-radio__label) {
     text-align: center;
   }
@@ -672,4 +693,4 @@ const chooseContact = () => {
   margin-bottom: 5rpx;
   padding-left: 10rpx;
 }
-</style> 
+</style>

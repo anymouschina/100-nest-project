@@ -11,13 +11,13 @@
   <view class="about-container">
     <view class="about-card">
       <!-- 应用信息 -->
-      <view class="app-info">
+      <!-- <view class="app-info">
         <view class="logo-wrapper">
           <wd-img :src="appLogo" width="120px" height="120px" radius="24rpx"></wd-img>
         </view>
         <view class="app-name">{{ appTitle }}</view>
         <view class="app-version">版本 {{ packageJson.version }}</view>
-      </view>
+      </view> -->
 
       <!-- 联系方式 -->
       <view class="info-section">
@@ -25,19 +25,19 @@
         <view class="section-content">
           <view class="contact-item">
             <wd-icon name="phone" size="20px" class="contact-icon"></wd-icon>
-            <text class="contact-text">客服电话：400-XXX-XXXX</text>
+            <text class="contact-text">客服电话：400-998-0618</text>
           </view>
-          <view class="contact-item">
+          <!-- <view class="contact-item">
             <wd-icon name="mail" size="20px" class="contact-icon"></wd-icon>
             <text class="contact-text">邮箱：support@unibest.tech</text>
-          </view>
+          </view> -->
           <view class="contact-item">
             <wd-icon name="location" size="20px" class="contact-icon"></wd-icon>
             <text class="contact-text">地址：中国·深圳</text>
           </view>
         </view>
       </view>
-      
+
       <!-- 用户协议与隐私政策 -->
       <view class="info-section">
         <view class="section-title">法律条款</view>
@@ -77,14 +77,14 @@ const currentYear = computed(() => new Date().getFullYear())
 // 导航到用户协议页面
 const navigateToUserAgreement = () => {
   uni.navigateTo({
-    url: '/pages/mine/agreement/user'
+    url: '/pages/mine/agreement/user',
   })
 }
 
 // 导航到隐私政策页面
 const navigateToPrivacyPolicy = () => {
   uni.navigateTo({
-    url: '/pages/mine/agreement/privacy'
+    url: '/pages/mine/agreement/privacy',
   })
 }
 </script>

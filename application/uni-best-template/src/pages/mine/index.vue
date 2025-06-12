@@ -10,47 +10,13 @@
 <template>
   <view class="profile-container">
     <!-- 用户信息区域 - 绿色背景 -->
-    <view class="user-info-section">
-      <view class="user-info-bg"></view>
-      <view class="user-info-content">
-        <!-- #ifdef MP-WEIXIN -->
-        <button class="avatar-button" open-type="chooseAvatar" @chooseavatar="onChooseAvatar">
-          <wd-img :src="userStore.userInfo.avatar" width="100%" height="100%" radius="50%"></wd-img>
-        </button>
-        <!-- #endif -->
-        <!-- #ifndef MP-WEIXIN -->
-        <view class="avatar-wrapper" @click="run">
-          <wd-img :src="userStore.userInfo.avatar" width="100%" height="100%" radius="50%"></wd-img>
-        </view>
-        <!-- #endif -->
-        <view class="user-details">
-          <!-- #ifdef MP-WEIXIN -->
-          <input
-            type="nickname"
-            class="weui-input"
-            placeholder="请输入昵称"
-            v-model="userStore.userInfo.username"
-          />
-          <!-- #endif -->
-          <!-- #ifndef MP-WEIXIN -->
-          <view class="username">{{ userStore.userInfo.username }}</view>
-          <!-- #endif -->
-          <view class="user-id">{{ userStore.userInfo.phone  }}</view>
-          
-          <!-- 右侧设置按钮 -->
-          <view class="settings-icon">
-            <wd-icon name="setting" size="20px" color="#fff" @click="handleSettings"></wd-icon>
-          </view>
-        </view>
-      </view>
-    </view>
-
     <!-- 订单模块 -->
     <view class="orders-section">
       <view class="orders-header">
         <view class="header-left">全部订单</view>
         <view class="header-right" @click="navigateToAllOrders">
-          查看全部 <wd-icon name="arrow-right" size="16px"></wd-icon>
+          查看全部
+          <wd-icon name="arrow-right" size="16px"></wd-icon>
         </view>
       </view>
       <view class="orders-grid">
@@ -120,12 +86,12 @@
           </template>
         </wd-cell>
       </view>
-      
+
       <!-- <view class="logout-button-wrapper" v-if="hasLogin">
         <wd-button type="error" block @click="handleLogout">退出登录</wd-button>
       </view> -->
     </view>
-    
+
     <!-- 自定义tabbar -->
     <fg-tabbar current="mine"></fg-tabbar>
   </view>
@@ -201,7 +167,7 @@ const handleSettings = () => {
           toast.success('反馈功能开发中')
           break
       }
-    }
+    },
   })
 }
 
@@ -213,7 +179,7 @@ const onChooseAvatar = (e: any) => {
   const { avatarUrl } = e.detail
   // 直接将选择的头像设置到用户信息中
   userStore.userInfo.avatar = avatarUrl
-  
+
   // 上传头像到服务器
   const { run } = useUpload<IUploadSuccessInfo>(
     uploadFileUrl.USER_AVATAR,
@@ -246,10 +212,10 @@ const handleInform = () => {
   // uni.navigateTo({ url: `/pages/mine/inform/index` })
   // toast.success('功能开发中')
   uni.makePhoneCall({
-    phoneNumber: '13627331273',
+    phoneNumber: '400-998-0618',
     fail: () => {
       toast.error('拨打电话失败')
-    }
+    },
   })
 }
 // 应用更新
@@ -356,7 +322,7 @@ const handleLogout = () => {
   width: 100%;
   height: 300rpx;
   overflow: hidden;
-  
+
   .user-info-bg {
     position: absolute;
     top: 0;
@@ -366,7 +332,7 @@ const handleLogout = () => {
     // background: linear-gradient(to right, #2c722c, #52c41a);
     z-index: 1;
   }
-  
+
   .user-info-content {
     position: relative;
     display: flex;
@@ -465,7 +431,7 @@ const handleLogout = () => {
   align-items: center;
   justify-content: center;
   padding: 20rpx 0;
-  
+
   .order-icon {
     display: flex;
     align-items: center;
@@ -474,7 +440,7 @@ const handleLogout = () => {
     height: 80rpx;
     margin-bottom: 16rpx;
   }
-  
+
   text {
     font-size: 24rpx;
     color: #333;
@@ -515,7 +481,7 @@ const handleLogout = () => {
     font-size: 32rpx;
     color: #333;
   }
-  
+
   .icon-green {
     color: #52c41a;
   }

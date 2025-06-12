@@ -128,6 +128,12 @@ import { getServiceTypes } from '@/api/appointment'
 import useRequest from '@/hooks/useRequest'
 
 const toast = useToast()
+const problemTypes = ref([
+  { value: 'waterproof', label: '防水补漏' },
+  { value: 'wallRenovation', label: '墙面翻新' },
+  { value: 'tileRepair', label: '瓷砖修复' },
+  { value: 'other', label: '其它问题' },
+])
 const { statusBarHeight } = uni.getSystemInfoSync()
 // 活动选项卡
 const activeTab = ref('all')
@@ -161,6 +167,10 @@ const pagination = ref({
 const serviceTypeDict = ref<Record<string, string>>({})
 const showServiceTypeText = (serviceType: string) => {
   console.log(serviceTypeDict.value, 'serviceTypeDict', serviceType)
+  const obj = problemTypes.value.find((item) => item.value === serviceType)
+  if (obj) {
+    return obj.label
+  }
   return serviceTypeDict.value[serviceType] || serviceType
 }
 // 获取服务类型字典
@@ -408,7 +418,7 @@ const cancelOrderAction = (orderId: string) => {
 // 联系客服
 const contactService = (orderId: string) => {
   uni.makePhoneCall({
-    phoneNumber: '400-123-4567',
+    phoneNumber: '400-998-0618',
     fail: () => {
       toast.error('拨打电话失败')
     },
