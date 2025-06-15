@@ -19,16 +19,19 @@
     <wd-form :model="formData" label-width="50%" ref="appointmentForm" validate-trigger="submit">
       <!-- 问题类型 -->
       <wd-cell-group border>
-        <wd-picker
-          label="问题类型"
-          v-model="formData.problemType"
-          :columns="problemTypes"
-          prop="problemType"
-          placeholder="请选择问题类型"
-          align-right
-          :rules="[{ required: true, message: '请选择问题类型' }]"
-          @confirm="handleProblemTypeChange"
-        ></wd-picker>
+        <view class="problem-type-section">
+          <view class="problem-type-grid">
+            <view
+              v-for="item in problemTypes"
+              :key="item.value"
+              class="problem-type-item"
+              :class="{ active: formData.problemType === item.value }"
+              @click="selectProblemType(item.value)"
+            >
+              {{ item.label }}
+            </view>
+          </view>
+        </view>
 
         <!-- 子类型（多选） -->
         <wd-select-picker
@@ -50,7 +53,6 @@
           v-model="formData.problemDesc"
           prop="problemDesc"
           placeholder="请填写问题描述"
-          type="textarea"
           :rules="[{ required: true, message: '请输入问题描述' }]"
         ></wd-input>
       </wd-cell-group>
@@ -90,7 +92,7 @@
           type="tel"
           :rules="[
             { required: true, message: '请输入联系电话' },
-            { pattern: /^1\d{10}$/, message: '请输入正确的手机号码' },
+            { required: false, pattern: /^1\d{10}$/, message: '请输入正确的手机号码' },
           ]"
         >
           <template #suffix>
@@ -148,7 +150,7 @@
             multiple
             accept="image"
             max-count="3"
-            max-size="10485760"
+            :max-size="10485760"
             :successStatus="201"
             :action="uploadUrl"
             name="file"
@@ -180,7 +182,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import {
   getServiceTypes,
@@ -190,6 +192,7 @@ import {
 } from '@/api/appointment'
 import useRequest from '@/hooks/useRequest'
 import { useUpload } from 'wot-design-uni'
+import { PROBLEM_TYPES, SUB_TYPE_OPTIONS_MAP, getSubTypeLabel } from '@/utils/problemTypes'
 
 // 使用wot-design-uni的上传钩子
 const { startUpload, abort, chooseFile, UPLOAD_STATUS } = useUpload()
@@ -253,62 +256,35 @@ const validatePhone = (val) => {
   return /^1\d{10}$/.test(val)
 }
 
-// 问题类型选项
-const problemTypes = ref([
-  { value: 'waterproof', label: '防水补漏' },
-  { value: 'wallRenovation', label: '墙面翻新' },
-  { value: 'tileRepair', label: '瓷砖修复' },
-  { value: 'other', label: '其它问题' },
-])
+// 问题类型选项 - 使用统一的配置
+const problemTypes = ref(PROBLEM_TYPES)
 
-// 子类型选项映射
-const subTypeOptionsMap = reactive({
-  // 防水补漏的子类型
-  waterproof: [
-    { value: 'bathroom', label: '卫生间' },
-    { value: 'kitchen', label: '厨房' },
-    { value: 'window', label: '窗户' },
-    { value: 'exteriorWall', label: '外墙' },
-    { value: 'roof', label: '屋面' },
-    { value: 'basement', label: '地下室' },
-    { value: 'other', label: '其它' },
-  ],
-  // 墙面翻新的子类型
-  wallRenovation: [
-    { value: 'wholeHouse', label: '全屋翻新' },
-    { value: 'partial', label: '局部翻新' },
-    { value: 'repair', label: '墙面维修' },
-    { value: 'other', label: '其它' },
-  ],
-  // 瓷砖修复的子类型
-  tileRepair: [
-    { value: 'hollow', label: '瓷砖空鼓' },
-    { value: 'falling', label: '瓷砖脱落' },
-    { value: 'broken', label: '瓷砖破损' },
-    { value: 'recolor', label: '瓷砖改色' },
-    { value: 'other', label: '其它' },
-  ],
-  // 其他问题没有子类型
-  other: [],
-})
+// 子类型选项映射 - 使用统一的配置
+const subTypeOptionsMap = reactive(SUB_TYPE_OPTIONS_MAP)
 
 // 当前选择的子类型选项
 const subTypeOptions = computed(() => {
   return subTypeOptionsMap[formData.problemType] || []
 })
 
-// 子类型的标签名称
+// 子类型的标签名称 - 使用统一的工具函数
 const subTypeLabel = computed(() => {
-  if (formData.problemType === 'waterproof') return '问题位置'
-  if (formData.problemType === 'wallRenovation') return '翻新类型'
-  if (formData.problemType === 'tileRepair') return '瓷砖问题'
-  return '类型'
+  return getSubTypeLabel(formData.problemType)
 })
 
 // 是否显示场景选项
 const showSceneOptions = computed(() => {
   return formData.problemType && formData.problemType !== 'other'
 })
+
+// 选择问题类型
+const selectProblemType = (value: string) => {
+  formData.problemType = value
+  // 清空子类型选择和问题描述
+  formData.subType = ''
+  formData.subTypes = []
+  formData.problemDesc = ''
+}
 
 // 问题类型变更处理
 const handleProblemTypeChange = () => {
@@ -480,6 +456,15 @@ const chooseLocation = () => {
 
 // 提交表单
 const submitForm = () => {
+  // 先检查问题类型是否已选择
+  if (!formData.problemType) {
+    uni.showToast({
+      title: '请选择问题类型',
+      icon: 'none',
+    })
+    return
+  }
+
   // 使用wd-form进行表单验证
   appointmentForm.value
     .validate()
@@ -586,6 +571,41 @@ const chooseContact = () => {
     .supplier-text {
       font-size: 30rpx;
     }
+  }
+}
+
+// 问题类型网格样式
+.problem-type-section {
+  padding: 30rpx;
+}
+
+.problem-type-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20rpx;
+}
+
+.problem-type-item {
+  padding: 20rpx 16rpx;
+  background-color: #f8f9fa;
+  border: 2rpx solid #e9ecef;
+  border-radius: 12rpx;
+  text-align: center;
+  font-size: 28rpx;
+  color: #495057;
+  transition: all 0.3s ease;
+  cursor: pointer;
+
+  &:hover {
+    background-color: #e9f7ef;
+    border-color: #3d9c40;
+  }
+
+  &.active {
+    background-color: #3d9c40;
+    border-color: #3d9c40;
+    color: #fff;
+    font-weight: bold;
   }
 }
 

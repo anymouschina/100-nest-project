@@ -152,7 +152,13 @@
         </view>
 
         <view class="description-box">
-          {{ orderDetail.description }}
+          <view
+            v-for="(line, index) in orderDetail.description.split('\n')"
+            :key="index"
+            class="description-line"
+          >
+            {{ line }}
+          </view>
         </view>
       </view>
 
@@ -193,6 +199,10 @@ import { ref, computed, onMounted } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { useToast, useMessage } from 'wot-design-uni'
 import { getOrderDetail, cancelOrder, type IOrderDetail } from '@/api/orders'
+import {
+  getServiceTypeName as getServiceTypeNameUtil,
+  formatProblemDescription,
+} from '@/utils/problemTypes'
 
 // API返回的订单详情类型
 interface ApiOrderDetail {
@@ -270,14 +280,9 @@ const formatDate = (dateString: string) => {
   }
 }
 
-// 获取服务类型名称
+// 获取服务类型名称 - 使用统一的工具函数
 const getServiceTypeName = (type: string) => {
-  const serviceTypeMap: Record<string, string> = {
-    repair: '防水补漏',
-    new: '新房防水施工',
-    wallRenovation: '墙面翻新',
-  }
-  return serviceTypeMap[type] || type
+  return getServiceTypeNameUtil(type)
 }
 
 // 获取状态文本
@@ -450,7 +455,11 @@ const fetchOrderDetail = async () => {
         contactName: appointmentInfo.name || '',
         contactPhone: appointmentInfo.phone || '',
         paymentMethod: apiData.paymentStatus === 'PAID' ? '已支付' : '未支付',
-        description: appointmentInfo.description || '',
+        description: formatProblemDescription(
+          appointmentInfo.serviceType || 'repair',
+          appointmentInfo.sceneType || [],
+          appointmentInfo.description,
+        ),
         // 如果有工程师信息，则添加
         ...(apiData.engineerInfo
           ? {
@@ -661,6 +670,18 @@ onLoad((options) => {
   background-color: #f9f9f9;
   border-radius: 8rpx;
   line-height: 1.6;
+
+  .description-line {
+    margin-bottom: 8rpx;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+
+    &:empty {
+      display: none;
+    }
+  }
 }
 
 .bottom-actions {

@@ -126,14 +126,10 @@ import { useToast } from 'wot-design-uni'
 import { getOrderList, cancelOrder, type IOrderItem } from '@/api/orders'
 import { getServiceTypes } from '@/api/appointment'
 import useRequest from '@/hooks/useRequest'
+import { PROBLEM_TYPES, getServiceTypeName as getServiceTypeNameUtil } from '@/utils/problemTypes'
 
 const toast = useToast()
-const problemTypes = ref([
-  { value: 'waterproof', label: '防水补漏' },
-  { value: 'wallRenovation', label: '墙面翻新' },
-  { value: 'tileRepair', label: '瓷砖修复' },
-  { value: 'other', label: '其它问题' },
-])
+const problemTypes = ref(PROBLEM_TYPES)
 const { statusBarHeight } = uni.getSystemInfoSync()
 // 活动选项卡
 const activeTab = ref('all')
@@ -167,10 +163,12 @@ const pagination = ref({
 const serviceTypeDict = ref<Record<string, string>>({})
 const showServiceTypeText = (serviceType: string) => {
   console.log(serviceTypeDict.value, 'serviceTypeDict', serviceType)
-  const obj = problemTypes.value.find((item) => item.value === serviceType)
-  if (obj) {
-    return obj.label
+  // 优先使用统一的工具函数
+  const typeName = getServiceTypeNameUtil(serviceType)
+  if (typeName !== serviceType) {
+    return typeName
   }
+  // 如果工具函数没有找到，再使用字典
   return serviceTypeDict.value[serviceType] || serviceType
 }
 // 获取服务类型字典
@@ -228,6 +226,13 @@ const loadOrders = async (isLoadMore = false) => {
     const ordersList = responseData.data || []
     const paginationInfo = responseData.pagination || { total: 0, pages: 0 }
 
+    // 调试：打印原始数据结构
+    console.log('订单列表原始数据:', ordersList)
+    if (ordersList.length > 0) {
+      console.log('第一个订单数据结构:', ordersList[0])
+      console.log('appointmentInfo:', ordersList[0].appointmentInfo)
+    }
+
     // 更新分页信息
     pagination.value.total = paginationInfo.total || 0
     pagination.value.hasMore = queryParams.value.page < (paginationInfo.pages || 0)
@@ -235,6 +240,39 @@ const loadOrders = async (isLoadMore = false) => {
     // 格式化订单数据
     const formattedOrders = ordersList.map((order) => {
       const serviceType = order.serviceType || order.appointmentInfo?.serviceType || 'unsure'
+      const appointmentInfo = order.appointmentInfo || {}
+
+      // 构建完整地址 - 优先使用后端返回的address字段
+      let fullAddress = order.address || ''
+
+      // 如果后端没有返回address，则从appointmentInfo中构建
+      if (!fullAddress) {
+        if (appointmentInfo.location) {
+          fullAddress = appointmentInfo.location
+        } else if (appointmentInfo.region || appointmentInfo.address) {
+          const region = appointmentInfo.region || ''
+          const address = appointmentInfo.address || ''
+          fullAddress = `${region} ${address}`.trim()
+        } else if (order.location) {
+          fullAddress = order.location
+        } else if (order.region || order.address) {
+          const region = order.region || ''
+          const address = order.address || ''
+          fullAddress = `${region} ${address}`.trim()
+        }
+      }
+
+      // 调试：打印地址处理过程
+      console.log(`订单${order.id}地址处理:`, {
+        'order.address': order.address,
+        'appointmentInfo.location': appointmentInfo.location,
+        'appointmentInfo.region': appointmentInfo.region,
+        'appointmentInfo.address': appointmentInfo.address,
+        'order.location': order.location,
+        'order.region': order.region,
+        finalAddress: fullAddress,
+      })
+
       return {
         id: order.id?.toString() || order.orderId?.toString() || '',
         orderNo: order.id?.toString() || order.orderId?.toString() || '',
@@ -243,7 +281,7 @@ const loadOrders = async (isLoadMore = false) => {
         status: order.status?.toLowerCase() || 'pending',
         statusName: getStatusNameByCode(order.status),
         appointmentTime: order.createdAt ? formatDate(order.createdAt) : '',
-        address: order.location || `${order.region || ''} ${order.address || ''}`,
+        address: fullAddress || '地址信息缺失',
         price: order.total || 0,
         createTime: order.createdAt ? formatDate(order.createdAt) : '',
         updateTime: order.updatedAt ? formatDate(order.updatedAt) : '',
