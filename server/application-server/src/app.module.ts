@@ -12,6 +12,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { AppointmentModule } from './appointment/appointment.module';
 import { MicroservicesModule } from './microservices/microservices.module';
 import { WechatModule } from './wechat/wechat.module';
+import { WechatSummaryModule } from './wechat-summary/wechat-summary.module';
 import { LoggerModule } from './common/logger/logger.module';
 
 @Module({
@@ -28,6 +29,7 @@ import { LoggerModule } from './common/logger/logger.module';
     AppointmentModule,
     MicroservicesModule,
     WechatModule,
+    WechatSummaryModule,
   ],
   controllers: [],
   providers: [

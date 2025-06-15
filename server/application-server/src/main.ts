@@ -22,6 +22,14 @@ async function bootstrap() {
       logger: ['error', 'warn', 'log', 'debug', 'verbose'],
     });
     
+    // 启用CORS跨域支持
+    app.enableCors({
+      origin: true, // 允许所有来源，生产环境建议指定具体域名
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+      credentials: true, // 允许携带凭证
+    });
+  
     // 创建微服务
     app.connectMicroservice<MicroserviceOptions>({
       transport: Transport.REDIS,
