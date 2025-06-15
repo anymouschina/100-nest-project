@@ -208,26 +208,47 @@ Content-Type: application/json
   - `2024-01-15/09:00~2024-01-15/18:00`: 精确时间段
 - `customPrompt`: 自定义分析提示词
 
-**时间线分析返回格式:**
+**详细分析返回格式:**
 ```json
 {
   "success": true,
   "data": {
-    "summary": "一天聊天的整体概况",
-    "timeline": [
+    "title": "2025-06-15 群聊总结：AI工具、知识付费与商业模式探讨",
+    "groupStyleReview": {
+      "description": "群聊内容活跃，话题集中在AI工具、知识付费、商业模式探讨等领域。讨论深入，信息量大，存在一些认知差异。",
+      "activityLevel": "高",
+      "topicQuality": "优秀",
+      "discussionAtmosphere": "激烈"
+    },
+    "keyTopics": [
       {
-        "timeRange": "09:00-11:00",
-        "topic": "主题名称",
-        "participants": ["参与者1", "参与者2"],
-        "content": "该时间段的核心讨论内容",
-        "keyPoints": ["要点1", "要点2"]
+        "rank": "1️⃣",
+        "title": "AI工具Cursor制作名片与朋友圈营销",
+        "heatLevel": "🔥🔥🔥",
+        "participants": ["流年#智能体#AI编程#MCP", "汪七北", "麒麟子MrKylin"],
+        "timeRange": {
+          "start": "11:26:23",
+          "end": "12:57:47",
+          "startContent": "ai把个人名片和发售海报都搞好了",
+          "endContent": "[强]有见地"
+        },
+        "process": "群友流年分享了使用AI工具Cursor制作个人名片和发售海报的经验，并表示效果令人满意，成功吸引了客户。大家讨论了AI在营销中的应用，以及朋友圈营销的策略。",
+        "evaluation": "AI工具在个人品牌和营销中的应用案例，讨论了朋友圈营销的有效策略。",
+        "businessValue": "实用价值高，为个人品牌建设和营销推广提供了具体可行的方案"
       }
     ],
-    "mainTopics": ["主题1", "主题2", "主题3"],
-    "activeParticipants": ["最活跃参与者"],
-    "insights": "深度分析和价值洞察",
-    "actionItems": ["待办事项"],
-    "topicConnections": "主题间的关联性分析"
+    "insights": {
+      "overallValue": "今日讨论聚焦于AI工具的实际应用和商业价值，为群友提供了具体的实践指导",
+      "keyLearnings": ["AI工具在营销中的实际应用", "朋友圈营销策略", "个人品牌建设方法"],
+      "actionItems": ["尝试使用AI工具制作营销素材", "优化朋友圈内容策略"],
+      "trends": "AI工具与传统营销结合的趋势日益明显，个人品牌建设需求增长"
+    },
+    "statistics": {
+      "totalMessages": 393,
+      "activeParticipants": ["流年#智能体#AI编程#MCP", "汪七北", "麒麟子MrKylin"],
+      "peakTime": "11:26-12:57",
+      "topicCount": 3
+    }
   }
 }
 ```
@@ -248,6 +269,44 @@ Content-Type: application/json
 - 实时流式返回分析过程和结果
 - 显示数据预处理进度
 - 支持所有LangChain总结的参数
+
+### 8. 专业群聊分析（推荐）
+```http
+POST /wechat-summary/analyze-group-chat
+Content-Type: application/json
+
+{
+  "talker": "47537114759@chatroom",
+  "time": "2025-06-15"
+}
+```
+
+**特性:**
+- 🎯 **专业设计**: 参考外部分析服务标准
+- 📊 **简洁参数**: 只需群聊ID和日期
+- 🧠 **智能预处理**: 语义过滤 + 动态Token管理
+- 📈 **详细报告**: 群聊风格评价 + 重点话题分析
+- ⚡ **高性能**: 基于现代LangChain最佳实践
+
+**参数说明:**
+- `talker`: 群聊ID（如：47537114759@chatroom）
+- `time`: 分析日期（格式：YYYY-MM-DD）
+
+### 9. 专业群聊分析（流式版）
+```http
+POST /wechat-summary/analyze-group-chat-stream
+Content-Type: application/json
+
+{
+  "talker": "47537114759@chatroom",
+  "time": "2025-06-15"
+}
+```
+
+**特性:**
+- 实时显示分析进度
+- 专业日报格式输出
+- 完整的错误处理机制
 
 ## 响应格式
 

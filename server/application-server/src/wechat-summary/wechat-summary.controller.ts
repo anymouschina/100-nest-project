@@ -450,4 +450,182 @@ export class WechatSummaryController {
       }
     }
   }
+
+  /**
+   * 专业群聊分析接口 - 参考外部分析服务设计
+   */
+  @Post('analyze-group-chat')
+  async analyzeGroupChat(
+    @Body() body: { talker: string; time: string },
+    @Res() response: Response,
+  ) {
+    try {
+      this.logger.log(`🔍 专业群聊分析请求: ${JSON.stringify(body)}`);
+
+      const { talker, time } = body;
+
+      if (!talker || !time) {
+        return response.status(400).json({
+          success: false,
+          error: '参数错误：talker和time为必填项',
+          code: 'INVALID_PARAMS'
+        });
+      }
+
+      // 构建分析请求
+      const analysisRequest = {
+        groupName: talker,
+        specificDate: time,
+        summaryType: 'daily',
+        customPrompt: '进行专业的群聊日报分析，按照参考格式输出，包含详细的话题分析、开始结束消息、文章链接、工具推荐等信息'
+      };
+
+      // 调用LangChain智能分析
+      const result = await this.langChainService.analyzeChatLog({
+        messages: [], // 这里需要从chatlog获取消息
+        ...analysisRequest
+      });
+
+      // 但首先我们需要获取聊天数据
+      const chatDataResponse = await this.wechatSummaryService.getChatData({
+        groupName: talker,
+        specificDate: time
+      });
+
+      if (!chatDataResponse.success || !chatDataResponse.data || chatDataResponse.data.length === 0) {
+        return response.status(404).json({
+          success: false,
+          error: '未找到指定日期的聊天记录',
+          code: 'NO_DATA_FOUND',
+          details: {
+            talker,
+            time,
+            messageCount: 0
+          }
+        });
+      }
+
+      const chatData = chatDataResponse.data;
+
+      // 重新调用分析
+      const analysisResult = await this.langChainService.analyzeChatLog({
+        messages: chatData,
+        ...analysisRequest
+      });
+
+      // 返回专业分析结果
+      return response.status(200).json({
+        success: true,
+        data: {
+          ...analysisResult,
+          metadata: {
+            talker,
+            time,
+            messageCount: chatData.length,
+            analysisTime: new Date().toISOString(),
+            version: '2.0'
+          }
+        }
+      });
+
+    } catch (error) {
+      this.logger.error(`专业群聊分析失败: ${error.message}`, error.stack);
+      return response.status(500).json({
+        success: false,
+        error: '分析服务暂时不可用',
+        code: 'ANALYSIS_SERVICE_ERROR',
+        details: error.message
+      });
+    }
+  }
+
+  /**
+   * 专业群聊分析接口 - 流式版本
+   */
+  @Post('analyze-group-chat-stream')
+  async analyzeGroupChatStream(
+    @Body() body: { talker: string; time: string },
+    @Res() response: Response,
+  ) {
+    try {
+      this.logger.log(`🔍 专业群聊流式分析请求: ${JSON.stringify(body)}`);
+
+      const { talker, time } = body;
+
+      if (!talker || !time) {
+        response.writeHead(400, { 'Content-Type': 'application/json' });
+        response.end(JSON.stringify({
+          success: false,
+          error: '参数错误：talker和time为必填项'
+        }));
+        return;
+      }
+
+      // 设置流式响应头
+      response.writeHead(200, {
+        'Content-Type': 'text/plain; charset=utf-8',
+        'Transfer-Encoding': 'chunked',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type',
+      });
+
+      // 获取聊天数据
+      response.write('🔍 正在获取聊天数据...\n');
+      const chatDataResponse = await this.wechatSummaryService.getChatData({
+        groupName: talker,
+        specificDate: time
+      });
+
+      if (!chatDataResponse.success || !chatDataResponse.data || chatDataResponse.data.length === 0) {
+        response.write('❌ 未找到指定日期的聊天记录\n');
+        response.end();
+        return;
+      }
+
+      const chatData = chatDataResponse.data;
+      response.write(`📊 找到 ${chatData.length} 条消息，开始专业分析...\n`);
+
+      // 构建分析请求
+      const analysisRequest = {
+        messages: chatData,
+        groupName: talker,
+        specificDate: time,
+        summaryType: 'daily',
+        customPrompt: '进行专业的群聊日报分析，按照参考格式输出，包含详细的话题分析、开始结束消息、文章链接、工具推荐等信息'
+      };
+
+      // 流式分析
+      const result = await this.langChainService.analyzeChatLogStream(
+        analysisRequest,
+        (chunk: string) => {
+          response.write(chunk);
+        }
+      );
+
+      response.write('\n\n=== 专业分析报告 ===\n');
+      response.write(JSON.stringify({
+        success: true,
+        data: {
+          ...result,
+          metadata: {
+            talker,
+            time,
+            messageCount: chatData.length,
+            analysisTime: new Date().toISOString(),
+            version: '2.0'
+          }
+        }
+      }, null, 2));
+
+      response.end();
+
+    } catch (error) {
+      this.logger.error(`专业群聊流式分析失败: ${error.message}`, error.stack);
+      response.write(`\n❌ 分析失败: ${error.message}\n`);
+      response.end();
+    }
+  }
 } 
