@@ -40,12 +40,6 @@ application 则是应用端,
 ![管理后台-用户管理](static/001/821749305946_.pic.jpg)
 
 </details>
-### 2. 微信聊天记录总结
-<details>
-
-
-</details>
-
 
 ## 鸣谢
 感谢开源者的分享精神
