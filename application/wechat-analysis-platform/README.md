@@ -32,6 +32,12 @@
 - **关键词云**: 提取的关键词标签展示
 - **参与者列表**: 群聊参与者信息
 
+### 群聊归纳功能
+- **实时流式生成**: 使用流式接口实时展示分析进度
+- **智能缓存**: 自动缓存历史分析结果，提高响应速度
+- **多维度分析**: 包括重点话题提取、群聊风格评价、分享文章统计等
+- **自定义提示词**: 支持通过customPrompt参数自定义分析方向
+
 ## 🛠️ 技术栈
 
 - **React 19** - 前端框架
@@ -40,6 +46,9 @@
 - **Tailwind CSS** - 样式框架
 - **Vite** - 构建工具
 - **pnpm** - 包管理器
+- **后端**：NestJS + Prisma
+- **AI模型**：Ollama + LangChain
+- **数据存储**：PostgreSQL
 
 ## 📦 安装和运行
 
@@ -215,6 +224,43 @@ pnpm preview
 ## 🤝 贡献
 
 欢迎提交Issue和Pull Request来改进这个项目！
+
+## 🎯 群聊归纳功能
+
+群聊归纳功能使用LangChain进行智能分析，支持以下特性：
+
+1. **实时流式生成**：使用流式接口实时展示分析进度
+2. **智能缓存**：自动缓存历史分析结果，提高响应速度
+3. **多维度分析**：包括重点话题提取、群聊风格评价、分享文章统计等
+4. **自定义提示词**：支持通过customPrompt参数自定义分析方向
+
+### API使用示例
+
+```typescript
+// 使用流式接口获取群聊分析
+await wechatSummaryApi.langchainSummaryStream(
+  {
+    groupName: "群聊名称",
+    specificDate: "2024-06-15",
+    summaryType: "daily",
+    customPrompt: "分析今日群聊精华内容"
+  },
+  {
+    onChunk: (chunk) => {
+      // 处理流式返回的数据块
+      console.log(chunk);
+    },
+    onComplete: (result) => {
+      // 处理完整的分析结果
+      console.log(result);
+    },
+    onError: (error) => {
+      // 处理错误
+      console.error(error);
+    }
+  }
+);
+```
 
 ## �� 许可证
 

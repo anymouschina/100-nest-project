@@ -115,16 +115,16 @@ export class McpService {
 
       // 构建查询参数
       const params = new URLSearchParams();
-      if (request.keyword !== undefined) {
+      if (request.keyword) {
         const cleanKeyword = request.keyword.trim();
         params.append('keyword', cleanKeyword || '+');
       } else {
-        params.append('keyword', '+');
+        params.append('keyword', '');
       }
       params.append('format', request.format || 'json');
 
       const url = `${this.chatlogBaseUrl}/api/v1/chatroom${params.toString() ? '?' + params.toString() : ''}`;
-
+     this.logger.debug('查询url',url)
       const response = await firstValueFrom(
         this.httpService.get(url, {
           headers: this.getCommonHeaders(),

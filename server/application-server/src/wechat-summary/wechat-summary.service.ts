@@ -951,4 +951,123 @@ ${data.content}
   getSummaryCacheService(): SummaryCacheService {
     return this.summaryCacheService;
   }
+
+  /**
+   * 获取可查询的日期列表
+   * 返回有聊天记录的日期列表，按群聊分组
+   */
+  async getAvailableDates(groupName?: string): Promise<any> {
+    try {
+      this.logger.log(`获取可查询的日期列表: ${groupName || '全部群聊'}`);
+
+      // 1. 检查Chatlog服务状态
+      const isChatlogAvailable = await this.mcpService.checkChatlogStatus();
+      if (!isChatlogAvailable) {
+        return {
+          success: false,
+          error: 'Chatlog服务不可用，请确保Chatlog HTTP服务正在运行',
+        };
+      }
+
+      // 2. 获取群聊列表
+      const groups = groupName 
+        ? [{ name: groupName }] 
+        : (await this.mcpService.queryChatRoom({})).chatRooms;
+
+      // 3. 获取当前日期和过去30天的日期范围
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - 30); // 默认查询最近30天
+
+      const timeRange = `${this.formatDate(startDate)}~${this.formatDate(endDate)}`;
+
+      // 4. 查询每个群聊的聊天记录日期
+      const results = [];
+      for (const group of groups) {
+        try {
+          // 查询聊天记录
+          const chatLogRequest = {
+            time: timeRange,
+            talker: group.name || (group as any).id || '',
+            format: 'json' as const,
+          };
+
+          const chatLogResponse = await this.mcpService.queryChatLog(chatLogRequest);
+          
+          // 提取消息中的日期并去重
+          const dates = new Set<string>();
+          chatLogResponse.messages.forEach(msg => {
+            if (msg.time) {
+              // 提取日期部分 (YYYY-MM-DD)
+              const dateMatch = msg.time.match(/^\d{4}-\d{2}-\d{2}/);
+              if (dateMatch) {
+                dates.add(dateMatch[0]);
+              }
+            }
+          });
+
+          // 查询已缓存的摘要日期
+          let cachedDates: string[] = [];
+          try {
+            // 使用SummaryCacheService的getCachedSummaries方法获取缓存摘要
+            const summaries = await this.summaryCacheService.getCachedSummaries(
+              group.name || (group as any).id || ''
+            );
+
+            // 提取摘要中的日期
+            summaries.forEach(summary => {
+              // 尝试从timeRange中提取日期
+              const dateMatch = summary.timeRange.match(/^\d{4}-\d{2}-\d{2}/);
+              if (dateMatch) {
+                cachedDates.push(dateMatch[0]);
+              } else if (summary.startTime) {
+                // 如果timeRange不是日期格式，使用startTime
+                cachedDates.push(summary.startTime.toISOString().split('T')[0]);
+              }
+            });
+          } catch (error) {
+            this.logger.warn(`获取缓存摘要日期失败: ${error.message}`);
+          }
+
+          // 合并聊天记录日期和摘要日期
+          const allDates = [...dates, ...cachedDates];
+          const uniqueDates = [...new Set(allDates)].sort().reverse(); // 降序排列，最新的日期在前
+
+          results.push({
+            groupName: group.name || (group as any).id || '',
+            availableDates: uniqueDates,
+            messageCount: chatLogResponse.messages.length,
+            hasCachedSummaries: cachedDates.length > 0,
+            cachedSummaryDates: [...new Set(cachedDates)].sort().reverse(),
+          });
+        } catch (error) {
+          this.logger.warn(`获取群聊 ${group.name || (group as any).id} 的日期列表失败: ${error.message}`);
+          
+          // 添加错误信息但继续处理其他群聊
+          results.push({
+            groupName: group.name || (group as any).id || '',
+            error: `获取日期列表失败: ${error.message}`,
+            availableDates: [],
+            messageCount: 0,
+            hasCachedSummaries: false,
+            cachedSummaryDates: [],
+          });
+        }
+      }
+
+      return {
+        success: true,
+        data: {
+          queryTimeRange: timeRange,
+          groups: results,
+        },
+      };
+    } catch (error) {
+      this.logger.error(`获取可查询的日期列表失败: ${error.message}`, error.stack);
+      return {
+        success: false,
+        error: `获取可查询的日期列表失败: ${error.message}`,
+      };
+    }
+  }
 } 

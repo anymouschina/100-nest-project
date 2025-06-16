@@ -397,6 +397,8 @@ export class LangChainService {
 5. 识别关键决定、待办事项和重要信息
 6. 提取文章链接、工具推荐、热门发言者等额外信息
 7. 识别用户的真实昵称，而不是id或杜撰
+8. 从多个角度（技术、商业、用户体验、创新性等）评价聊天内容的价值
+9. 分析讨论内容的可执行度，包括明确的行动项、实施难度、优先级和潜在影响
 
 请严格按以下JSON格式回复，不要使用深度思考模式：
 {{
@@ -439,6 +441,46 @@ export class LangChainService {
       }}
     }}
   ],
+  "multi_perspective_evaluation": [
+    {{
+      "perspective": "技术视角",
+      "evaluation": "从技术角度对聊天内容的评价，包括技术讨论的深度、准确性、创新性等（100-150字）",
+      "rating": 8.5
+    }},
+    {{
+      "perspective": "商业视角",
+      "evaluation": "从商业角度对聊天内容的评价，包括商业价值、市场潜力、盈利模式等（100-150字）",
+      "rating": 7.0
+    }},
+    {{
+      "perspective": "用户体验视角",
+      "evaluation": "从用户体验角度对聊天内容的评价，包括易用性、满足用户需求程度等（100-150字）",
+      "rating": 8.0
+    }},
+    {{
+      "perspective": "创新性视角",
+      "evaluation": "从创新角度对聊天内容的评价，包括想法的独特性、突破性等（100-150字）",
+      "rating": 7.5
+    }}
+  ],
+  "actionable_insights": [
+    {{
+      "action_item": "明确的行动项1",
+      "difficulty": "中等",
+      "priority": "高",
+      "potential_impact": "显著提升用户转化率",
+      "responsible_parties": ["参与者1", "参与者3"],
+      "timeline": "短期（1-2周）"
+    }},
+    {{
+      "action_item": "明确的行动项2",
+      "difficulty": "低",
+      "priority": "中",
+      "potential_impact": "改善内部协作效率",
+      "responsible_parties": ["参与者2"],
+      "timeline": "即时"
+    }}
+  ],
   "extra_topics": ["其他值得关注的话题1", "其他值得关注的话题2", "其他值得关注的话题3"],
   "articles": [
     {{
@@ -465,6 +507,8 @@ export class LangChainService {
 - 识别聊天中提到的文章链接、工具推荐等信息
 - 统计发言最多的用户作为热门发言者，使用真实昵称
 - start_message和end_message中的sender字段也必须使用真实昵称
+- 多角度评价要客观全面，评分范围为0-10分
+- 可执行度分析要具体可行，包括明确的行动项、难度（低/中/高）、优先级（低/中/高）和潜在影响
         `);
         break;
 
@@ -628,5 +672,128 @@ export class LangChainService {
   private extractParticipants(messages: Array<{sender: string; time: string; content: string}>): string[] {
     const participants = new Set(messages.map(msg => msg.sender));
     return Array.from(participants);
+  }
+
+  /**
+   * 生成基于上下文的回答
+   */
+  async generateAnswer(query: string, context: string): Promise<string> {
+    try {
+      this.logger.log(`开始生成回答，查询: ${query}`);
+      
+      const prompt = `
+你是一个智能助手，基于提供的上下文信息回答用户的问题。
+只使用提供的上下文信息，如果上下文中没有相关信息，请直接说明无法回答。
+不要编造信息，不要使用你自己的知识。
+
+上下文信息:
+${context}
+
+用户问题: ${query}
+
+请提供详细、准确、有条理的回答。
+`;
+
+      const messages = [
+        new SystemMessage('你是一个专业的问答助手，请基于提供的上下文信息回答问题，不要编造信息。'),
+        new HumanMessage(prompt)
+      ];
+
+      const response = await this.ollama.invoke(messages);
+      const answer = typeof response.content === 'string' ? response.content : String(response.content);
+      
+      this.logger.log('回答生成完成');
+      return answer;
+    } catch (error) {
+      this.logger.error(`生成回答失败: ${error.message}`, error.stack);
+      throw error;
+    }
+  }
+
+  /**
+   * 流式生成基于上下文的回答
+   */
+  async streamAnswer(options: {
+    query: string;
+    context: string;
+    response: any;
+    sources?: Array<{
+      type: string;
+      content: string;
+      metadata: any;
+      similarity: number;
+    }>;
+  }): Promise<void> {
+    try {
+      this.logger.log(`开始流式生成回答，查询: ${options.query}`);
+      
+      const prompt = `
+你是一个智能助手，基于提供的上下文信息回答用户的问题。
+只使用提供的上下文信息，如果上下文中没有相关信息，请直接说明无法回答。
+不要编造信息，不要使用你自己的知识。
+
+上下文信息:
+${options.context}
+
+用户问题: ${options.query}
+
+请提供详细、准确、有条理的回答。
+`;
+
+      const messages = [
+        new SystemMessage('你是一个专业的问答助手，请基于提供的上下文信息回答问题，不要编造信息。'),
+        new HumanMessage(prompt)
+      ];
+
+      // 发送元数据
+      options.response.write(`data: ${JSON.stringify({
+        type: 'metadata',
+        sources: options.sources || []
+      })}\n\n`);
+
+      // 流式处理
+      try {
+        const stream = await this.ollama.stream(messages);
+        
+        for await (const chunk of stream) {
+          const content = typeof chunk.content === 'string' ? chunk.content : String(chunk.content);
+          if (content) {
+            options.response.write(`data: ${JSON.stringify({
+              type: 'content',
+              content
+            })}\n\n`);
+          }
+        }
+        
+        // 发送完成信号
+        options.response.write(`data: ${JSON.stringify({ type: 'done' })}\n\n`);
+        options.response.end();
+      } catch (streamError) {
+        this.logger.error(`流式处理失败，尝试非流式调用: ${streamError.message}`);
+        
+        // 如果流式失败，使用非流式调用
+        const response = await this.ollama.invoke(messages);
+        const answer = typeof response.content === 'string' ? response.content : String(response.content);
+        
+        options.response.write(`data: ${JSON.stringify({
+          type: 'content',
+          content: answer
+        })}\n\n`);
+        
+        options.response.write(`data: ${JSON.stringify({ type: 'done' })}\n\n`);
+        options.response.end();
+      }
+      
+      this.logger.log('流式回答生成完成');
+    } catch (error) {
+      this.logger.error(`流式生成回答失败: ${error.message}`, error.stack);
+      
+      options.response.write(`data: ${JSON.stringify({
+        type: 'error',
+        error: error.message
+      })}\n\n`);
+      
+      options.response.end();
+    }
   }
 } 

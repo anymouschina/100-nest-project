@@ -696,12 +696,38 @@ export class VectorService {
    */
   private async cacheEmbedding(contentHash: string, content: string, embedding: number[]): Promise<void> {
     try {
-      // 使用原始SQL查询来插入数据
-      await this.databaseService.$executeRaw`
-        INSERT INTO embedding_cache (id, content_hash, content, model, token_count, created_at, last_used, use_count)
-        VALUES (${crypto.randomUUID()}, ${contentHash}, ${content}, 'text-embedding-3-small', ${this.estimateTokenCount(content)}, NOW(), NOW(), 1)
-        ON CONFLICT (content_hash) DO NOTHING
-      `;
+      // 检查是否已存在缓存
+      const existingCache = await this.databaseService.embeddingCache.findUnique({
+        where: { contentHash }
+      });
+
+      if (existingCache) {
+        // 更新现有缓存
+        await this.databaseService.embeddingCache.update({
+          where: { contentHash },
+          data: {
+            lastUsed: new Date(),
+            useCount: { increment: 1 }
+          }
+        });
+      } else {
+        // 创建新缓存 - 使用 Prisma 的 $executeRaw 方法直接执行 SQL
+        await this.databaseService.$executeRaw`
+          INSERT INTO embedding_cache (
+            id, content_hash, content, model, token_count, embedding, created_at, last_used, use_count
+          ) VALUES (
+            ${crypto.randomUUID()}, 
+            ${contentHash}, 
+            ${content}, 
+            'text-embedding-3-small', 
+            ${this.estimateTokenCount(content)}, 
+            ${`[${embedding.join(',')}]`}::vector, 
+            NOW(), 
+            NOW(), 
+            1
+          )
+        `;
+      }
     } catch (error) {
       this.logger.error(`缓存嵌入失败: ${error.message}`, error.stack);
     }

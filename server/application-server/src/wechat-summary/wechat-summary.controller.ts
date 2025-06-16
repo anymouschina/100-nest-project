@@ -390,16 +390,16 @@ export class WechatSummaryController {
   @Public()
   @ApiOperation({ 
     summary: 'LangChain流式智能总结',
-    description: '使用LangChain进行流式聊天记录分析，提供实时处理反馈和优化的数据处理' 
+    description: '使用LangChain进行流式聊天记录分析，提供实时处理反馈和优化的数据处理',
   })
   @ApiBody({ 
     type: SmartSummaryRequestDto,
-    description: 'LangChain流式总结请求参数'
+    description: 'LangChain流式总结请求参数',
   })
   @ApiResponse({ status: 200, description: 'LangChain流式总结成功' })
   async langchainSummaryStream(
     @Body() request: SmartSummaryRequestDto,
-    @Res() response: Response
+    @Res() response: Response,
   ) {
     this.logger.log(`收到LangChain流式总结请求: ${JSON.stringify(request)}`);
     
@@ -437,24 +437,63 @@ export class WechatSummaryController {
           response.write('🔄 从缓存获取分析结果...\n');
           response.write('✅ 缓存命中，快速返回结果\n\n');
           
-          // 构建返回格式
-          const formattedResult = {
-            summary_title: cachedResult.title,
-            style_comment: `缓存结果 - ${cachedResult.summaryType}分析`,
-            message_length: cachedResult.messageCount,
-            topics: cachedResult.keyPoints.map((point, index) => ({
-              title: `${index + 1}️⃣ ${point}`,
-              participants: cachedResult.participants.slice(0, 3),
-              time_range: cachedResult.timeRange,
-              process: `缓存的分析结果 - ${point}`,
-              comment: '来自历史分析缓存'
-            })),
-            extra_topics: cachedResult.topics,
-            top_speakers: cachedResult.participants,
-            cached: true,
-            cacheId: cachedResult.id,
-            cachedAt: cachedResult.createdAt,
-          };
+          // 使用原始缓存结果或构建格式化结果
+          let formattedResult;
+          
+          // 尝试使用原始结果（如果存在）
+          if (cachedResult.rawResult) {
+            formattedResult = cachedResult.rawResult;
+            this.logger.log('使用完整的原始缓存结果');
+          } else {
+            // 如果没有原始结果，则使用单独的字段构建结果
+            this.logger.log('构建格式化缓存结果');
+            formattedResult = {
+              summary_title: cachedResult.summary_title || cachedResult.title,
+              style_comment: cachedResult.style_comment || `缓存结果 - ${cachedResult.summaryType}分析`,
+              message_length: cachedResult.message_length || cachedResult.messageCount,
+              topics: cachedResult.topicDetails || cachedResult.topics.map((point, index) => ({
+                title: `${index + 1}️⃣ ${point}`,
+                participants: cachedResult.participants.slice(0, 3),
+                time_range: cachedResult.timeRange,
+                process: `缓存的分析结果 - ${point}`,
+                comment: '来自历史分析缓存'
+              })),
+              multi_perspective_evaluation: cachedResult.multi_perspective_evaluation || [
+                {
+                  perspective: "技术视角",
+                  evaluation: "这是从缓存中恢复的技术视角评价，原始缓存中可能没有此数据。",
+                  rating: 7.0
+                },
+                {
+                  perspective: "商业视角",
+                  evaluation: "这是从缓存中恢复的商业视角评价，原始缓存中可能没有此数据。",
+                  rating: 6.5
+                },
+                {
+                  perspective: "用户体验视角",
+                  evaluation: "这是从缓存中恢复的用户体验视角评价，原始缓存中可能没有此数据。",
+                  rating: 7.5
+                }
+              ],
+              actionable_insights: cachedResult.actionable_insights || [
+                {
+                  action_item: "查看完整聊天记录以获取更多可执行洞察",
+                  difficulty: "低",
+                  priority: "中",
+                  potential_impact: "更全面地了解讨论内容",
+                  responsible_parties: cachedResult.participants.slice(0, 2),
+                  timeline: "随时"
+                }
+              ],
+              extra_topics: cachedResult.extra_topics || cachedResult.topics,
+              top_speakers: cachedResult.top_speakers || cachedResult.participants,
+              articles: cachedResult.articles || [],
+              tools: cachedResult.tools || [],
+              cached: true,
+              cacheId: cachedResult.id,
+              cachedAt: cachedResult.createdAt,
+            };
+          }
 
           // 分块发送结果
           const resultText = JSON.stringify(formattedResult, null, 2);
@@ -462,7 +501,7 @@ export class WechatSummaryController {
           
           for (const chunk of chunks) {
             response.write(chunk);
-            await new Promise(resolve => setTimeout(resolve, 20)); // 模拟延迟
+            await new Promise((resolve) => setTimeout(resolve, 20)); // 模拟延迟
           }
 
           response.write('\n\n=== 缓存结果 ===\n');
@@ -480,7 +519,7 @@ export class WechatSummaryController {
       if (!chatData.success || !chatData.data || chatData.data.length === 0) {
         response.status(400).json({
           success: false,
-          error: '未找到聊天数据或数据为空'
+          error: '未找到聊天数据或数据为空',
         });
         return;
       }
@@ -503,7 +542,7 @@ export class WechatSummaryController {
         groupName: request.groupName,
         timeRange: request.relativeTime,
         specificDate: request.specificDate,
-        customPrompt: request.customPrompt
+        customPrompt: request.customPrompt,
       }, (chunk: string) => {
         fullResponse += chunk;
         response.write(chunk);
@@ -524,7 +563,7 @@ export class WechatSummaryController {
           chatData.data.length,
         ).then(() => {
           this.logger.log('分析结果已成功保存到知识库');
-        }).catch(error => {
+        }).catch((error) => {
           this.logger.error(`保存到知识库失败: ${error.message}`);
         });
       } else {
@@ -538,7 +577,7 @@ export class WechatSummaryController {
       if (!response.headersSent) {
         response.status(500).json({
           success: false,
-          error: `LangChain流式总结失败: ${error.message}`
+          error: `LangChain流式总结失败: ${error.message}`,
         });
       } else {
         response.write(`\n\n❌ 错误: ${error.message}`);
@@ -1252,5 +1291,319 @@ export class WechatSummaryController {
   })
   async cleanupCache(@Body() body: { daysToKeep?: number }) {
     return await this.wechatSummaryService.cleanupCache(body.daysToKeep);
+  }
+
+  /**
+   * 同步群聊消息到知识库
+   */
+  @Post('sync-group-to-knowledge')
+  @Public()
+  @ApiOperation({ 
+    summary: '同步群聊消息到知识库',
+    description: '将指定群聊的所有消息同步到向量知识库，用于后续问题解答' 
+  })
+  @ApiBody({ 
+    schema: {
+      type: 'object',
+      properties: {
+        groupName: { type: 'string', description: '群聊名称' },
+        startDate: { type: 'string', format: 'date', description: '开始日期（可选，格式：YYYY-MM-DD）' },
+        endDate: { type: 'string', format: 'date', description: '结束日期（可选，格式：YYYY-MM-DD）' },
+        forceUpdate: { type: 'boolean', default: false, description: '是否强制更新已存在的消息' }
+      },
+      required: ['groupName']
+    }
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: '同步成功',
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        data: {
+          type: 'object',
+          properties: {
+            syncedCount: { type: 'number' },
+            newCount: { type: 'number' },
+            skippedCount: { type: 'number' },
+            timeUsed: { type: 'number' }
+          }
+        }
+      }
+    }
+  })
+  async syncGroupToKnowledge(@Body() request: any) {
+    this.logger.log(`收到同步群聊消息到知识库请求: ${JSON.stringify(request)}`);
+    
+    try {
+      const startTime = Date.now();
+      
+      // 1. 获取指定时间范围内的群聊消息
+      const timeRange = request.startDate || request.endDate ? 
+        `${request.startDate || '2000-01-01'}_${request.endDate || new Date().toISOString().split('T')[0]}` : 
+        'all';
+      
+      const chatData = await this.wechatSummaryService.getChatData({
+        groupName: request.groupName,
+        specificDate: timeRange
+      });
+      
+      if (!chatData.success || !chatData.data || chatData.data.length === 0) {
+        return {
+          success: false,
+          error: '未找到群聊消息或数据为空'
+        };
+      }
+      
+      // 2. 将消息转换为向量服务需要的格式
+      const vectorMessages = chatData.data.map(msg => ({
+        groupName: request.groupName,
+        sender: msg.sender,
+        content: msg.content,
+        timestamp: new Date(msg.time),
+        metadata: {
+          originalTime: msg.time
+        }
+      }));
+      
+      // 3. 批量存储消息到向量数据库
+      const results = await this.vectorService.storeBatchChatMessages(vectorMessages);
+      
+      const endTime = Date.now();
+      const timeUsed = (endTime - startTime) / 1000; // 秒
+      
+      return {
+        success: true,
+        data: {
+          syncedCount: vectorMessages.length,
+          newCount: results.length,
+          skippedCount: vectorMessages.length - results.length,
+          timeUsed
+        }
+      };
+    } catch (error) {
+      this.logger.error(`同步群聊消息到知识库失败: ${error.message}`, error.stack);
+      return {
+        success: false,
+        error: `同步失败: ${error.message}`
+      };
+    }
+  }
+
+  /**
+   * 知识库问答API
+   */
+  @Post('knowledge-qa')
+  @Public()
+  @ApiOperation({ 
+    summary: '知识库问答',
+    description: '基于群聊知识库进行问题解答' 
+  })
+  @ApiBody({ 
+    schema: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: '问题内容' },
+        groupName: { type: 'string', description: '指定的群聊名称（可选）' },
+        maxTokens: { type: 'number', default: 2000, description: '最大上下文token数' },
+        useStream: { type: 'boolean', default: false, description: '是否使用流式响应' }
+      },
+      required: ['query']
+    }
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: '问答成功',
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        data: {
+          type: 'object',
+          properties: {
+            answer: { type: 'string' },
+            sources: { type: 'array', items: { type: 'object' } }
+          }
+        }
+      }
+    }
+  })
+  async knowledgeQA(@Body() request: any, @Res() response: Response) {
+    this.logger.log(`收到知识库问答请求: ${JSON.stringify(request)}`);
+    
+    try {
+      // 如果是流式响应
+      if (request.useStream) {
+        // 设置流式响应头
+        response.writeHead(200, {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive',
+        });
+        
+        // 搜索相关知识
+        const knowledgeResults = await this.vectorService.searchKnowledge(request.query, {
+          tags: request.groupName ? [request.groupName] : undefined,
+          limit: 5,
+          threshold: 0.7
+        });
+        
+        // 如果指定了群聊，也搜索相关消息
+        let messageResults = [];
+        if (request.groupName) {
+          messageResults = await this.vectorService.semanticSearch(request.query, {
+            groupName: request.groupName,
+            limit: 10,
+            threshold: 0.7
+          });
+        }
+        
+        // 构建上下文
+        const context = [
+          ...knowledgeResults.map(r => `[知识库] ${r.content}`),
+          ...messageResults.map(r => `[消息] ${r.metadata.sender || '未知用户'}: ${r.content}`)
+        ].join('\n\n');
+        
+        // 使用LangChain服务进行流式回答
+        await this.langChainService.streamAnswer({
+          query: request.query,
+          context,
+          response,
+          sources: [
+            ...knowledgeResults.map(r => ({
+              type: 'knowledge',
+              content: r.content,
+              metadata: r.metadata,
+              similarity: r.similarity
+            })),
+            ...messageResults.map(r => ({
+              type: 'message',
+              content: r.content,
+              metadata: r.metadata,
+              similarity: r.similarity
+            }))
+          ]
+        });
+        
+      } else {
+        // 非流式响应
+        // 搜索相关知识
+        const knowledgeResults = await this.vectorService.searchKnowledge(request.query, {
+          tags: request.groupName ? [request.groupName] : undefined,
+          limit: 5,
+          threshold: 0.7
+        });
+        
+        // 如果指定了群聊，也搜索相关消息
+        let messageResults = [];
+        if (request.groupName) {
+          messageResults = await this.vectorService.semanticSearch(request.query, {
+            groupName: request.groupName,
+            limit: 10,
+            threshold: 0.7
+          });
+        }
+        
+        // 构建上下文
+        const context = [
+          ...knowledgeResults.map(r => `[知识库] ${r.content}`),
+          ...messageResults.map(r => `[消息] ${r.metadata.sender || '未知用户'}: ${r.content}`)
+        ].join('\n\n');
+        
+        // 使用LangChain服务进行回答
+        const answer = await this.langChainService.generateAnswer(request.query, context);
+        
+        response.json({
+          success: true,
+          data: {
+            answer,
+            sources: [
+              ...knowledgeResults.map(r => ({
+                type: 'knowledge',
+                content: r.content,
+                metadata: r.metadata,
+                similarity: r.similarity
+              })),
+              ...messageResults.map(r => ({
+                type: 'message',
+                content: r.content,
+                metadata: r.metadata,
+                similarity: r.similarity
+              }))
+            ]
+          }
+        });
+      }
+    } catch (error) {
+      this.logger.error(`知识库问答失败: ${error.message}`, error.stack);
+      
+      if (!response.headersSent) {
+        response.status(500).json({
+          success: false,
+          error: `知识库问答失败: ${error.message}`
+        });
+      } else {
+        response.write(`data: ${JSON.stringify({ error: `知识库问答失败: ${error.message}` })}\n\n`);
+        response.end();
+      }
+    }
+  }
+
+  /**
+   * 获取可查询日期列表
+   */
+  @Get('available-dates')
+  @Public()
+  @ApiOperation({ 
+    summary: '获取可查询的日期列表',
+    description: '获取有聊天记录和总结的日期列表，按群聊分组' 
+  })
+  @ApiQuery({ 
+    name: 'groupName', 
+    required: false, 
+    description: '群聊名称（可选，不提供则返回所有群聊）',
+    example: '工作群'
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: '获取成功',
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        data: {
+          type: 'object',
+          properties: {
+            queryTimeRange: { type: 'string' },
+            groups: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  groupName: { type: 'string' },
+                  availableDates: { 
+                    type: 'array', 
+                    items: { type: 'string' },
+                    description: '可查询的日期列表'
+                  },
+                  messageCount: { type: 'number' },
+                  hasCachedSummaries: { type: 'boolean' },
+                  cachedSummaryDates: { 
+                    type: 'array', 
+                    items: { type: 'string' },
+                    description: '已缓存总结的日期列表'
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  })
+  async getAvailableDates(@Query('groupName') groupName?: string) {
+    this.logger.log(`获取可查询日期列表请求: ${groupName || '全部群聊'}`);
+    return await this.wechatSummaryService.getAvailableDates(groupName);
   }
 } 

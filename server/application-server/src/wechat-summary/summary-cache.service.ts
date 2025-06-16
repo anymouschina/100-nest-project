@@ -27,6 +27,28 @@ export interface CachedSummaryResult {
   metadata: any;
   createdAt: Date;
   updatedAt: Date;
+  summary_title?: string;
+  style_comment?: string;
+  message_length?: number;
+  topicDetails?: any[];
+  extra_topics?: string[];
+  top_speakers?: string[];
+  articles?: any[];
+  tools?: any[];
+  multi_perspective_evaluation?: Array<{
+    perspective: string;
+    evaluation: string;
+    rating: number;
+  }>;
+  actionable_insights?: Array<{
+    action_item: string;
+    difficulty: string;
+    priority: string;
+    potential_impact: string;
+    responsible_parties: string[];
+    timeline: string;
+  }>;
+  rawResult?: any;
 }
 
 @Injectable()
@@ -118,6 +140,21 @@ export class SummaryCacheService {
 
       if (cachedResult) {
         this.logger.log(`找到缓存结果: ${cachedResult.id}`);
+        
+        // 解析元数据以获取原始结果
+        let rawResult = null;
+        try {
+          // 确保 metadata 是字符串类型
+          const metadataStr = typeof cachedResult.metadata === 'string' 
+            ? cachedResult.metadata 
+            : JSON.stringify(cachedResult.metadata);
+          
+          const metadata = JSON.parse(metadataStr);
+          rawResult = metadata.summaryResult || null;
+        } catch (e) {
+          this.logger.warn(`解析缓存元数据失败: ${e.message}`);
+        }
+        
         return {
           id: cachedResult.id,
           groupName: cachedResult.groupName,
@@ -134,6 +171,17 @@ export class SummaryCacheService {
           metadata: cachedResult.metadata,
           createdAt: cachedResult.createdAt,
           updatedAt: cachedResult.updatedAt,
+          summary_title: rawResult?.summary_title || cachedResult.title,
+          style_comment: rawResult?.style_comment || '',
+          message_length: rawResult?.message_length || cachedResult.messageCount,
+          topicDetails: rawResult?.topics || [],
+          extra_topics: rawResult?.extra_topics || [],
+          top_speakers: rawResult?.top_speakers || cachedResult.participants,
+          articles: rawResult?.articles || [],
+          tools: rawResult?.tools || [],
+          multi_perspective_evaluation: rawResult?.multi_perspective_evaluation || [],
+          actionable_insights: rawResult?.actionable_insights || [],
+          rawResult: rawResult
         };
       }
 
@@ -178,7 +226,7 @@ export class SummaryCacheService {
         this.logger.warn(`生成向量嵌入失败: ${embeddingError.message}`);
       }
 
-      // 保存到数据库
+      // 保存到数据库 - 确保原始结果被完整保存
       const savedSummary = await this.databaseService.chatSummary.create({
         data: {
           groupName: request.groupName,
@@ -194,7 +242,8 @@ export class SummaryCacheService {
           endTime,
           metadata: JSON.stringify({
             request,
-            summaryResult,
+            // 保存完整的原始分析结果，不进行任何修改或处理
+            summaryResult: summaryResult,
             cacheKey: this.generateCacheKey(request),
             cachedAt: new Date().toISOString(),
             embedding: embedding ? embedding.join(',') : null,
@@ -331,11 +380,20 @@ export class SummaryCacheService {
    * 提取分析结果的内容
    */
   private extractContent(summaryResult: any): string {
-    if (typeof summaryResult === 'string') {
-      return summaryResult;
+    try {
+      // 确保保存完整的结构化结果
+      if (typeof summaryResult === 'object') {
+        // 使用 JSON.stringify 保存完整的结构化结果
+        return JSON.stringify(summaryResult, null, 2);
+      } else if (typeof summaryResult === 'string') {
+        return summaryResult;
+      }
+      
+      return JSON.stringify(summaryResult, null, 2);
+    } catch (error) {
+      this.logger.warn(`提取内容失败: ${error.message}`);
+      return String(summaryResult);
     }
-    
-    return JSON.stringify(summaryResult, null, 2);
   }
 
   /**
@@ -501,6 +559,35 @@ export class SummaryCacheService {
     } catch (error) {
       this.logger.error(`清理过期缓存失败: ${error.message}`, error.stack);
       return 0;
+    }
+  }
+
+  /**
+   * 获取指定群聊的缓存摘要列表
+   */
+  async getCachedSummaries(groupName: string): Promise<any[]> {
+    try {
+      return await this.databaseService.chatSummary.findMany({
+        where: {
+          groupName,
+        },
+        select: {
+          id: true,
+          groupName: true,
+          summaryType: true,
+          timeRange: true,
+          startTime: true,
+          endTime: true,
+          title: true,
+          createdAt: true,
+        },
+        orderBy: {
+          startTime: 'desc',
+        },
+      });
+    } catch (error) {
+      this.logger.error(`获取缓存摘要列表失败: ${error.message}`, error.stack);
+      return [];
     }
   }
 } 

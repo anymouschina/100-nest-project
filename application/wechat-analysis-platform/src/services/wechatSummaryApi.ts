@@ -47,6 +47,32 @@ export interface SmartSummaryRequest {
   customPrompt?: string;
 }
 
+export interface LangChainSummaryRequest {
+  groupName: string;
+  specificDate: string;
+  summaryType: 'daily' | 'weekly' | 'monthly';
+  customPrompt?: string;
+}
+
+export interface LangChainSummaryResult {
+  summary?: string;
+  summary_title?: string;
+  style_comment?: string;
+  message_length?: number;
+  topics?: Array<{
+    title: string;
+    participants: string[];
+    time_range: string;
+    process: string;
+    comment: string;
+  }>;
+  extra_topics?: string[];
+  top_speakers?: string[];
+  cached?: boolean;
+  cacheId?: string;
+  cachedAt?: string;
+}
+
 export interface WechatSummaryResponse {
   success: boolean;
   data: {
@@ -96,6 +122,143 @@ export const wechatSummaryApi = {
   async smartSummary(request: SmartSummaryRequest): Promise<WechatSummaryResponse> {
     const response = await api.post('/wechat-summary/smart-summary', request);
     return response.data;
+  },
+
+  // LangChain总结（非流式）
+  async langchainSummary(request: LangChainSummaryRequest): Promise<WechatSummaryResponse> {
+    const response = await api.post('/wechat-summary/langchain-summary', request);
+    return response.data;
+  },
+
+  // LangChain流式总结
+  async langchainSummaryStream(
+    request: LangChainSummaryRequest,
+    callbacks: {
+      onChunk?: (chunk: string) => void;
+      onComplete?: (result: LangChainSummaryResult) => void;
+      onError?: (error: string) => void;
+    }
+  ): Promise<void> {
+    try {
+      const response = await fetch('http://localhost:3001/wechat-summary/langchain-summary-stream', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(request),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error('无法获取响应流');
+      }
+
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let isProcessingJson = false;
+
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          
+          if (done) {
+            break;
+          }
+
+          const chunk = decoder.decode(value, { stream: true });
+          buffer += chunk;
+          
+          // 检测是否包含缓存命中信息
+          if (buffer.includes('缓存命中') && !isProcessingJson) {
+            // 找到JSON开始的位置
+            const jsonStartIndex = buffer.indexOf('{');
+            if (jsonStartIndex !== -1) {
+              // 提取JSON部分前的文本作为状态信息
+              const statusInfo = buffer.substring(0, jsonStartIndex).trim();
+              
+              // 只发送状态信息，不包含JSON
+              if (callbacks.onChunk && statusInfo) {
+                callbacks.onChunk(statusInfo);
+              }
+              
+              // 标记正在处理JSON
+              isProcessingJson = true;
+              
+              // 清除已处理的状态信息
+              buffer = buffer.substring(jsonStartIndex);
+            }
+          } else if (!isProcessingJson && callbacks.onChunk) {
+            // 如果不是处理JSON阶段，直接发送chunk
+            callbacks.onChunk(chunk);
+          }
+        }
+        
+        // 处理最终结果
+        const extractJsonResult = () => {
+          // 尝试提取JSON对象的三种方法
+          const methods = [
+            // 1. 尝试提取第一个完整的JSON对象
+            () => {
+              const jsonMatch = buffer.match(/\{[\s\S]*?\}\s*(\n|$)/);
+              return jsonMatch ? JSON.parse(jsonMatch[0]) : null;
+            },
+            // 2. 查找"=== 缓存结果 ==="或"=== 最终结果 ==="后的JSON
+            () => {
+              const resultMatch = buffer.match(/===\s*(缓存|最终)结果\s*===\s*(\{[\s\S]*\})/);
+              return resultMatch && resultMatch[2] ? JSON.parse(resultMatch[2]) : null;
+            },
+            // 3. 从整个buffer中提取任何JSON对象
+            () => {
+              const anyJsonMatch = buffer.match(/\{[\s\S]*\}/);
+              return anyJsonMatch ? JSON.parse(anyJsonMatch[0]) : null;
+            }
+          ];
+
+          // 依次尝试各种方法
+          for (const method of methods) {
+            try {
+              const result = method();
+              if (result) return result;
+            } catch {
+              console.warn('JSON解析失败，尝试下一种方法');
+            }
+          }
+          
+          return null;
+        };
+        
+        // 提取JSON结果
+        const jsonResult = extractJsonResult();
+        
+        // 处理结果
+        if (jsonResult) {
+          if (callbacks.onComplete) {
+            callbacks.onComplete(jsonResult);
+          }
+        } else if (callbacks.onComplete) {
+          // 如果无法解析JSON，创建一个基本结果
+          const basicResult: LangChainSummaryResult = {
+            summary: buffer,
+            summary_title: '解析失败的群聊分析',
+            message_length: 0,
+            topics: []
+          };
+          callbacks.onComplete(basicResult);
+        }
+      } finally {
+        reader.releaseLock();
+      }
+    } catch (error) {
+      console.error('流式总结失败:', error);
+      if (callbacks.onError) {
+        callbacks.onError(error instanceof Error ? error.message : '未知错误');
+      }
+      throw error;
+    }
   },
 
   // 批量分析
