@@ -944,4 +944,11 @@ ${data.content}
       };
     }
   }
+
+  /**
+   * 获取摘要缓存服务实例
+   */
+  getSummaryCacheService(): SummaryCacheService {
+    return this.summaryCacheService;
+  }
 } 

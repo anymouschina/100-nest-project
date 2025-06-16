@@ -404,7 +404,77 @@ export class WechatSummaryController {
     this.logger.log(`收到LangChain流式总结请求: ${JSON.stringify(request)}`);
     
     try {
-      // 1. 获取聊天数据
+      // 1. 构建缓存请求
+      const cacheRequest = {
+        groupName: request.groupName || '',
+        timeRange: request.specificDate || (request.relativeTime || 'today'),
+        summaryType: request.summaryType || 'daily',
+        specificDate: request.specificDate,
+        relativeTime: request.relativeTime,
+      };
+
+      // 2. 获取缓存服务实例
+      const summaryCacheService = this.wechatSummaryService.getSummaryCacheService();
+      
+      // 3. 检查是否应该使用缓存（非今天的数据）
+      if (summaryCacheService && summaryCacheService.shouldCacheResult(cacheRequest)) {
+        // 尝试从缓存中获取结果
+        const cachedResult = await summaryCacheService.getCachedSummary(cacheRequest);
+        
+        if (cachedResult) {
+          this.logger.log(`找到缓存结果，直接返回: ${cachedResult.id}`);
+          
+          // 设置响应头
+          response.writeHead(200, {
+            'Content-Type': 'text/plain; charset=utf-8',
+            'Transfer-Encoding': 'chunked',
+            'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive',
+            'Access-Control-Allow-Origin': '*',
+          });
+          
+          // 模拟流式返回缓存结果
+          response.write('🔄 从缓存获取分析结果...\n');
+          response.write('✅ 缓存命中，快速返回结果\n\n');
+          
+          // 构建返回格式
+          const formattedResult = {
+            summary_title: cachedResult.title,
+            style_comment: `缓存结果 - ${cachedResult.summaryType}分析`,
+            message_length: cachedResult.messageCount,
+            topics: cachedResult.keyPoints.map((point, index) => ({
+              title: `${index + 1}️⃣ ${point}`,
+              participants: cachedResult.participants.slice(0, 3),
+              time_range: cachedResult.timeRange,
+              process: `缓存的分析结果 - ${point}`,
+              comment: '来自历史分析缓存'
+            })),
+            extra_topics: cachedResult.topics,
+            top_speakers: cachedResult.participants,
+            cached: true,
+            cacheId: cachedResult.id,
+            cachedAt: cachedResult.createdAt,
+          };
+
+          // 分块发送结果
+          const resultText = JSON.stringify(formattedResult, null, 2);
+          const chunks = resultText.match(/.{1,100}/g) || [resultText];
+          
+          for (const chunk of chunks) {
+            response.write(chunk);
+            await new Promise(resolve => setTimeout(resolve, 20)); // 模拟延迟
+          }
+
+          response.write('\n\n=== 缓存结果 ===\n');
+          response.write(JSON.stringify(formattedResult, null, 2));
+          response.end();
+          return;
+        }
+        
+        this.logger.log('缓存未命中，执行实时分析');
+      }
+
+      // 4. 获取聊天数据
       const chatData = await this.wechatSummaryService.getChatData(request);
       
       if (!chatData.success || !chatData.data || chatData.data.length === 0) {
@@ -415,7 +485,7 @@ export class WechatSummaryController {
         return;
       }
 
-      // 2. 设置流式响应头
+      // 5. 设置流式响应头
       response.writeHead(200, {
         'Content-Type': 'text/plain; charset=utf-8',
         'Transfer-Encoding': 'chunked',
@@ -424,7 +494,9 @@ export class WechatSummaryController {
         'Access-Control-Allow-Origin': '*',
       });
 
-      // 3. 使用LangChain进行流式分析
+      // 6. 使用LangChain进行流式分析
+      let fullResponse = '';
+
       const result = await this.langChainService.analyzeChatLogStream({
         messages: chatData.data,
         summaryType: request.summaryType || 'daily',
@@ -433,12 +505,32 @@ export class WechatSummaryController {
         specificDate: request.specificDate,
         customPrompt: request.customPrompt
       }, (chunk: string) => {
+        fullResponse += chunk;
         response.write(chunk);
       });
 
-      // 4. 发送最终结果
+      // 7. 发送最终结果
       response.write('\n\n=== 最终结果 ===\n');
       response.write(JSON.stringify(result, null, 2));
+
+      // 8. 保存到知识库（异步执行，不阻塞响应）
+      if (summaryCacheService && summaryCacheService.shouldCacheResult(cacheRequest)) {
+        response.write('\n\n💾 正在保存分析结果到知识库...');
+        
+        // 异步保存到缓存（不阻塞响应）
+        summaryCacheService.saveSummaryToCache(
+          cacheRequest,
+          result,
+          chatData.data.length,
+        ).then(() => {
+          this.logger.log('分析结果已成功保存到知识库');
+        }).catch(error => {
+          this.logger.error(`保存到知识库失败: ${error.message}`);
+        });
+      } else {
+        this.logger.log('当前结果不需要缓存（今天的数据或其他原因）');
+      }
+
       response.end();
 
     } catch (error) {
