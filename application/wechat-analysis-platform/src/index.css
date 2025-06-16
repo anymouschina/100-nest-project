@@ -13,31 +13,31 @@
 }
 
 :root {
-  /* 色彩体系重构 - 深灰紫+蓝紫+暖黄点缀 */
-  --color-background: #1E1B2C; /* 主背景：带紫调的深灰 */
-  --color-card-bg: #2A273B; /* 卡片背景：比主背景浅一度 */
-  --color-card-header: #252236; /* 卡片头部：微妙区分 */
-  --color-primary: #7257ED; /* 主色：蓝紫，突出标题、按钮、标签 */
-  --color-primary-light: #8A73F0; /* 主色亮版 */
-  --color-primary-dark: #5E44D3; /* 主色暗版 */
-  --color-secondary: #4D4A5F; /* 次要颜色 */
-  --color-accent: #FFD166; /* 辅助色：暖黄，强调"热门""新消息" */
-  --color-text: #E6E3F0; /* 基础文字：浅灰，保证阅读清晰 */
-  --color-text-secondary: rgba(230, 227, 240, 0.8); /* 次要文字 */
-  --color-text-muted: #9A95AA; /* 次要文字：更浅的灰，弱化辅助信息 */
-  --color-border: #3B384D; /* 边框色：弱化分割线，避免刺眼 */
-  --color-divider: #332F45; /* 分割线 */
-  --color-success: #6BC76E;
-  --color-warning: #FFD166;
-  --color-error: #F47373;
-  --color-info: #64B5F6;
+  /* 色彩体系重构 - 简洁柔和的浅色模式 */
+  --color-background: #F9FAFB; /* 主背景：米白色，柔和不刺眼 */
+  --color-card-bg: #FFFFFF;    /* 卡片背景：纯白，增强内容区分 */
+  --color-card-header: #F7F9FA; /* 卡片头部：微妙区分 */
+  --color-primary: #36B37E;    /* 主色：薄荷绿，专业且柔和 */
+  --color-primary-light: #4BC492; /* 主色亮版 */
+  --color-primary-dark: #2E9D6A; /* 主色暗版 */
+  --color-secondary: #718096;  /* 次要颜色 */
+  --color-accent: #FF8C00;     /* 辅助色：珊瑚橙，用于强调和警示 */
+  --color-text: #2D3748;       /* 基础文字：深灰，确保阅读清晰 */
+  --color-text-secondary: rgba(45, 55, 72, 0.8); /* 次要文字 */
+  --color-text-muted: #718096; /* 次要文字：浅灰，弱化辅助信息 */
+  --color-border: #E2E8F0;     /* 边框色：极浅灰，分隔元素但不突兀 */
+  --color-divider: #EDF2F7;    /* 分割线 */
+  --color-success: #36B37E;    /* 成功色：与主色统一 */
+  --color-warning: #FF8C00;    /* 警告色：与辅助色统一 */
+  --color-error: #F56565;      /* 错误色 */
+  --color-info: #4299E1;       /* 信息色 */
   
   /* 图表颜色 - 更协调 */
-  --chart-color-1: #7257ED;
-  --chart-color-2: #FFD166;
-  --chart-color-3: #6BC76E;
-  --chart-color-4: #64B5F6;
-  --chart-color-5: #F47373;
+  --chart-color-1: #36B37E;
+  --chart-color-2: #FF8C00;
+  --chart-color-3: #4299E1;
+  --chart-color-4: #9F7AEA;
+  --chart-color-5: #F56565;
   
   /* 间距与阴影 */
   --spacing-xs: 0.25rem;
@@ -45,8 +45,8 @@
   --spacing-md: 1rem;
   --spacing-lg: 1.5rem;
   --spacing-xl: 2rem;
-  --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  --card-shadow-hover: 0 6px 16px rgba(0, 0, 0, 0.3);
+  --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  --card-shadow-hover: 0 6px 16px rgba(0, 0, 0, 0.1);
   
   /* 圆角 */
   --radius-sm: 6px;
@@ -64,7 +64,7 @@ body {
   background-color: var(--color-background);
   color: var(--color-text);
   line-height: 1.6;
-  font-weight: 300;
+  font-weight: 400;
   letter-spacing: 0.2px;
 }
 
@@ -98,24 +98,16 @@ code, pre, .mono {
   background-color: var(--color-primary);
 }
 
-/* 暗黑模式适配 */
-@media (prefers-color-scheme: dark) {
-  body {
-    background-color: var(--color-background);
-    color: var(--color-text);
-  }
-}
-
 /* 动画效果 */
 @keyframes subtle-glow {
   0% {
-    box-shadow: 0 0 5px rgba(114, 87, 237, 0.3);
+    box-shadow: 0 0 5px rgba(54, 179, 126, 0.3);
   }
   50% {
-    box-shadow: 0 0 15px rgba(114, 87, 237, 0.5);
+    box-shadow: 0 0 15px rgba(54, 179, 126, 0.5);
   }
   100% {
-    box-shadow: 0 0 5px rgba(114, 87, 237, 0.3);
+    box-shadow: 0 0 5px rgba(54, 179, 126, 0.3);
   }
 }
 
@@ -169,13 +161,13 @@ code, pre, .mono {
 
 a {
   font-weight: 500;
-  color: var(--color-primary-light);
+  color: var(--color-primary);
   text-decoration: none;
   transition: color 0.3s;
 }
 
 a:hover {
-  color: var(--color-primary);
+  color: var(--color-primary-dark);
   text-decoration: underline;
 }
 
@@ -227,7 +219,7 @@ a:hover {
   left: 0;
   right: 0;
   bottom: 0;
-  background: radial-gradient(circle at center, rgba(114, 87, 237, 0.03) 0%, transparent 70%);
+  background: radial-gradient(circle at center, rgba(54, 179, 126, 0.03) 0%, transparent 70%);
   pointer-events: none;
   z-index: 1;
 }
@@ -276,15 +268,15 @@ a:hover {
 /* 网格纹理背景 - 更柔和 */
 .grid-texture {
   background-image: 
-    linear-gradient(rgba(114, 87, 237, 0.02) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(114, 87, 237, 0.02) 1px, transparent 1px);
+    linear-gradient(rgba(54, 179, 126, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(54, 179, 126, 0.02) 1px, transparent 1px);
   background-size: 20px 20px;
 }
 
 /* 渐变背景条 */
-.bg-gradient-purple {
+.bg-gradient-primary {
   background: linear-gradient(90deg, var(--color-primary), var(--color-primary-dark));
-  color: var(--color-text);
+  color: white;
   padding: 0.5rem 1rem;
   border-radius: var(--radius-sm);
 }
@@ -296,7 +288,7 @@ a:hover {
   margin-bottom: var(--spacing-md);
   font-weight: 600;
   letter-spacing: 0.3px;
-  color: var(--color-primary);
+  color: var(--color-text);
 }
 
 .dashboard-title::before {
@@ -316,7 +308,7 @@ a:hover {
   background-color: var(--color-card-bg);
   border-radius: var(--radius-md);
   box-shadow: var(--card-shadow);
-  border: none;
+  border: 1px solid var(--color-border);
   overflow: hidden;
   margin-bottom: var(--spacing-md);
 }
@@ -339,12 +331,12 @@ a:hover {
   display: inline-flex;
   align-items: center;
   padding: 0.25rem 0.75rem;
-  border-radius: var(--radius-sm);
+  border-radius: 9999px;
   font-size: 0.75rem;
   font-weight: 500;
-  background-color: rgba(114, 87, 237, 0.12);
-  color: var(--color-primary-light);
-  border: 1px solid rgba(114, 87, 237, 0.25);
+  background-color: rgba(54, 179, 126, 0.1);
+  color: var(--color-primary);
+  border: 1px solid rgba(54, 179, 126, 0.2);
   line-height: 1.5;
   margin-right: 0.25rem;
   margin-bottom: 0.25rem;
@@ -356,32 +348,32 @@ a:hover {
 }
 
 .tag-success {
-  background-color: rgba(107, 199, 110, 0.12);
+  background-color: rgba(54, 179, 126, 0.1);
   color: var(--color-success);
-  border-color: rgba(107, 199, 110, 0.25);
+  border-color: rgba(54, 179, 126, 0.2);
 }
 
 .tag-warning {
-  background-color: rgba(255, 209, 102, 0.12);
+  background-color: rgba(255, 140, 0, 0.1);
   color: var(--color-warning);
-  border-color: rgba(255, 209, 102, 0.25);
+  border-color: rgba(255, 140, 0, 0.2);
 }
 
 .tag-error {
-  background-color: rgba(244, 115, 115, 0.12);
+  background-color: rgba(245, 101, 101, 0.1);
   color: var(--color-error);
-  border-color: rgba(244, 115, 115, 0.25);
+  border-color: rgba(245, 101, 101, 0.2);
 }
 
 .tag-accent {
-  background-color: rgba(255, 209, 102, 0.12);
+  background-color: rgba(255, 140, 0, 0.1);
   color: var(--color-accent);
-  border-color: rgba(255, 209, 102, 0.25);
+  border-color: rgba(255, 140, 0, 0.2);
 }
 
 /* 按钮样式 - 更协调 */
 .btn-primary {
-  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
+  background: var(--color-primary);
   border: none;
   color: white;
   padding: 0.5rem 1.25rem;
@@ -395,9 +387,9 @@ a:hover {
 }
 
 .btn-primary:hover {
-  background: linear-gradient(135deg, var(--color-primary-light), var(--color-primary));
+  background: var(--color-primary-dark);
   transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 8px rgba(54, 179, 126, 0.2);
 }
 
 .btn-outline {
@@ -416,14 +408,14 @@ a:hover {
 
 .btn-outline:hover {
   border-color: var(--color-primary);
-  color: var(--color-primary-light);
-  background-color: rgba(114, 87, 237, 0.05);
+  color: var(--color-primary);
+  background-color: rgba(54, 179, 126, 0.05);
 }
 
 .btn-accent {
-  background: linear-gradient(135deg, var(--color-accent), #F5BA45);
+  background: var(--color-accent);
   border: none;
-  color: #1E1B2C;
+  color: white;
   padding: 0.5rem 1.25rem;
   border-radius: var(--radius-sm);
   font-weight: 600;
@@ -431,8 +423,9 @@ a:hover {
 }
 
 .btn-accent:hover {
+  background: #E67E00;
   transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 8px rgba(255, 140, 0, 0.2);
 }
 
 /* 文本样式 */
@@ -537,7 +530,7 @@ a:hover {
 /* 进度条 */
 .progress-bar {
   height: 4px;
-  background-color: var(--color-border);
+  background-color: rgba(54, 179, 126, 0.1);
   border-radius: 2px;
   overflow: hidden;
   margin: 0.5rem 0;
@@ -545,7 +538,7 @@ a:hover {
 
 .progress-bar-fill {
   height: 100%;
-  background: linear-gradient(90deg, var(--color-primary), var(--color-primary-light));
+  background: var(--color-primary);
   border-radius: 2px;
   transition: width 0.3s ease;
 }
@@ -564,22 +557,22 @@ a:hover {
 }
 
 .ant-select-item-option-selected:not(.ant-select-item-option-disabled) {
-  background-color: rgba(114, 87, 237, 0.12) !important;
-  color: var(--color-primary-light) !important;
+  background-color: rgba(54, 179, 126, 0.1) !important;
+  color: var(--color-primary) !important;
 }
 
 .ant-select-item-option-active:not(.ant-select-item-option-disabled) {
-  background-color: rgba(114, 87, 237, 0.05) !important;
+  background-color: rgba(54, 179, 126, 0.05) !important;
 }
 
 .ant-btn-primary {
-  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark)) !important;
+  background: var(--color-primary) !important;
   border: none !important;
   border-radius: var(--radius-sm) !important;
 }
 
 .ant-btn-primary:hover {
-  background: linear-gradient(135deg, var(--color-primary-light), var(--color-primary)) !important;
+  background: var(--color-primary-dark) !important;
 }
 
 .ant-spin-dot-item {
@@ -587,7 +580,7 @@ a:hover {
 }
 
 .ant-tag {
-  border-radius: var(--radius-sm) !important;
+  border-radius: 9999px !important;
 }
 
 .ant-select {
@@ -597,12 +590,12 @@ a:hover {
 .ant-select-selector {
   border-radius: var(--radius-sm) !important;
   border-color: var(--color-border) !important;
-  background-color: rgba(42, 39, 59, 0.5) !important;
+  background-color: white !important;
 }
 
 .ant-select-focused .ant-select-selector {
   border-color: var(--color-primary) !important;
-  box-shadow: 0 0 0 2px rgba(114, 87, 237, 0.2) !important;
+  box-shadow: 0 0 0 2px rgba(54, 179, 126, 0.2) !important;
 }
 
 .ant-select-arrow {
@@ -614,7 +607,7 @@ a:hover {
 }
 
 .ant-input {
-  background-color: rgba(42, 39, 59, 0.5) !important;
+  background-color: white !important;
   border-color: var(--color-border) !important;
   border-radius: var(--radius-sm) !important;
   color: var(--color-text) !important;
@@ -622,7 +615,7 @@ a:hover {
 
 .ant-input:focus, .ant-input-focused {
   border-color: var(--color-primary) !important;
-  box-shadow: 0 0 0 2px rgba(114, 87, 237, 0.2) !important;
+  box-shadow: 0 0 0 2px rgba(54, 179, 126, 0.2) !important;
 }
 
 /* 响应式布局辅助类 */
@@ -644,6 +637,7 @@ a:hover {
   display: flex;
   flex-direction: column;
   height: 100%;
+  border: 1px solid var(--color-border);
 }
 
 .stat-card-header {
@@ -684,12 +678,12 @@ a:hover {
 }
 
 .trend-up {
-  background-color: rgba(107, 199, 110, 0.1);
+  background-color: rgba(54, 179, 126, 0.1);
   color: var(--color-success);
 }
 
 .trend-down {
-  background-color: rgba(244, 115, 115, 0.1);
+  background-color: rgba(245, 101, 101, 0.1);
   color: var(--color-error);
 }
 
@@ -761,24 +755,51 @@ a:hover {
 
 /* 页面标题增强 */
 .page-title {
-  color: var(--color-primary);
+  color: var(--color-text);
   border-left: 4px solid var(--color-primary);
-  padding-left: 8px;
+  padding-left: 12px;
   font-weight: 600;
 }
 
 /* 热门标签 */
 .badge-hot {
-  background-color: var(--color-accent);
-  color: #1E1B2C; /* 深灰文字更清晰 */
-  padding: 2px 6px;
+  background-color: rgba(255, 140, 0, 0.1);
+  color: var(--color-accent);
+  padding: 2px 8px;
   border-radius: 4px;
   font-size: 0.8rem;
+  display: inline-flex;
+  align-items: center;
 }
 
 /* 边框样式 */
 .border-muted {
   border-color: var(--color-border) !important;
+}
+
+/* 图标容器 */
+.icon-container {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(54, 179, 126, 0.1);
+  color: var(--color-primary);
+}
+
+/* 圆形头像 */
+.avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(54, 179, 126, 0.1);
+  color: var(--color-primary);
+  font-weight: 500;
 }
 
 #root {

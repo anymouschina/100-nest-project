@@ -71,6 +71,16 @@ export interface LangChainSummaryResult {
   cached?: boolean;
   cacheId?: string;
   cachedAt?: string;
+  articles?: Array<{
+    title: string;
+    link?: string;
+    description?: string;
+  }>;
+  tools?: Array<{
+    name: string;
+    description?: string;
+    comments?: string[];
+  }>;
 }
 
 export interface WechatSummaryResponse {

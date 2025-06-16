@@ -392,6 +392,7 @@ export class WechatSummaryService {
           summary_title: cachedResult.title,
           style_comment: `缓存结果 - ${cachedResult.summaryType}分析`,
           message_length: cachedResult.messageCount,
+          top_speakers: cachedResult.participants.length,
           topics: cachedResult.keyPoints.map((point, index) => ({
             title: `${index + 1}️⃣ ${point}`,
             participants: cachedResult.participants.slice(0, 3),
@@ -400,7 +401,7 @@ export class WechatSummaryService {
             comment: '来自历史分析缓存'
           })),
           extra_topics: cachedResult.topics,
-          top_speakers: cachedResult.participants,
+          speakers: cachedResult.participants,
           cached: true,
           cacheId: cachedResult.id,
           cachedAt: cachedResult.createdAt,

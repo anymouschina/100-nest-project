@@ -20,6 +20,7 @@ export interface DailyReportData {
     sentimentScore: number;
   };
   generatedAt: string;
+  tools?: RecommendedTool[]; // 添加工具推荐
 }
 
 export interface KeyTopic {
@@ -41,6 +42,15 @@ export interface SharedArticle {
   sharedBy: string;
   sharedAt: string;
   readCount?: number;
+}
+
+// 添加工具推荐类型
+export interface RecommendedTool {
+  id: string;
+  name: string;
+  description: string;
+  recommendedBy: string;
+  comments: string[];
 }
 
 export interface DateOption {
