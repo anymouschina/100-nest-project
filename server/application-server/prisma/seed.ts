@@ -1,38 +1,29 @@
-import { run as productSeed } from './seeds/product.seed';
-import { run as userSeed } from './seeds/user.seed';
-import { run as couponSeed } from './seeds/coupon.seed';
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
 async function main() {
-  // 检查是否已经有用户
-  const userCount = await prisma.user.count();
-  
-  if (userCount === 0) {
-    // 创建测试用户
-    await prisma.user.create({
-      data: {
-        userId: 1,
-        name: 'Test User',
-        email: 'test@example.com',
-        password: 'password123',
-        address: '123 Test Street',
-      },
-    });
-    console.log('Created test user');
-  } else {
-    console.log(`Found ${userCount} existing users, skipping seed`);
-  }
-}
+  console.log('开始执行数据库初始化...');
 
-productSeed();
-userSeed();
-couponSeed();
+  // 启用 pgvector 扩展
+  try {
+    await prisma.$executeRawUnsafe('CREATE EXTENSION IF NOT EXISTS vector;');
+    console.log('pgvector 扩展已成功启用');
+
+    // 验证扩展是否已启用
+    const result = await prisma.$queryRaw`SELECT * FROM pg_extension WHERE extname = 'vector';`;
+    console.log('pgvector 扩展状态:', result);
+  } catch (error) {
+    console.error('启用 pgvector 扩展失败:', error);
+    throw error;
+  }
+
+  console.log('数据库初始化完成');
+}
 
 main()
   .catch((e) => {
-    console.error(e);
+    console.error('Seed 失败:', e);
     process.exit(1);
   })
   .finally(async () => {

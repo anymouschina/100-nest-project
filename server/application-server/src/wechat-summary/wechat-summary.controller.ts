@@ -3,6 +3,8 @@ import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiBody } from '@nestjs/s
 import { Response } from 'express';
 import { WechatSummaryService } from './wechat-summary.service';
 import { LangChainService } from './langchain.service';
+import { EnhancedLangChainService } from './enhanced-langchain.service';
+import { VectorService } from './vector.service';
 import { 
   SummaryRequestDto, 
   SmartSummaryRequestDto, 
@@ -20,6 +22,8 @@ export class WechatSummaryController {
   constructor(
     private readonly wechatSummaryService: WechatSummaryService,
     private readonly langChainService: LangChainService,
+    private readonly enhancedLangChainService: EnhancedLangChainService,
+    private readonly vectorService: VectorService,
   ) {}
 
   @Post('summarize')
@@ -627,5 +631,534 @@ export class WechatSummaryController {
       response.write(`\n❌ 分析失败: ${error.message}\n`);
       response.end();
     }
+  }
+
+  /**
+   * 增强版LangChain总结 - 支持无限上下文和向量知识库
+   */
+  @Post('enhanced-summary')
+  @Public()
+  @ApiOperation({ 
+    summary: '增强版智能总结',
+    description: '使用pgvector和无限上下文的聊天记录分析' 
+  })
+  @ApiBody({ 
+    schema: {
+      type: 'object',
+      properties: {
+        groupName: { type: 'string', description: '群聊名称' },
+        relativeTime: { 
+          type: 'string', 
+          enum: ['today', 'yesterday', 'thisWeek', 'lastWeek', 'thisMonth', 'lastMonth'],
+          description: '相对时间范围' 
+        },
+        specificDate: { type: 'string', description: '指定日期 (YYYY-MM-DD)' },
+        summaryType: { 
+          type: 'string', 
+          enum: ['daily', 'sentiment_analysis', 'topic', 'participant', 'timeline', 'activity_analysis', 'keyword_extraction', 'style_analysis'],
+          default: 'daily',
+          description: '分析类型' 
+        },
+        customPrompt: { type: 'string', description: '自定义分析提示词' },
+        useInfiniteContext: { type: 'boolean', default: true, description: '启用无限上下文' },
+        contextWindowType: { 
+          type: 'string', 
+          enum: ['sliding', 'semantic', 'hybrid'],
+          default: 'hybrid',
+          description: '上下文窗口类型' 
+        },
+        maxContextTokens: { type: 'number', default: 16000, description: '最大上下文token数' },
+        useKnowledgeBase: { type: 'boolean', default: true, description: '启用向量知识库' },
+        knowledgeNamespaces: { 
+          type: 'array', 
+          items: { type: 'string' },
+          default: ['summaries', 'chat_history', 'topics'],
+          description: '知识库命名空间' 
+        }
+      },
+      required: ['groupName']
+    }
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: '增强版总结成功',
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        data: {
+          type: 'object',
+          properties: {
+            summary: { type: 'string' },
+            keyPoints: { type: 'array', items: { type: 'string' } },
+            participants: { type: 'array', items: { type: 'string' } },
+            topics: { type: 'array', items: { type: 'string' } },
+            relatedKnowledge: { type: 'array' },
+            contextUsed: {
+              type: 'object',
+              properties: {
+                tokenCount: { type: 'number' },
+                messageCount: { type: 'number' },
+                relevanceScore: { type: 'number' },
+                windowType: { type: 'string' }
+              }
+            },
+            metadata: {
+              type: 'object',
+              properties: {
+                processingTime: { type: 'number' },
+                vectorSearchResults: { type: 'number' },
+                knowledgeBaseHits: { type: 'number' },
+                originalMessageCount: { type: 'number' },
+                optimizedMessageCount: { type: 'number' }
+              }
+            }
+          }
+        }
+      }
+    }
+  })
+  async enhancedSummary(@Body() request: any): Promise<{
+    success: boolean;
+    data?: any;
+    error?: string;
+  }> {
+    this.logger.log(`收到增强版总结请求: ${JSON.stringify(request)}`);
+    
+    try {
+      // 1. 获取聊天数据
+      const chatData = await this.wechatSummaryService.getChatData(request);
+      
+      if (!chatData.success || !chatData.data || chatData.data.length === 0) {
+        return {
+          success: false,
+          error: '未找到聊天数据或数据为空'
+        };
+      }
+
+      // 2. 执行增强版分析
+      const result = await this.enhancedLangChainService.enhancedAnalyzeChatLog({
+        messages: chatData.data,
+        summaryType: request.summaryType || 'daily',
+        groupName: request.groupName,
+        timeRange: request.relativeTime,
+        specificDate: request.specificDate,
+        customPrompt: request.customPrompt,
+        useInfiniteContext: request.useInfiniteContext !== false,
+        contextWindowType: request.contextWindowType || 'hybrid',
+        maxContextTokens: request.maxContextTokens || 16000,
+        useKnowledgeBase: request.useKnowledgeBase !== false,
+        knowledgeNamespaces: request.knowledgeNamespaces || ['summaries', 'chat_history', 'topics']
+      });
+
+      return {
+        success: true,
+        data: result
+      };
+    } catch (error) {
+      this.logger.error(`增强版总结失败: ${error.message}`, error.stack);
+      return {
+        success: false,
+        error: `增强版总结失败: ${error.message}`
+      };
+    }
+  }
+
+  /**
+   * 增强版LangChain流式总结
+   */
+  @Post('enhanced-summary-stream')
+  @Public()
+  @ApiOperation({ 
+    summary: '增强版流式智能总结',
+    description: '使用pgvector和无限上下文的流式分析，实时显示处理进度和结果' 
+  })
+  @ApiBody({ 
+    schema: {
+      type: 'object',
+      properties: {
+        groupName: { type: 'string', description: '群聊名称' },
+        relativeTime: { 
+          type: 'string', 
+          enum: ['today', 'yesterday', 'thisWeek', 'lastWeek', 'thisMonth', 'lastMonth'],
+          description: '相对时间范围' 
+        },
+        specificDate: { type: 'string', description: '指定日期 (YYYY-MM-DD)' },
+        summaryType: { 
+          type: 'string', 
+          enum: ['daily', 'sentiment_analysis', 'topic', 'participant', 'timeline', 'activity_analysis', 'keyword_extraction', 'style_analysis'],
+          default: 'daily',
+          description: '分析类型' 
+        },
+        customPrompt: { type: 'string', description: '自定义分析提示词' },
+        useInfiniteContext: { type: 'boolean', default: true, description: '启用无限上下文' },
+        contextWindowType: { 
+          type: 'string', 
+          enum: ['sliding', 'semantic', 'hybrid'],
+          default: 'hybrid',
+          description: '上下文窗口类型' 
+        },
+        maxContextTokens: { type: 'number', default: 16000, description: '最大上下文token数' },
+        useKnowledgeBase: { type: 'boolean', default: true, description: '启用向量知识库' },
+        knowledgeNamespaces: { 
+          type: 'array', 
+          items: { type: 'string' },
+          default: ['summaries', 'chat_history', 'topics'],
+          description: '知识库命名空间' 
+        }
+      },
+      required: ['groupName']
+    }
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: '增强版流式总结成功',
+    headers: {
+      'Content-Type': {
+        description: 'text/plain; charset=utf-8',
+        schema: { type: 'string' }
+      },
+      'Transfer-Encoding': {
+        description: 'chunked',
+        schema: { type: 'string' }
+      }
+    }
+  })
+  async enhancedSummaryStream(
+    @Body() request: any,
+    @Res() response: Response
+  ) {
+    this.logger.log(`收到增强版流式总结请求: ${JSON.stringify(request)}`);
+    
+    try {
+      // 1. 获取聊天数据
+      const chatData = await this.wechatSummaryService.getChatData(request);
+      
+      if (!chatData.success || !chatData.data || chatData.data.length === 0) {
+        response.status(400).json({
+          success: false,
+          error: '未找到聊天数据或数据为空'
+        });
+        return;
+      }
+
+      // 2. 设置流式响应头
+      response.writeHead(200, {
+        'Content-Type': 'text/plain; charset=utf-8',
+        'Transfer-Encoding': 'chunked',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+        'Access-Control-Allow-Origin': '*',
+      });
+
+      // 3. 执行增强版流式分析
+      const result = await this.enhancedLangChainService.enhancedAnalyzeChatLogStream({
+        messages: chatData.data,
+        summaryType: request.summaryType || 'daily',
+        groupName: request.groupName,
+        timeRange: request.relativeTime,
+        specificDate: request.specificDate,
+        customPrompt: request.customPrompt,
+        useInfiniteContext: request.useInfiniteContext !== false,
+        contextWindowType: request.contextWindowType || 'hybrid',
+        maxContextTokens: request.maxContextTokens || 16000,
+        useKnowledgeBase: request.useKnowledgeBase !== false,
+        knowledgeNamespaces: request.knowledgeNamespaces || ['summaries', 'chat_history', 'topics']
+      }, (chunk: string) => {
+        response.write(chunk);
+      });
+
+      // 4. 发送最终结果
+      response.write('\n\n=== 增强版分析结果 ===\n');
+      response.write(JSON.stringify(result, null, 2));
+      response.end();
+
+    } catch (error) {
+      this.logger.error(`增强版流式总结失败: ${error.message}`, error.stack);
+      if (!response.headersSent) {
+        response.status(500).json({
+          success: false,
+          error: `增强版流式总结失败: ${error.message}`
+        });
+      } else {
+        response.write(`\n\n❌ 错误: ${error.message}`);
+        response.end();
+      }
+    }
+  }
+
+  /**
+   * 向量搜索API
+   */
+  @Post('vector-search')
+  @Public()
+  @ApiOperation({ 
+    summary: '向量语义搜索',
+    description: '在聊天记录和知识库中进行语义搜索' 
+  })
+  @ApiBody({ 
+    schema: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: '搜索查询' },
+        groupName: { type: 'string', description: '群聊名称（可选）' },
+        namespace: { type: 'string', description: '知识库命名空间（可选）' },
+        limit: { type: 'number', default: 10, description: '返回结果数量' },
+        threshold: { type: 'number', default: 0.7, description: '相似度阈值' },
+        timeRange: {
+          type: 'object',
+          properties: {
+            start: { type: 'string', format: 'date-time' },
+            end: { type: 'string', format: 'date-time' }
+          },
+          description: '时间范围（可选）'
+        }
+      },
+      required: ['query']
+    }
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: '搜索成功',
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        data: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              id: { type: 'string' },
+              content: { type: 'string' },
+              similarity: { type: 'number' },
+              metadata: { type: 'object' },
+              source: { type: 'string' }
+            }
+          }
+        }
+      }
+    }
+  })
+  async vectorSearch(@Body() request: any) {
+    this.logger.log(`收到向量搜索请求: ${JSON.stringify(request)}`);
+    
+    try {
+      const timeRange = request.timeRange ? {
+        start: new Date(request.timeRange.start),
+        end: new Date(request.timeRange.end)
+      } : undefined;
+
+      const results = await this.vectorService.semanticSearch(request.query, {
+        groupName: request.groupName,
+        namespace: request.namespace,
+        limit: request.limit || 10,
+        threshold: request.threshold || 0.7,
+        timeRange
+      });
+
+      return {
+        success: true,
+        data: results
+      };
+    } catch (error) {
+      this.logger.error(`向量搜索失败: ${error.message}`, error.stack);
+      return {
+        success: false,
+        error: `向量搜索失败: ${error.message}`
+      };
+    }
+  }
+
+  /**
+   * 知识库搜索API
+   */
+  @Post('knowledge-search')
+  @Public()
+  @ApiOperation({ 
+    summary: '知识库搜索',
+    description: '在向量知识库中搜索相关信息' 
+  })
+  @ApiBody({ 
+    schema: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: '搜索查询' },
+        namespace: { type: 'string', description: '知识库命名空间（可选）' },
+        tags: { type: 'array', items: { type: 'string' }, description: '标签过滤（可选）' },
+        limit: { type: 'number', default: 10, description: '返回结果数量' },
+        threshold: { type: 'number', default: 0.7, description: '相似度阈值' }
+      },
+      required: ['query']
+    }
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: '搜索成功',
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        data: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              id: { type: 'string' },
+              content: { type: 'string' },
+              similarity: { type: 'number' },
+              metadata: { type: 'object' }
+            }
+          }
+        }
+      }
+    }
+  })
+  async knowledgeSearch(@Body() request: any) {
+    this.logger.log(`收到知识库搜索请求: ${JSON.stringify(request)}`);
+    
+    try {
+      const results = await this.vectorService.searchKnowledge(request.query, {
+        namespace: request.namespace,
+        tags: request.tags,
+        limit: request.limit || 10,
+        threshold: request.threshold || 0.7
+      });
+
+      return {
+        success: true,
+        data: results
+      };
+    } catch (error) {
+      this.logger.error(`知识库搜索失败: ${error.message}`, error.stack);
+      return {
+        success: false,
+        error: `知识库搜索失败: ${error.message}`
+      };
+    }
+  }
+
+  /**
+   * 构建上下文窗口API
+   */
+  @Post('build-context')
+  @Public()
+  @ApiOperation({ 
+    summary: '构建无限上下文窗口',
+    description: '为指定查询构建智能上下文窗口' 
+  })
+  @ApiBody({ 
+    schema: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: '查询内容' },
+        groupName: { type: 'string', description: '群聊名称' },
+        maxTokens: { type: 'number', default: 8000, description: '最大token数' },
+        windowType: { 
+          type: 'string', 
+          enum: ['sliding', 'semantic', 'hybrid'],
+          default: 'hybrid',
+          description: '窗口类型' 
+        },
+        timeRange: {
+          type: 'object',
+          properties: {
+            start: { type: 'string', format: 'date-time' },
+            end: { type: 'string', format: 'date-time' }
+          },
+          description: '时间范围（可选）'
+        }
+      },
+      required: ['query', 'groupName']
+    }
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: '上下文构建成功',
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        data: {
+          type: 'object',
+          properties: {
+            content: { type: 'string' },
+            messages: { type: 'array' },
+            relevanceScore: { type: 'number' },
+            tokenCount: { type: 'number' }
+          }
+        }
+      }
+    }
+  })
+  async buildContext(@Body() request: any) {
+    this.logger.log(`收到构建上下文请求: ${JSON.stringify(request)}`);
+    
+    try {
+      const timeRange = request.timeRange ? {
+        start: new Date(request.timeRange.start),
+        end: new Date(request.timeRange.end)
+      } : undefined;
+
+      const contextWindow = await this.vectorService.buildInfiniteContext(
+        request.query,
+        request.groupName,
+        {
+          maxTokens: request.maxTokens || 8000,
+          windowType: request.windowType || 'hybrid',
+          timeRange
+        }
+      );
+
+      return {
+        success: true,
+        data: contextWindow
+      };
+    } catch (error) {
+      this.logger.error(`构建上下文失败: ${error.message}`, error.stack);
+      return {
+        success: false,
+        error: `构建上下文失败: ${error.message}`
+      };
+    }
+  }
+
+  /**
+   * 获取聊天数据（带昵称信息）
+   */
+  @Post('chat-data')
+  async getChatData(@Body() request: {
+    groupName?: string;
+    relativeTime?: 'today' | 'yesterday' | 'thisWeek' | 'lastWeek' | 'thisMonth' | 'lastMonth' | 'thisQuarter' | 'lastQuarter';
+    specificDate?: string;
+  }) {
+    return await this.wechatSummaryService.getChatData(request);
+  }
+
+  /**
+   * 获取缓存统计信息
+   */
+  @Get('cache-stats')
+  @ApiOperation({ summary: '获取分析结果缓存统计' })
+  @ApiResponse({ status: 200, description: '缓存统计信息' })
+  async getCacheStats() {
+    return await this.wechatSummaryService.getCacheStats();
+  }
+
+  /**
+   * 清理过期缓存
+   */
+  @Post('cache-cleanup')
+  @ApiOperation({ summary: '清理过期缓存' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        daysToKeep: { type: 'number', description: '保留天数', default: 90 }
+      }
+    }
+  })
+  async cleanupCache(@Body() body: { daysToKeep?: number }) {
+    return await this.wechatSummaryService.cleanupCache(body.daysToKeep);
   }
 } 

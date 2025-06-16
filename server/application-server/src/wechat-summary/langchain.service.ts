@@ -371,8 +371,6 @@ export class LangChainService {
     return Math.min(score, 1); // 限制在0-1之间
   }
 
-
-
   /**
    * 构建优化的提示词
    */
@@ -398,6 +396,7 @@ export class LangChainService {
 4. 分析讨论的商业价值、学习价值或实用价值
 5. 识别关键决定、待办事项和重要信息
 6. 提取文章链接、工具推荐、热门发言者等额外信息
+7. 识别用户的真实昵称，而不是id或杜撰
 
 请严格按以下JSON格式回复，不要使用深度思考模式：
 {{

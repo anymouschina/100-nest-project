@@ -3,6 +3,8 @@ import { Response } from 'express';
 import { McpService, McpChatLogRequest } from './mcp.service';
 import { OllamaService, OllamaSummaryRequest } from './ollama.service';
 import { BatchAnalysisRequestDto, ComparisonAnalysisRequestDto } from './dto/summary-request.dto';
+import { NicknameService } from './nickname.service';
+import { SummaryCacheService } from './summary-cache.service';
 
 export interface WechatSummaryRequest {
   groupName?: string;
@@ -33,6 +35,8 @@ export class WechatSummaryService {
   constructor(
     private readonly mcpService: McpService,
     private readonly ollamaService: OllamaService,
+    private readonly nicknameService: NicknameService,
+    private readonly summaryCacheService: SummaryCacheService,
   ) {}
 
   /**
@@ -230,6 +234,8 @@ export class WechatSummaryService {
     success: boolean;
     data?: Array<{
       sender: string;
+      senderId: string;
+      nickname: string;
       time: string;
       content: string;
     }>;
@@ -281,16 +287,20 @@ export class WechatSummaryService {
         };
       }
 
-      // 4. 转换数据格式
-      const chatData = chatLogResponse.messages.map(msg => ({
+      // 4. 转换数据格式并增强昵称信息
+      const basicChatData = chatLogResponse.messages.map(msg => ({
         sender: msg.sender,
+        senderId: msg.senderId,
         time: msg.time,
         content: msg.content,
       }));
 
+      // 5. 使用昵称服务增强数据
+      const enhancedChatData = await this.nicknameService.enhanceMessagesWithNicknames(basicChatData);
+
       return {
         success: true,
-        data: chatData,
+        data: enhancedChatData,
       };
     } catch (error) {
       this.logger.error(`获取聊天数据失败: ${error.message}`, error.stack);
@@ -302,7 +312,7 @@ export class WechatSummaryService {
   }
 
   /**
-   * 流式智能总结
+   * 流式智能总结（带缓存功能）
    */
   async smartSummaryStream(request: {
     groupName?: string;
@@ -353,7 +363,68 @@ export class WechatSummaryService {
         return;
       }
 
-      // 3. 通过Chatlog查询聊天记录
+      // 3. 构建缓存请求
+      const cacheRequest = {
+        groupName: request.groupName || '',
+        timeRange: timeRange,
+        summaryType: request.summaryType || 'daily',
+        specificDate: request.specificDate,
+        relativeTime: request.relativeTime,
+      };
+
+      // 4. 检查缓存
+      const cachedResult = await this.summaryCacheService.getCachedSummary(cacheRequest);
+      if (cachedResult) {
+        this.logger.log(`使用缓存结果: ${cachedResult.id}`);
+        
+        // 设置流式响应头
+        response.writeHead(200, {
+          'Content-Type': 'text/plain; charset=utf-8',
+          'Transfer-Encoding': 'chunked',
+        });
+
+        // 模拟流式返回缓存结果
+        response.write('🔄 从缓存获取分析结果...\n');
+        response.write('✅ 缓存命中，快速返回结果\n\n');
+        
+        // 构建返回格式
+        const formattedResult = {
+          summary_title: cachedResult.title,
+          style_comment: `缓存结果 - ${cachedResult.summaryType}分析`,
+          message_length: cachedResult.messageCount,
+          topics: cachedResult.keyPoints.map((point, index) => ({
+            title: `${index + 1}️⃣ ${point}`,
+            participants: cachedResult.participants.slice(0, 3),
+            time_range: cachedResult.timeRange,
+            process: `缓存的分析结果 - ${point}`,
+            comment: '来自历史分析缓存'
+          })),
+          extra_topics: cachedResult.topics,
+          top_speakers: cachedResult.participants,
+          cached: true,
+          cacheId: cachedResult.id,
+          cachedAt: cachedResult.createdAt,
+        };
+
+        // 分块发送结果
+        const resultText = JSON.stringify(formattedResult, null, 2);
+        const chunks = resultText.match(/.{1,100}/g) || [resultText];
+        
+        for (const chunk of chunks) {
+          response.write(chunk);
+          await new Promise(resolve => setTimeout(resolve, 20)); // 模拟延迟
+        }
+
+        response.write('\n\n=== 缓存结果 ===\n');
+        response.write(JSON.stringify(formattedResult, null, 2));
+        response.end();
+        return;
+      }
+
+      // 5. 缓存未命中，进行实时分析
+      this.logger.log('缓存未命中，开始实时分析');
+
+      // 通过Chatlog查询聊天记录
       const chatLogRequest = {
         time: timeRange,
         talker: request.groupName || '',
@@ -370,10 +441,23 @@ export class WechatSummaryService {
         return;
       }
 
-      // 4. 准备Ollama总结请求
+      // 转换数据格式并增强昵称信息
+      const basicChatData = chatLogResponse.messages.map(msg => ({
+        sender: msg.sender,
+        senderId: msg.senderId,
+        time: msg.time,
+        content: msg.content,
+      }));
+
+      // 使用昵称服务增强数据
+      const enhancedChatData = await this.nicknameService.enhanceMessagesWithNicknames(basicChatData);
+
+      // 准备Ollama总结请求
       const summaryRequest = {
-        messages: chatLogResponse.messages.map(msg => ({
+        messages: enhancedChatData.map(msg => ({
           sender: msg.sender,
+          senderId: msg.senderId,
+          nickname: msg.nickname,
           time: msg.time,
           content: msg.content,
         })),
@@ -383,8 +467,14 @@ export class WechatSummaryService {
         timeRange: timeRange,
       };
 
-      // 5. 使用流式Ollama进行总结
-      await this.ollamaService.summarizeChatLogStream(summaryRequest, response);
+      // 设置流式响应头
+      response.writeHead(200, {
+        'Content-Type': 'text/plain; charset=utf-8',
+        'Transfer-Encoding': 'chunked',
+      });
+
+      // 使用流式Ollama进行总结，并在完成后保存到缓存
+      await this.ollamaServiceWithCache(summaryRequest, response, cacheRequest, enhancedChatData.length);
 
     } catch (error) {
       this.logger.error(`流式智能总结失败: ${error.message}`, error.stack);
@@ -394,6 +484,68 @@ export class WechatSummaryService {
           error: `流式智能总结失败: ${error.message}`,
         });
       }
+    }
+  }
+
+  /**
+   * 带缓存的Ollama服务调用
+   */
+  private async ollamaServiceWithCache(
+    summaryRequest: any,
+    response: Response,
+    cacheRequest: any,
+    messageCount: number,
+  ): Promise<void> {
+    try {
+      let fullResponse = '';
+      let summaryResult = null;
+
+      // 调用原有的流式总结方法，但拦截结果
+      const originalWrite = response.write.bind(response);
+      const originalEnd = response.end.bind(response);
+
+      // 拦截写入的数据
+      response.write = (chunk: any) => {
+        const content = chunk.toString();
+        fullResponse += content;
+        return originalWrite(chunk);
+      };
+
+      // 拦截结束事件
+      response.end = (chunk?: any) => {
+        if (chunk) {
+          const content = chunk.toString();
+          fullResponse += content;
+        }
+
+        // 尝试解析最终结果
+        try {
+          const jsonMatch = fullResponse.match(/\{[\s\S]*\}$/);
+          if (jsonMatch) {
+            summaryResult = JSON.parse(jsonMatch[0]);
+            
+            // 异步保存到缓存（不阻塞响应）
+            this.summaryCacheService.saveSummaryToCache(
+              cacheRequest,
+              summaryResult,
+              messageCount,
+            ).catch(error => {
+              this.logger.error(`保存缓存失败: ${error.message}`);
+            });
+          }
+        } catch (parseError) {
+          this.logger.warn(`解析分析结果失败: ${parseError.message}`);
+        }
+
+        return originalEnd(chunk);
+      };
+
+      // 调用原有的流式总结
+      await this.ollamaService.summarizeChatLogStream(summaryRequest, response);
+
+    } catch (error) {
+      this.logger.error(`带缓存的Ollama调用失败: ${error.message}`, error.stack);
+      throw error;
     }
   }
 
@@ -753,5 +905,43 @@ ${data.content}
    */
   private formatDate(date: Date): string {
     return date.toISOString().split('T')[0];
+  }
+
+  /**
+   * 获取缓存统计信息
+   */
+  async getCacheStats(): Promise<any> {
+    try {
+      return await this.summaryCacheService.getCacheStats();
+    } catch (error) {
+      this.logger.error(`获取缓存统计失败: ${error.message}`, error.stack);
+      return {
+        success: false,
+        error: `获取缓存统计失败: ${error.message}`,
+      };
+    }
+  }
+
+  /**
+   * 清理过期缓存
+   */
+  async cleanupCache(daysToKeep: number = 90): Promise<any> {
+    try {
+      const deletedCount = await this.summaryCacheService.cleanExpiredCache(daysToKeep);
+      return {
+        success: true,
+        data: {
+          deletedCount,
+          daysToKeep,
+          message: `成功清理了 ${deletedCount} 个过期缓存记录`,
+        },
+      };
+    } catch (error) {
+      this.logger.error(`清理缓存失败: ${error.message}`, error.stack);
+      return {
+        success: false,
+        error: `清理缓存失败: ${error.message}`,
+      };
+    }
   }
 } 

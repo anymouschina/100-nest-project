@@ -204,169 +204,360 @@ To use it:
 - Ensure your local server is running.
 - Execute the API requests defined in the collection to test the endpoints.
 
-# 微信聊天记录AI总结系统
+# 微信聊天总结系统
 
-这是一个基于NestJS的微信聊天记录智能分析和总结系统，支持多种分析类型和优化策略。
+一个基于NestJS + LangChain + pgvector的智能聊天记录分析系统，支持无限上下文和向量知识库。
 
-## 🚀 新功能：LangChain智能优化
+## 🚀 核心功能
 
-### 核心优化特性
+### 📊 智能分析能力
+- **多维度分析**: 日常总结、情感分析、主题分析、参与者分析、时间线分析等
+- **语义理解**: 基于LangChain的深度语义分析
+- **流式处理**: 实时反馈分析进度和结果
 
-1. **智能数据预处理**
-   - 自动过滤无效消息（系统消息、表情、简单回复）
-   - 智能去重，避免重复内容影响分析质量
-   - 内容截断优化，保留关键信息
-   - 智能采样，从大量消息中提取最重要的内容
+### 🧠 增强版功能 (NEW)
+- **🔍 pgvector向量数据库**: 高性能向量存储和相似性搜索
+- **♾️ 无限上下文窗口**: 突破token限制，支持长期对话历史
+- **📚 向量知识库**: 自动存储和检索历史分析结果
+- **🎯 智能上下文选择**: 语义相关性 + 时间相关性的混合策略
+- **⚡ 嵌入缓存**: 避免重复计算，提升性能
 
-2. **优化的提示词工程**
-   - 针对不同分析类型的专业提示词模板
-   - 结构化输出格式，确保结果一致性
-   - 上下文感知的提示词构建
+## 🏗️ 技术架构
 
-3. **性能优化**
-   - 消息数量从原始数据自动优化到最多500条重要消息
-   - 单条消息长度限制，避免过长内容影响处理速度
-   - 基于重要性评分的智能采样算法
+### 核心技术栈
+- **后端框架**: NestJS + TypeScript
+- **AI处理**: LangChain + Ollama (qwen3)
+- **向量数据库**: PostgreSQL + pgvector
+- **数据库ORM**: Prisma
+- **嵌入模型**: OpenAI text-embedding-3-small (1536维)
+- **数据源**: Chatlog HTTP API
 
-### 消息重要性评分算法
+### 向量数据库架构
+```
+┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
+│   聊天消息      │    │   向量知识库     │    │   上下文窗口    │
+│ ChatMessage     │    │ VectorKnowledge  │    │ ContextWindow   │
+├─────────────────┤    ├──────────────────┤    ├─────────────────┤
+│ • 消息内容      │    │ • 摘要内容       │    │ • 智能筛选      │
+│ • 向量嵌入      │    │ • 历史知识       │    │ • 相关性评分    │
+│ • 语义搜索      │    │ • 主题标签       │    │ • Token管理     │
+└─────────────────┘    └──────────────────┘    └─────────────────┘
+```
 
-系统使用多维度评分来识别重要消息：
+## 📋 数据模型
 
-- **长度分数**: 较长的消息通常包含更多信息
-- **关键词分数**: 包含"决定"、"计划"、"重要"等关键词的消息
-- **问题分数**: 包含问号的消息通常很重要
-- **数据分数**: 包含数字、时间等具体信息的消息
-- **发言者活跃度**: 不太活跃用户的发言可能更重要
+### 向量数据库表结构
+- **chat_messages**: 聊天消息向量存储
+- **message_chunks**: 长消息分块处理
+- **chat_summaries**: 分析结果向量存储
+- **vector_knowledge**: 通用向量知识库
+- **context_windows**: 上下文窗口缓存
+- **embedding_cache**: 嵌入向量缓存
+
+## 🔧 环境配置
+
+### 必需服务
+```bash
+# PostgreSQL + pgvector
+DATABASE_URL="postgresql://user:password@localhost:5432/dbname"
+
+# Chatlog HTTP服务
+CHATLOG_BASE_URL=http://localhost:5030
+
+# Ollama服务
+OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_MODEL=qwen3
+
+# OpenAI API (用于向量嵌入)
+OPENAI_API_KEY=your_openai_api_key
+```
+
+### 数据库初始化
+```bash
+# 安装依赖
+pnpm install
+
+# 启用pgvector扩展
+psql -d your_database -c "CREATE EXTENSION IF NOT EXISTS vector;"
+
+# 运行数据库迁移
+pnpm prisma db push
+
+# 启动服务
+pnpm start:dev
+```
 
 ## 📊 API端点
 
-### 原有功能
-- `POST /wechat-summary/smart-summary` - 智能总结
-- `POST /wechat-summary/smart-summary-stream` - 流式智能总结
-- `GET /wechat-summary/groups` - 获取群聊列表
+### 🆕 增强版API (推荐)
 
-### 🆕 LangChain优化端点
-- `POST /wechat-summary/langchain-summary` - LangChain智能总结
-- `POST /wechat-summary/langchain-summary-stream` - LangChain流式总结
+#### 1. 增强版智能总结
+```http
+POST /wechat-summary/enhanced-summary
+Content-Type: application/json
 
-## 🔧 技术栈
+{
+  "groupName": "工作群",
+  "specificDate": "2024-01-15",
+  "summaryType": "daily",
+  "useInfiniteContext": true,
+  "contextWindowType": "hybrid",
+  "maxContextTokens": 16000,
+  "useKnowledgeBase": true,
+  "knowledgeNamespaces": ["summaries", "chat_history", "topics"]
+}
+```
 
-- **框架**: NestJS + TypeScript
-- **AI处理**: LangChain + Ollama (qwen3)
-- **数据源**: Chatlog HTTP API
-- **优化**: 智能数据预处理 + 提示词工程
+**特性:**
+- 🧠 **无限上下文**: 最大支持16K tokens上下文窗口
+- 📚 **知识库整合**: 自动检索相关历史知识
+- 🎯 **智能筛选**: 混合语义和时间相关性
+- 📊 **详细元数据**: 处理时间、向量搜索结果等统计信息
 
-## 📈 性能对比
+#### 2. 增强版流式总结
+```http
+POST /wechat-summary/enhanced-summary-stream
+Content-Type: application/json
 
-使用LangChain优化后的性能提升：
+{
+  "groupName": "团队群",
+  "relativeTime": "today",
+  "summaryType": "sentiment_analysis",
+  "useInfiniteContext": true,
+  "useKnowledgeBase": true
+}
+```
 
-| 指标 | 原始方法 | LangChain优化 | 提升 |
-|------|----------|---------------|------|
-| 处理速度 | 基准 | 30-50%更快 | ⚡ |
-| 消息质量 | 基准 | 过滤无效内容 | 📈 |
-| 结果一致性 | 基准 | 结构化输出 | ✅ |
-| 资源使用 | 基准 | 智能采样减少 | 💾 |
+**特性:**
+- ⚡ **实时反馈**: 显示向量存储、上下文构建、知识检索进度
+- 🔄 **流式输出**: 实时显示AI分析过程
+- 💾 **自动存储**: 分析结果自动存储到向量知识库
 
-## 🛠 使用示例
+#### 3. 向量语义搜索
+```http
+POST /wechat-summary/vector-search
+Content-Type: application/json
 
-### LangChain智能总结
+{
+  "query": "今天讨论了什么重要话题",
+  "groupName": "工作群",
+  "limit": 10,
+  "threshold": 0.7,
+  "timeRange": {
+    "start": "2024-01-15T00:00:00Z",
+    "end": "2024-01-15T23:59:59Z"
+  }
+}
+```
 
+#### 4. 知识库搜索
+```http
+POST /wechat-summary/knowledge-search
+Content-Type: application/json
+
+{
+  "query": "项目进展 总结",
+  "namespace": "summaries",
+  "tags": ["工作", "项目"],
+  "limit": 5,
+  "threshold": 0.75
+}
+```
+
+#### 5. 构建无限上下文窗口
+```http
+POST /wechat-summary/build-context
+Content-Type: application/json
+
+{
+  "query": "今天的主要讨论内容",
+  "groupName": "工作群",
+  "maxTokens": 8000,
+  "windowType": "hybrid"
+}
+```
+
+### 传统API (兼容)
+- `POST /wechat-summary/langchain-summary` - 原版LangChain总结
+- `POST /wechat-summary/langchain-summary-stream` - 原版流式总结
+
+## 🎯 上下文窗口类型
+
+### 1. 语义窗口 (semantic)
+- 基于向量相似性选择最相关的消息
+- 适合主题集中的分析场景
+- 高相关性，但可能缺失时间连续性
+
+### 2. 滑动窗口 (sliding)
+- 选择最近的消息，保持时间连续性
+- 适合时间敏感的分析场景
+- 时间连续，但可能包含不相关内容
+
+### 3. 混合窗口 (hybrid) - 推荐
+- 50%语义相关 + 50%时间相关
+- 平衡相关性和连续性
+- 适合大多数分析场景
+
+## 📈 性能优化
+
+### 向量嵌入优化
+- **嵌入缓存**: 避免重复计算相同内容的向量
+- **批量处理**: 支持批量生成嵌入向量
+- **智能去重**: 基于内容哈希的去重机制
+
+### 上下文管理
+- **动态Token管理**: 根据模型上下文窗口自动调整
+- **智能采样**: 基于重要性评分的消息筛选
+- **分块处理**: 长消息自动分块存储和检索
+
+### 数据库优化
+- **向量索引**: pgvector的HNSW索引加速相似性搜索
+- **复合索引**: 群聊名称、时间戳、标签的复合索引
+- **连接池**: PostgreSQL连接池管理
+
+## 🧪 测试
+
+### 运行增强版功能测试
 ```bash
-curl -X POST http://localhost:3000/wechat-summary/langchain-summary \
+node test-enhanced-langchain.js
+```
+
+### 测试覆盖
+- ✅ 增强版智能总结
+- ✅ 增强版流式总结  
+- ✅ 向量语义搜索
+- ✅ 知识库搜索
+- ✅ 无限上下文窗口构建
+- ✅ 多种分析类型 (情感、时间线等)
+
+## 🔍 使用示例
+
+### 基础增强版总结
+```bash
+curl -X POST "http://localhost:3001/wechat-summary/enhanced-summary" \
   -H "Content-Type: application/json" \
   -d '{
     "groupName": "工作群",
     "relativeTime": "today",
-    "summaryType": "daily"
+    "summaryType": "daily",
+    "useInfiniteContext": true,
+    "useKnowledgeBase": true
   }'
 ```
 
-### LangChain流式总结
-
+### 流式分析
 ```bash
-curl -X POST http://localhost:3000/wechat-summary/langchain-summary-stream \
+curl -X POST "http://localhost:3001/wechat-summary/enhanced-summary-stream" \
   -H "Content-Type: application/json" \
   -d '{
     "groupName": "团队群",
-    "relativeTime": "thisWeek",
-    "summaryType": "sentiment_analysis"
+    "specificDate": "2024-01-15",
+    "summaryType": "sentiment_analysis",
+    "contextWindowType": "hybrid",
+    "maxContextTokens": 16000
+  }' \
+  --no-buffer
+```
+
+### 向量搜索
+```bash
+curl -X POST "http://localhost:3001/wechat-summary/vector-search" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "项目进展讨论",
+    "groupName": "工作群",
+    "limit": 5,
+    "threshold": 0.7
   }'
 ```
 
-### 支持的分析类型
+## 🎨 响应格式
 
-- `daily` - 日常总结（默认）
-- `sentiment_analysis` - 情感分析
-- `topic` - 主题分析
-- `participant` - 参与者分析
-- `style_analysis` - 风格分析
-- `activity_analysis` - 活跃度分析
-- `keyword_extraction` - 关键词提取
-- `custom` - 自定义分析（需要提供customPrompt）
-
-## 🔍 测试
-
-运行LangChain优化功能测试：
-
-```bash
-node test-langchain-optimization.js
+### 增强版分析结果
+```json
+{
+  "success": true,
+  "data": {
+    "summary": "今日群聊主要讨论了...",
+    "keyPoints": ["关键点1", "关键点2"],
+    "participants": ["张三", "李四"],
+    "topics": ["项目", "技术"],
+    "relatedKnowledge": [
+      {
+        "id": "knowledge_id",
+        "content": "相关历史知识...",
+        "similarity": 0.85,
+        "namespace": "summaries"
+      }
+    ],
+    "contextUsed": {
+      "tokenCount": 8500,
+      "messageCount": 150,
+      "relevanceScore": 0.92,
+      "windowType": "hybrid"
+    },
+    "metadata": {
+      "processingTime": 3500,
+      "vectorSearchResults": 25,
+      "knowledgeBaseHits": 8,
+      "originalMessageCount": 300,
+      "optimizedMessageCount": 150
+    }
+  }
+}
 ```
 
-测试包括：
-- 基本功能测试
-- 流式处理测试
-- 不同分析类型测试
-- 性能对比测试
+## 🔧 故障排除
 
-## 📋 环境要求
+### 常见问题
 
-```bash
-# 必需服务
-CHATLOG_BASE_URL=http://localhost:5030  # Chatlog HTTP服务
-OLLAMA_BASE_URL=http://localhost:11434  # Ollama服务
-OLLAMA_MODEL=qwen3                      # AI模型
+1. **pgvector扩展未安装**
+   ```bash
+   # Ubuntu/Debian
+   sudo apt install postgresql-14-pgvector
+   
+   # 在数据库中启用
+   CREATE EXTENSION IF NOT EXISTS vector;
+   ```
 
-# 确保服务运行
-# 1. Chatlog HTTP服务在5030端口
-# 2. Ollama服务在11434端口，已加载qwen3模型
-```
+2. **OpenAI API配置**
+   ```bash
+   # 设置环境变量
+   export OPENAI_API_KEY="your_api_key_here"
+   ```
 
-## 🎯 优化效果
+3. **向量维度不匹配**
+   - 确保使用text-embedding-3-small模型 (1536维)
+   - 检查数据库中的向量字段定义
 
-### 数据处理优化
-- **原始消息**: 可能包含数千条消息
-- **过滤后**: 移除系统消息、表情、重复内容
-- **优化后**: 最多500条最重要的消息
-- **结果**: 处理速度提升30-50%，质量更高
+4. **内存不足**
+   - 调整maxContextTokens参数
+   - 使用更小的批处理大小
 
-### 提示词优化
-- **结构化模板**: 针对不同分析类型的专业提示词
-- **上下文感知**: 根据群聊名称、时间范围动态调整
-- **输出格式**: 强制JSON格式输出，确保结果可解析
+## 🚀 部署建议
 
-### 流式处理优化
-- **实时反馈**: 显示处理进度和状态
-- **错误处理**: 完善的错误处理和恢复机制
-- **用户体验**: 提供处理过程的可视化反馈
+### 生产环境配置
+- **数据库**: 使用专用PostgreSQL实例，启用pgvector
+- **向量索引**: 创建适当的HNSW索引
+- **缓存**: 配置Redis缓存嵌入结果
+- **监控**: 监控向量搜索性能和准确性
 
-## 🔄 工作流程
+### 扩展性考虑
+- **水平扩展**: 支持多个Ollama实例负载均衡
+- **向量分片**: 大规模数据可考虑向量数据分片
+- **异步处理**: 长时间分析任务使用队列异步处理
 
-1. **数据获取**: 从Chatlog API获取原始聊天数据
-2. **数据预处理**: 
-   - 基础过滤（移除无效消息）
-   - 去重处理（移除重复内容）
-   - 内容优化（截断过长消息）
-   - 智能采样（保留重要消息）
-3. **提示词构建**: 根据分析类型构建优化的提示词
-4. **AI分析**: 使用LangChain + Ollama进行智能分析
-5. **结果处理**: 解析和格式化分析结果
+## 📚 技术文档
 
-## 📚 更多信息
+- [Prisma Schema设计](./prisma/schema.prisma)
+- [向量服务实现](./src/wechat-summary/vector.service.ts)
+- [增强版LangChain服务](./src/wechat-summary/enhanced-langchain.service.ts)
+- [API控制器](./src/wechat-summary/wechat-summary.controller.ts)
 
-- 查看 `src/wechat-summary/langchain.service.ts` 了解优化实现细节
-- 运行 `test-langchain-optimization.js` 进行功能测试
-- 检查日志了解处理过程和性能指标
+## 🤝 贡献指南
 
----
+欢迎提交Issue和Pull Request来改进这个项目！
 
-**注意**: LangChain优化功能需要安装额外的依赖包，已通过 `pnpm add @langchain/core @langchain/community @langchain/ollama langchain` 安装。
+## �� 许可证
+
+MIT License

@@ -1,29 +1,60 @@
-version: '3.8'
 services:
+  # PostgreSQL 16 + pgvector 向量数据库
   db:
-    image: postgres:15
+    image: docker-0.unsee.tech/pgvector/pgvector:pg16
     restart: always
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: order_management
+      POSTGRES_DB: postgres
+      POSTGRES_MULTIPLE_DATABASES: orderManagementSystem,order_management,wechat_analysis
     ports:
       - '5432:5432'
     volumes:
       - db_data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d/
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network
+
+  # Adminer 数据库管理
   adminer:
     image: docker-0.unsee.tech/adminer
+    restart: always
     ports:
-      - 8080:8080
+      - 8081:8080
+    depends_on:
+      - db
+    networks:
+      - app-network
+
+  # Redis 缓存和队列
   redis:
     image: docker-0.unsee.tech/redis:6.2
     restart: always
-    command: ["redis-server", "--requirepass", "123456"]
+    command: ["redis-server", "--requirepass", "123456", "--appendonly", "yes"]
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "123456", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - app-network
 
 volumes:
   db_data:
+    driver: local
   redis_data:
+    driver: local
+
+networks:
+  app-network:
+    driver: bridge

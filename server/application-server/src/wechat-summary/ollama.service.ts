@@ -7,6 +7,8 @@ import * as crypto from 'crypto';
 export interface OllamaSummaryRequest {
   messages: Array<{
     sender: string;
+    senderId?: string;
+    nickname?: string;
     time: string;
     content: string;
   }>;
@@ -380,9 +382,12 @@ export class OllamaService {
   private buildSummaryPrompt(request: OllamaSummaryRequest): string {
     const { messages, summaryType, customPrompt, groupName, timeRange } = request;
 
-    // 格式化聊天记录
+    // 格式化聊天记录 - 优先使用昵称
     const chatContent = messages
-      .map(msg => `${msg.time} ${msg.sender}: ${msg.content}`)
+      .map(msg => {
+        const displayName = msg.nickname || msg.sender;
+        return `${msg.time} ${displayName}: ${msg.content}`;
+      })
       .join('\n');
 
     let systemPrompt = '';
@@ -636,7 +641,10 @@ ${chatContent}`;
    */
   private extractParticipants(messages: OllamaSummaryRequest['messages']): string[] {
     const participants = new Set<string>();
-    messages.forEach(msg => participants.add(msg.sender));
+    messages.forEach(msg => {
+      const displayName = msg.nickname || msg.sender;
+      participants.add(displayName);
+    });
     return Array.from(participants);
   }
 
