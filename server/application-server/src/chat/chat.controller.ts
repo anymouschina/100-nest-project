@@ -34,7 +34,7 @@ export class ChatController {
     return this.chatService.sendMessage(
       sessionId,
       body.content,
-      body.role || 'user'
+      body.role || 'human'
     );
   }
 

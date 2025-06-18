@@ -4,6 +4,7 @@ import { AppConfigService } from '../config/config.service';
 import { OllamaService } from './services/ollama.service';
 import { AgentFactoryService } from './services/agent-factory.service';
 import { ToolRegistryService } from './services/tool-registry.service';
+import { ContextManagerService } from './services/context-manager.service';
 import { v4 as uuidv4 } from 'uuid';
 import { CreateSessionDto, MessageRole, SendMessageDto, AgentType } from './types';
 import { StructuredTool } from '@langchain/core/tools';
@@ -19,6 +20,7 @@ export class ChatService {
     private readonly ollamaService: OllamaService,
     private readonly agentFactory: AgentFactoryService,
     private readonly toolRegistry: ToolRegistryService,
+    private readonly contextManager: ContextManagerService,
   ) {}
 
   /**
@@ -73,27 +75,13 @@ export class ChatService {
       // 获取会话信息
       const session = await this.databaseService.chatSession.findUnique({
         where: { id: sessionId },
-        include: {
-          messages: {
-            orderBy: { timestamp: 'asc' },
-            take: 50, // 限制消息数量
-          },
-        },
       });
 
       if (!session) {
         throw new Error(`Session not found: ${sessionId}`);
       }
 
-      // 保存用户消息
-      await this.databaseService.chatSessionMessage.create({
-        data: {
-          sessionId,
-          role,
-          content,
-          metadata: {},
-        },
-      });
+   
 
       // 获取代理
       const agentResult = await this.agentFactory.getAgent(session.agentId);
@@ -102,9 +90,16 @@ export class ChatService {
       }
 
       const { agent, graph } = agentResult;
+      
+      // 获取会话消息历史（限制最近30条）
+      const messages = await this.databaseService.chatSessionMessage.findMany({
+        where: { sessionId },
+        orderBy: { timestamp: 'asc' },
+        take: 30,
+      });
 
-      // 构建消息历史
-      const messageHistory = session.messages.map((msg) => ({
+      // 转换为LangGraph需要的格式
+      const messageHistory = messages.map((msg) => ({
         role: msg.role,
         content: msg.content,
       }));
@@ -114,11 +109,16 @@ export class ChatService {
 
       // 提取AI回复
       let aiResponse = '抱歉，我无法处理您的请求。';
-      if (result && result.messages) {
+      if (result && result.messages && Array.isArray(result.messages)) {
         const lastMessage = result.messages[result.messages.length - 1];
         if (lastMessage && lastMessage.role === 'ai') {
           aiResponse = lastMessage.content;
         }
+      }
+      
+      // 如果有错误，记录但继续处理
+      if (result && result.error) {
+        this.logger.warn(`Agent returned error: ${result.error}`);
       }
 
       // 保存AI回复
@@ -130,7 +130,15 @@ export class ChatService {
           metadata: result || {},
         },
       });
-
+         // 保存用户消息
+        await this.databaseService.chatSessionMessage.create({
+        data: {
+          sessionId,
+          role,
+          content,
+          metadata: {},
+        },
+      });
       return {
         sessionId,
         userMessage: { role, content },

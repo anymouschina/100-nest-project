@@ -381,23 +381,69 @@ export class AgentFactoryService implements OnModuleInit {
 
     // 编译图
     const graph = builder.compile();
-
+    const logger = this.logger
     // 创建一个包装器，使调用更简单
     const wrapper = {
       async invoke(messageHistory: Array<{role: string; content: string}> = [], userMessage: string): Promise<any> {
-        // 准备初始状态
-        const initialState = {
-          messages: [...messageHistory, { role: 'human', content: userMessage }],
-          documents: [],
-          activeTool: null,
-          toolInput: undefined,
-          toolResults: {},
-          agentId: agent.id,
-          query: undefined,
-        };
-        
-        // 调用图
-        return graph.invoke(initialState);
+        try {
+          // 简单的消息历史管理（限制最近20条消息）
+          const recentMessages = messageHistory.slice(-20);
+          
+          // 构建最终的消息列表
+          const finalMessages = [
+            ...recentMessages,
+            { role: 'human', content: userMessage }
+          ];
+
+          logger.log(
+            `Agent ${agent.name} processing ${finalMessages.length} messages`
+          );
+
+          // 准备初始状态
+          const initialState = {
+            messages: finalMessages,
+            documents: [],
+            activeTool: null,
+            toolInput: undefined,
+            toolResults: {},
+            agentId: agent.id,
+            query: undefined,
+          };
+          
+          // 调用图并确保返回正确的格式
+          const result = await graph.invoke(initialState);
+          
+          // 详细日志记录返回结果
+          logger.log(`Graph execution result: ${JSON.stringify(result, null, 2)}`);
+          
+          // 确保返回值有正确的格式
+          if (!result || typeof result !== 'object') {
+            logger.warn(`Graph returned unexpected result: ${typeof result}`);
+            return {
+              messages: [{ role: 'ai', content: '抱歉，处理您的请求时出现了问题。' }],
+              error: 'Invalid graph result'
+            };
+          }
+          
+          // 确保messages数组存在
+          if (!result.messages || !Array.isArray(result.messages)) {
+            logger.warn(`Graph result missing messages array. Result keys: ${Object.keys(result)}`);
+            logger.warn(`Messages value: ${JSON.stringify(result.messages)}`);
+            return {
+              messages: [{ role: 'ai', content: '抱歉，处理您的请求时出现了问题。' }],
+              error: 'Missing messages in result'
+            };
+          }
+          
+          return result;
+        } catch (error) {
+          logger.error(`Error in agent wrapper: ${error.message}`, error.stack);
+          // 返回一个安全的错误响应
+          return {
+            messages: [{ role: 'ai', content: '抱歉，处理您的请求时出现错误。' }],
+            error: error.message
+          };
+        }
       }
     };
 

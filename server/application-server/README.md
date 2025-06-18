@@ -167,21 +167,30 @@ Here are the additional features that has been added to the application:
     - 获取用户会话: `GET /chat/sessions`
     - 获取会话消息: `GET /chat/session/:sessionId`
     - 分析用户意图: `POST /chat/analyze`
+    - 切换代理: `POST /chat/session/:sessionId/switch-agent`
   - 智能特性:
     - 语义理解: 基于向量相似度的用户意图分析
     - 多Agent支持: 根据意图自动选择最合适的Agent
     - 会话上下文管理: 保持连贯对话体验
     - 向量存储: 使用pgvector高效存储和检索消息语义
+    - **智能上下文管理**: 基于LangChain/LangGraph最佳实践的上下文窗口管理
   - Agent类型:
-    - 通用客服: 处理一般问询
-    - 产品专家: 专注产品信息咨询
-    - 预约服务: 处理预约相关问题
+    - 客服代理 (Customer Service): 处理订单查询、退款和一般问题
+    - 技术支持代理 (Technical Support): 处理技术问题和投诉
+    - 预约助手代理 (Appointment Assistant): 帮助用户安排、修改和取消预约
+  - 上下文管理特性:
+    - **智能消息裁剪**: 基于token限制和消息数量自动裁剪历史消息
+    - **自动对话摘要**: 当消息超过阈值时自动生成对话摘要，保留关键信息
+    - **上下文压缩**: 摘要+最近消息的混合策略，保持对话连贯性
+    - **动态配置**: 不同Agent类型可配置不同的上下文管理策略
+    - **性能优化**: 缓存摘要、异步处理、自动清理过期会话
   - 技术特性:
-    - 基于LangChain的LLM处理流程
-    - OpenAI嵌入模型进行语义分析
-    - 消息向量化和相似度匹配
-    - 动态Agent选择和切换
-    - 基于用户意图实时分析和切换合适的助手
+    - 基于LangGraph的多代理工作流
+    - 集成Ollama本地LLM模型 (deepseek-r1)
+    - RAG功能和条件路由支持
+    - 工具调用和检索功能
+    - 详细的LLM上下文打印和监控
+    - 完整的错误处理和性能统计
 
 ## Dummy Data
 
