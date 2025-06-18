@@ -95,6 +95,9 @@ importers:
       langchain:
         specifier: ^0.3.28
         version: 0.3.28(@langchain/core@0.3.58(openai@4.104.0(ws@8.18.2)(zod@3.25.64)))(@langchain/ollama@0.2.2(@langchain/core@0.3.58(openai@4.104.0(ws@8.18.2)(zod@3.25.64))))(axios@1.9.0)(openai@4.104.0(ws@8.18.2)(zod@3.25.64))(ws@8.18.2)
+      ollama:
+        specifier: ^0.5.16
+        version: 0.5.16
       openai:
         specifier: ^4.67.3
         version: 4.104.0(ws@8.18.2)(zod@3.25.64)
