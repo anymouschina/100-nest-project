@@ -96,6 +96,23 @@ Here are the additional features that has been added to the application:
   - 生成二维码图片流: `GET /wechat/qrcode?page=pages/index/index&scene=ref%3D123456`
   - 生成二维码并返回URL: `POST /wechat/qrcode/url`
   - 支持携带ref参数作为场景，方便用于推广、分享、数据追踪等场景
+- 用户登录认证功能:
+  - 微信小程序登录: `POST /user/wxLogin`
+  - Web端邮箱密码登录: `POST /user/webLogin`
+  - Web端用户注册: `POST /user/register`
+  - 用户退出登录: `GET /user/logout`
+  - 获取用户信息: `GET /user/info`
+  - 支持JWT Token认证
+  - 完美兼容两种登录方式，统一的Token认证体系
+  - 用户注册自动密码哈希保护
+  - Web注册增强功能:
+    - 严格的密码策略（大小写+数字组合）
+    - 密码确认验证
+    - 手机号格式验证
+    - 注册时支持关联引荐码
+    - 注册成功后自动登录
+    - 详细的错误提示
+    - 字段验证中文提示
 - 用户引荐功能:
   - 关联引荐用户: `POST /api/user/referral`
   - 获取引荐用户统计: `GET /api/user/referral/stats?onlySelf=true`
@@ -143,6 +160,28 @@ Here are the additional features that has been added to the application:
     - 支持批量处理和对比分析
     - 支持多格式导出（JSON、Markdown、PDF）
     - 无需鉴权，可直接调用
+- 智能聊天助手功能:
+  - 基础功能:
+    - 创建聊天会话: `POST /chat/session`
+    - 发送聊天消息: `POST /chat/session/:sessionId/message`
+    - 获取用户会话: `GET /chat/sessions`
+    - 获取会话消息: `GET /chat/session/:sessionId`
+    - 分析用户意图: `POST /chat/analyze`
+  - 智能特性:
+    - 语义理解: 基于向量相似度的用户意图分析
+    - 多Agent支持: 根据意图自动选择最合适的Agent
+    - 会话上下文管理: 保持连贯对话体验
+    - 向量存储: 使用pgvector高效存储和检索消息语义
+  - Agent类型:
+    - 通用客服: 处理一般问询
+    - 产品专家: 专注产品信息咨询
+    - 预约服务: 处理预约相关问题
+  - 技术特性:
+    - 基于LangChain的LLM处理流程
+    - OpenAI嵌入模型进行语义分析
+    - 消息向量化和相似度匹配
+    - 动态Agent选择和切换
+    - 基于用户意图实时分析和切换合适的助手
 
 ## Dummy Data
 

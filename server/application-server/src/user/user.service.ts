@@ -2,12 +2,16 @@ import { Injectable, HttpException, HttpStatus, NotFoundException, UnauthorizedE
 import { DatabaseService } from 'src/database/database.service';
 import { OrderService } from 'src/order/order.service';
 import { WxLoginDto } from './dto/wx-login.dto';
+import { WebLoginDto } from './dto/web-login.dto';
 import { AppConfigService } from '../config/config.service';
 import { AuthService } from '../auth/auth.service';
 import { ReferralDto } from './dto/referral.dto';
 import { CreateReferralCodeDto } from './dto/create-referral-code.dto';
+import { CreateUserDto } from './dto/create-user.dto';
+import { RegisterUserDto } from './dto/register-user.dto';
 import axios from 'axios';
 import { Prisma } from '@prisma/client';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class UserService {
@@ -638,6 +642,145 @@ export class UserService {
       throw new HttpException(
         '更新引荐码状态失败: ' + error.message,
         HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  /**
+   * Web登录
+   * 通过邮箱和密码登录
+   * 
+   * @param webLoginDto - 邮箱和密码
+   * @returns 用户数据和JWT token
+   */
+  async webLogin(webLoginDto: WebLoginDto) {
+    try {
+      const { email, password } = webLoginDto;
+      
+      // 查找用户
+      const user = await this.databaseService.user.findUnique({
+        where: { email },
+      });
+      
+      if (!user) {
+        throw new UnauthorizedException('邮箱或密码错误');
+      }
+      
+      // 验证密码
+      let passwordValid = false;
+      if (user.password) {
+        if (user.password.startsWith('$2')) {
+          // 使用bcrypt验证哈希密码
+          passwordValid = await bcrypt.compare(password, user.password);
+        } else if (user.password === password) {
+          // 临时兼容明文密码(不应在生产环境使用)
+          passwordValid = true;
+        }
+      }
+      
+      if (!passwordValid) {
+        throw new UnauthorizedException('邮箱或密码错误');
+      }
+      
+      // 生成JWT令牌
+      const token = await this.authService.generateToken(user.userId, {
+        name: user.name,
+      });
+      
+      // 返回用户数据（排除敏感信息）
+      return {
+        user: {
+          userId: user.userId,
+          name: user.name,
+          avatarUrl: user.avatarUrl,
+          email: user.email,
+        },
+        token,
+      };
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        '登录失败',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  /**
+   * 创建新用户（Web注册）
+   * 
+   * @param registerUserDto - 用户注册数据
+   * @returns 创建的用户和登录Token
+   */
+  async registerUser(registerUserDto: RegisterUserDto) {
+    try {
+      const { email, password, name, address, phone, refCode } = registerUserDto;
+      
+      // 检查邮箱是否已存在
+      const existingUser = await this.databaseService.user.findUnique({
+        where: { email },
+      });
+      
+      if (existingUser) {
+        throw new BadRequestException('邮箱已被注册');
+      }
+      
+      // 哈希密码
+      const hashedPassword = await bcrypt.hash(password, 10);
+      
+      // 创建新用户
+      const userData: Prisma.UserCreateInput = {
+        email,
+        password: hashedPassword,
+        name,
+        address,
+      };
+      
+      // 添加可选字段
+      if (phone) {
+        userData.phone = phone;
+      }
+      
+      if (refCode) {
+        userData.ref = refCode;
+      }
+      
+      const user = await this.databaseService.user.create({
+        data: userData,
+      });
+      
+      // 如果有引荐码，尝试创建引荐关系
+      if (refCode) {
+        try {
+          await this.referralUser(user.userId, { refCode, source: 'web_register' });
+        } catch (error) {
+          // 引荐关系创建失败不影响注册流程
+          console.error('创建引荐关系失败:', error.message);
+        }
+      }
+      
+      // 生成登录Token
+      const token = await this.authService.generateToken(user.userId, {
+        name: user.name,
+      });
+      
+      // 返回用户数据和Token（排除敏感信息）
+      const { password: _, ...userResult } = user;
+      
+      return {
+        user: userResult,
+        token,
+        message: '注册成功',
+      };
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        '注册失败: ' + error.message,
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }

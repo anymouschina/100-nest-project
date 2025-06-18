@@ -2,6 +2,9 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
+// 引入聊天模块种子文件
+import './seeds/chat.seed';
+
 async function main() {
   console.log('开始执行数据库初始化...');
 

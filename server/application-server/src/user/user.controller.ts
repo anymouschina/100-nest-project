@@ -15,6 +15,9 @@ import {
 import { UserService } from './user.service';
 import { ApiTags, ApiResponse, ApiOperation, ApiHeader, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { WxLoginDto } from './dto/wx-login.dto';
+import { WebLoginDto } from './dto/web-login.dto';
+import { CreateUserDto } from './dto/create-user.dto';
+import { RegisterUserDto } from './dto/register-user.dto';
 import { ReferralDto } from './dto/referral.dto';
 import { CreateReferralCodeDto } from './dto/create-referral-code.dto';
 import { Public } from '../auth/decorators/public.decorator';
@@ -123,6 +126,58 @@ export class UserController {
     }
 
     return { message: 'Successfully logged out' };
+  }
+
+  /**
+   * POST /api/user/webLogin
+   * Web登录端点
+   * 
+   * @param webLoginDto - Web登录数据
+   * @returns 用户信息和token
+   */
+  @Public()
+  @Post('webLogin')
+  @ApiOperation({ summary: 'Web端邮箱密码登录' })
+  @ApiResponse({
+    status: 200,
+    description: '登录成功',
+  })
+  @ApiResponse({
+    status: 401,
+    description: '邮箱或密码错误',
+  })
+  @ApiResponse({
+    status: 500,
+    description: '服务器错误',
+  })
+  async webLogin(@Body() webLoginDto: WebLoginDto) {
+    return this.userService.webLogin(webLoginDto);
+  }
+
+  /**
+   * POST /api/user/register
+   * Web端用户注册
+   * 
+   * @param registerUserDto - 用户注册数据
+   * @returns 创建的用户和登录Token
+   */
+  @Public()
+  @Post('register')
+  @ApiOperation({ summary: 'Web端用户注册' })
+  @ApiResponse({
+    status: 201,
+    description: '用户注册成功并自动登录',
+  })
+  @ApiResponse({
+    status: 400,
+    description: '注册信息验证失败或邮箱已被注册',
+  })
+  @ApiResponse({
+    status: 500,
+    description: '服务器错误',
+  })
+  async register(@Body() registerUserDto: RegisterUserDto) {
+    return this.userService.registerUser(registerUserDto);
   }
 }
 
@@ -301,6 +356,54 @@ export class WxUserController {
   ) {
     const onlySelfBool = onlySelf === 'true';
     return this.userService.getReferralStats(onlySelfBool ? user.userId : undefined);
+  }
+
+  /**
+   * POST /user/webLogin
+   * Web登录端点(直接路径)
+   * 
+   * @param webLoginDto - Web登录数据
+   * @returns 用户信息和token
+   */
+  @Public()
+  @Post('webLogin')
+  @ApiOperation({ summary: 'Web端邮箱密码登录(直接路径)' })
+  @ApiResponse({
+    status: 200,
+    description: '登录成功',
+  })
+  @ApiResponse({
+    status: 401,
+    description: '邮箱或密码错误',
+  })
+  async webLogin(@Body() webLoginDto: WebLoginDto) {
+    return this.userService.webLogin(webLoginDto);
+  }
+
+  /**
+   * POST /user/register
+   * Web端用户注册(直接路径)
+   * 
+   * @param registerUserDto - 用户注册数据
+   * @returns 创建的用户和登录Token
+   */
+  @Public()
+  @Post('register')
+  @ApiOperation({ summary: 'Web端用户注册(直接路径)' })
+  @ApiResponse({
+    status: 201,
+    description: '用户注册成功并自动登录',
+  })
+  @ApiResponse({
+    status: 400,
+    description: '注册信息验证失败或邮箱已被注册',
+  })
+  @ApiResponse({
+    status: 500,
+    description: '服务器错误',
+  })
+  async register(@Body() registerUserDto: RegisterUserDto) {
+    return this.userService.registerUser(registerUserDto);
   }
 }
 
