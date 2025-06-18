@@ -65,17 +65,18 @@ pnpm build
 客户端通过以下API与服务端通信：
 
 - 用户认证
-  - `POST /user/webLogin` - 邮箱密码登录
-  - `POST /user/register` - 用户注册
-  - `POST /user/logout` - 用户登出
+  - `POST /api/user/webLogin` - 邮箱密码登录
+  - `POST /api/user/register` - 用户注册
+  - `GET /api/user/logout` - 用户登出
   - `GET /user/info` - 获取用户信息
 
 - 聊天功能
-  - `POST /chat/session` - 创建新会话
+  - `POST /chat/sessions` - 创建新会话
   - `GET /chat/sessions` - 获取会话列表
-  - `GET /chat/session/:sessionId` - 获取特定会话消息
-  - `POST /chat/session/:sessionId/message` - 发送消息
-  - `POST /chat/analyze` - 分析用户消息意图
+  - `GET /chat/sessions/:sessionId` - 获取特定会话详情
+  - `GET /chat/sessions/:sessionId/history` - 获取会话消息历史
+  - `POST /chat/sessions/:sessionId/messages` - 发送消息
+  - `GET /chat/agents` - 获取可用的聊天代理
 
 ## 配置
 

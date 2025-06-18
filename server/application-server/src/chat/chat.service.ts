@@ -243,11 +243,15 @@ export class ChatService {
     offset: number = 0,
   ): Promise<any> {
     try {
+      // 确保参数是有效的数字
+      const validLimit = Math.max(1, Math.min(200, Number(limit) || 50));
+      const validOffset = Math.max(0, Number(offset) || 0);
+
       const messages = await this.databaseService.chatSessionMessage.findMany({
         where: { sessionId },
         orderBy: { timestamp: 'asc' },
-        skip: offset,
-        take: limit,
+        skip: validOffset,
+        take: validLimit,
       });
 
       const totalCount = await this.databaseService.chatSessionMessage.count({
@@ -265,9 +269,9 @@ export class ChatService {
         })),
         pagination: {
           total: totalCount,
-          limit,
-          offset,
-          hasMore: offset + limit < totalCount,
+          limit: validLimit,
+          offset: validOffset,
+          hasMore: validOffset + validLimit < totalCount,
         },
       };
     } catch (error) {
@@ -304,6 +308,10 @@ export class ChatService {
     offset: number = 0,
   ): Promise<any> {
     try {
+      // 确保参数是有效的数字
+      const validLimit = Math.max(1, Math.min(100, Number(limit) || 20));
+      const validOffset = Math.max(0, Number(offset) || 0);
+
       const sessions = await this.databaseService.chatSession.findMany({
         where: { userId },
         include: {
@@ -316,8 +324,8 @@ export class ChatService {
           },
         },
         orderBy: { startTime: 'desc' },
-        skip: offset,
-        take: limit,
+        skip: validOffset,
+        take: validLimit,
       });
 
       const totalCount = await this.databaseService.chatSession.count({
@@ -337,9 +345,9 @@ export class ChatService {
         })),
         pagination: {
           total: totalCount,
-          limit,
-          offset,
-          hasMore: offset + limit < totalCount,
+          limit: validLimit,
+          offset: validOffset,
+          hasMore: validOffset + validLimit < totalCount,
         },
       };
     } catch (error) {

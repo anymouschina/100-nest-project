@@ -51,7 +51,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       
       // 先添加用户消息到本地显示
       const userMessage: ChatMessage = {
-        id: `temp-${Date.now()}`,
+        id: `user-${Date.now()}`,
         sessionId: session.id,
         role: 'user',
         content: inputValue.trim(),
@@ -64,8 +64,23 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       // 发送消息到服务器
       const response = await apiService.sendMessage(session.id, messageDto);
       
-      // 添加助手回复
-      setMessages(prev => [...prev, response]);
+      // 根据服务器响应格式处理
+      const responseData = response as any;
+      if (responseData.aiMessage) {
+        // 如果服务器返回了AI消息，添加到消息列表
+        const aiMessage: ChatMessage = {
+          id: `ai-${Date.now()}`,
+          sessionId: session.id,
+          role: 'assistant',
+          content: responseData.aiMessage.content,
+          timestamp: new Date(),
+          metadata: responseData.metadata
+        };
+        setMessages(prev => [...prev, aiMessage]);
+      } else if (response.role === 'assistant') {
+        // 如果直接返回了AI消息对象
+        setMessages(prev => [...prev, response]);
+      }
       
       // 调用父组件的回调函数
       if (onSendMessage) {
@@ -74,6 +89,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     } catch (error) {
       console.error('Failed to send message:', error);
       message.error('发送消息失败');
+      
+      // 发送失败时，移除临时添加的用户消息
+      setMessages(prev => prev.filter(msg => !msg.id.startsWith('user-')));
     } finally {
       setSending(false);
     }

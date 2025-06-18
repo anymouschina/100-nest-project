@@ -35,7 +35,7 @@ class ApiService {
 
   // 登录相关API
   async webLogin(loginData: WebLoginDto): Promise<AuthResponse> {
-    const response = await this.api.post('/user/webLogin', loginData);
+    const response = await this.api.post('/api/user/webLogin', loginData);
     // 处理嵌套的响应结构
     const responseData = response.data.data || response.data;
     this.setToken(responseData.token);
@@ -43,7 +43,7 @@ class ApiService {
   }
 
   async register(registerData: RegisterUserDto): Promise<AuthResponse> {
-    const response = await this.api.post('/user/register', registerData);
+    const response = await this.api.post('/api/user/register', registerData);
     // 处理嵌套的响应结构
     const responseData = response.data.data || response.data;
     this.setToken(responseData.token);
@@ -59,7 +59,7 @@ class ApiService {
   }
 
   async logout(): Promise<void> {
-    await this.api.post('/user/logout');
+    await this.api.get('/api/user/logout'); // 注意这里是GET请求
     this.clearToken();
   }
 
@@ -69,9 +69,13 @@ class ApiService {
     return responseData;
   }
 
-  // 聊天相关API
+  // 聊天相关API - 更新路径和请求格式
   async createSession(data: CreateSessionDto): Promise<ChatSession> {
-    const response = await this.api.post('/chat/session', data);
+    const requestData = {
+      agentId: data.agentId,
+      title: data.title
+    };
+    const response = await this.api.post('/chat/sessions', requestData);
     const responseData = response.data.data || response.data;
     return responseData;
   }
@@ -79,23 +83,59 @@ class ApiService {
   async getSessions(): Promise<ChatSession[]> {
     const response = await this.api.get('/chat/sessions');
     const responseData = response.data.data || response.data;
-    return responseData;
+    // 服务器返回的是 { sessions: [], pagination: {} } 格式
+    return responseData.sessions || responseData;
   }
 
   async getSessionMessages(sessionId: string): Promise<ChatSession> {
-    const response = await this.api.get(`/chat/session/${sessionId}`);
-    const responseData = response.data.data || response.data;
-    return responseData;
+    // 获取会话详情
+    const sessionResponse = await this.api.get(`/chat/sessions/${sessionId}`);
+    const sessionData = sessionResponse.data.data || sessionResponse.data;
+    
+    // 获取会话消息历史
+    const historyResponse = await this.api.get(`/chat/sessions/${sessionId}/history`);
+    const historyData = historyResponse.data.data || historyResponse.data;
+    
+    // 合并会话信息和消息历史
+    return {
+      ...sessionData,
+      messages: historyData.messages || []
+    };
   }
 
   async sendMessage(sessionId: string, data: SendMessageDto): Promise<ChatMessage> {
-    const response = await this.api.post(`/chat/session/${sessionId}/message`, data);
+    const requestData = {
+      content: data.message,
+      role: 'user'
+    };
+    const response = await this.api.post(`/chat/sessions/${sessionId}/messages`, requestData);
     const responseData = response.data.data || response.data;
+    
+    // 适配响应格式，返回AI消息
+    if (responseData.aiMessage) {
+      return {
+        id: `ai-${Date.now()}`,
+        sessionId,
+        role: 'assistant',
+        content: responseData.aiMessage.content,
+        timestamp: new Date(),
+        metadata: responseData.metadata
+      };
+    }
+    
     return responseData;
   }
 
   async analyzeMessage(message: string): Promise<any> {
+    // 这个接口可能不存在了，暂时保留
     const response = await this.api.post('/chat/analyze', { message });
+    const responseData = response.data.data || response.data;
+    return responseData;
+  }
+
+  // 获取可用的代理列表
+  async getAgents(): Promise<any[]> {
+    const response = await this.api.get('/chat/agents');
     const responseData = response.data.data || response.data;
     return responseData;
   }

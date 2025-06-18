@@ -23,9 +23,10 @@ export interface ChatSession {
   agentId: string;
   title: string;
   status: 'active' | 'closed';
-  startTime: Date;
+  startTime?: Date;
   updatedAt: Date;
   createdAt: Date;
+  metadata?: Record<string, any>;
   agent?: ChatAgent;
   messages?: ChatMessage[];
 }
@@ -48,6 +49,7 @@ export interface User {
 export interface AuthResponse {
   user: User;
   token: string;
+  message?: string;
 }
 
 export interface WebLoginDto {
@@ -68,7 +70,6 @@ export interface RegisterUserDto {
 export interface CreateSessionDto {
   title?: string;
   agentId?: string;
-  initialMessage?: string;
 }
 
 export interface SendMessageDto {
