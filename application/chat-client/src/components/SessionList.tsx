@@ -91,16 +91,18 @@ const SessionList: React.FC<SessionListProps> = ({
       <div style={{ padding: '16px', borderBottom: '1px solid #f0f0f0' }}>
         <Title level={4} style={{ margin: 0 }}>会话列表</Title>
       </div>
-      
-      <Button 
-        type="primary" 
-        icon={<PlusOutlined />} 
-        onClick={handleNewSession}
-        style={{ margin: '16px' }}
-        block
-      >
-        新建会话
-      </Button>
+      <div style={{display:'flex'}}>
+        <Button 
+          type="primary" 
+          icon={<PlusOutlined />} 
+          onClick={handleNewSession}
+          style={{ margin: '16px' }}
+          block
+        >
+          新建会话
+        </Button>
+      </div>
+     
       
       {showNewSessionInput && (
         <div style={{ padding: '0 16px 16px' }}>
