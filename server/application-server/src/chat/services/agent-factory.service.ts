@@ -190,22 +190,30 @@ export class AgentFactoryService implements OnModuleInit {
     const capabilities = agent.capabilities || [];
     const tools = this.getToolsForAgent(capabilities);
 
-    // 定义代理状态类型
-    interface AgentState {
-      messages: Array<{role: string; content: string; name?: string}>;
-      documents: string[];
-      activeTool: string | null;
-      toolInput: string | undefined;
-      toolResults: Record<string, any>;
-      agentId: string;
-      query: string | undefined;
-    }
+    // 使用Annotation定义代理状态 - 参考官方文档
+    const AgentStateAnnotation = Annotation.Root({
+      messages: Annotation<
+        Array<{ role: string; content: string; name?: string }>
+      >({
+        reducer: (x, y) => x.concat(y),
+        default: () => [],
+      }),
+      documents: Annotation<string[]>({
+        reducer: (x, y) => x.concat(y),
+        default: () => [],
+      }),
+      activeTool: Annotation<string | null>(),
+      toolInput: Annotation<string | undefined>(),
+      toolResults: Annotation<Record<string, any>>(),
+      agentId: Annotation<string>(),
+      query: Annotation<string | undefined>(),
+    });
 
     /**
      * 检索节点 - 如果需要，从知识库检索相关文档
      */
     const retrieveDocuments = async (
-      state: AgentState,
+      state: typeof AgentStateAnnotation.State,
     ) => {
       // 如果没有查询，则跳过
       if (!state.query) {
@@ -227,7 +235,7 @@ export class AgentFactoryService implements OnModuleInit {
      * 代理节点 - 处理用户输入和生成回应
      */
     const agentNode = async (
-      state: AgentState,
+      state: typeof AgentStateAnnotation.State,
     ) => {
       try {
         // 获取用户最新的消息
@@ -291,7 +299,7 @@ export class AgentFactoryService implements OnModuleInit {
      * 工具执行节点 - 处理工具调用
      */
     const toolNode = async (
-      state: AgentState,
+      state: typeof AgentStateAnnotation.State,
     ) => {
       if (!state.activeTool) {
         return {};
@@ -342,7 +350,7 @@ export class AgentFactoryService implements OnModuleInit {
     /**
      * 条件路由函数 - 决定下一步执行哪个节点
      */
-    const routeNode = (state: AgentState) => {
+    const routeNode = (state: typeof AgentStateAnnotation.State) => {
       // 如果有工具需要执行，路由到工具节点
       if (state.activeTool) {
         return 'tool';
@@ -357,53 +365,19 @@ export class AgentFactoryService implements OnModuleInit {
       return END;
     };
 
-    // 创建StateGraph
-    const builder = new StateGraph<AgentState>({
-      channels: {
-        messages: {
-          reducer: (x, y) => x.concat(y),
-          default: () => [],
-        },
-        documents: {
-          reducer: (x, y) => x.concat(y),
-          default: () => [],
-        },
-        activeTool: {
-          default: () => null,
-        },
-        toolInput: {
-          default: () => undefined,
-        },
-        toolResults: {
-          default: () => ({}),
-        },
-        agentId: {
-          default: () => agent.id,
-        },
-        query: {
-          default: () => undefined,
-        },
-      }
-    });
-
-    // 添加节点
-    builder.addNode('agent', agentNode);
-    builder.addNode('retrieve', retrieveDocuments);
-    builder.addNode('tool', toolNode);
-    
-    // 设置入口点 - 使用常量
-    builder.addEdge('__start__', 'agent');
-    
-    // 添加条件边
-    builder.addConditionalEdges('agent', routeNode, {
-      tool: 'tool',
-      retrieve: 'retrieve',
-      [END]: '__end__',
-    });
-    
-    // 添加从工具节点和检索节点回到代理节点的边
-    builder.addEdge('tool', 'agent');
-    builder.addEdge('retrieve', 'agent');
+    // 创建StateGraph - 使用正确的Annotation API
+    const builder = new StateGraph(AgentStateAnnotation)
+      .addNode('agent', agentNode)
+      .addNode('retrieve', retrieveDocuments)
+      .addNode('tool', toolNode)
+      .addEdge(START, 'agent')
+      .addConditionalEdges('agent', routeNode, {
+        tool: 'tool',
+        retrieve: 'retrieve',
+        [END]: END,
+      })
+      .addEdge('tool', 'agent')
+      .addEdge('retrieve', 'agent');
 
     // 编译图
     const graph = builder.compile();
@@ -430,5 +404,37 @@ export class AgentFactoryService implements OnModuleInit {
     // 注册代理图
     this.registeredAgents.set(agent.id, { agent, graph: wrapper });
     return wrapper;
+  }
+
+  /**
+   * 获取所有代理
+   */
+  async getAllAgents() {
+    const agents = await this.databaseService.chatAgent.findMany({
+      where: { active: true },
+    });
+    
+    return agents.map(agent => ({
+      id: agent.id,
+      name: agent.name,
+      description: agent.description,
+      type: agent.type,
+      capabilities: agent.capabilities,
+    }));
+  }
+
+  /**
+   * 根据类型获取代理
+   */
+  async getAgentByType(type: string) {
+    const agent = await this.databaseService.chatAgent.findFirst({
+      where: { type, active: true },
+    });
+    
+    if (!agent) {
+      throw new Error(`No active agent found for type: ${type}`);
+    }
+    
+    return this.getAgent(agent.id);
   }
 } 

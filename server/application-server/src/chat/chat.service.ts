@@ -7,6 +7,7 @@ import { ToolRegistryService } from './services/tool-registry.service';
 import { v4 as uuidv4 } from 'uuid';
 import { CreateSessionDto, MessageRole, SendMessageDto, AgentType } from './types';
 import { StructuredTool } from '@langchain/core/tools';
+import { ChatSession } from '@prisma/client';
 
 @Injectable()
 export class ChatService {
@@ -23,199 +24,165 @@ export class ChatService {
   /**
    * 创建新的聊天会话
    */
-  async createSession(createSessionDto: CreateSessionDto) {
+  async createChatSession(
+    userId: number,
+    agentId?: string,
+    title?: string,
+  ): Promise<ChatSession> {
     try {
-      // 确定最适合的代理
-      let agentId = createSessionDto.agentId;
-      
-      if (!agentId && createSessionDto.initialMessage) {
-        // 如果没有指定代理但有初始消息，根据消息内容选择代理
-        const agent = await this.selectBestAgentForMessage(createSessionDto.initialMessage);
-        agentId = agent.id;
-      }
-      
+      // 如果没有指定代理，使用默认代理
       if (!agentId) {
-        // 如果仍未确定代理，使用默认代理
-        const defaultAgent = await this.agentFactory.getDefaultAgent();
+        const agents = await this.agentFactory.getAllAgents();
+        const defaultAgent = agents.find(agent => agent.type === 'customer_service') || agents[0];
+        if (!defaultAgent) {
+          throw new Error('No agents available');
+        }
         agentId = defaultAgent.id;
       }
-      
-      // 创建会话记录
+
+      // 创建聊天会话
       const session = await this.databaseService.chatSession.create({
         data: {
-          id: uuidv4(),
-          userId: createSessionDto.userId,
-          agentId: agentId,
-          title: createSessionDto.title || '新的会话',
+          userId,
+          agentId,
+          title: title || '新的对话',
           status: 'active',
-          startTime: new Date(),
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          metadata: {}
-        }
+          metadata: {},
+        },
       });
-      
-      this.logger.log(`Created new chat session: ${session.id} with agent: ${agentId}`);
-      
-      // 如果有初始消息，处理它
-      if (createSessionDto.initialMessage) {
-        await this.sendMessage({
-          userId: createSessionDto.userId,
-          sessionId: session.id,
-          message: createSessionDto.initialMessage
-        });
-      }
-      
-      return this.getSessionDetails(createSessionDto.userId, session.id);
+
+      return session;
     } catch (error) {
-      this.logger.error(`Error creating session: ${error.message}`, error.stack);
+      this.logger.error(
+        `Error creating chat session: ${error.message}`,
+        error.stack,
+      );
       throw error;
     }
   }
 
   /**
-   * 发送消息到会话
+   * 发送消息到聊天会话
    */
-  async sendMessage(sendMessageDto: SendMessageDto) {
+  async sendMessage(
+    sessionId: string,
+    content: string,
+    role: string = 'user',
+  ): Promise<any> {
     try {
-      const { userId, sessionId, message } = sendMessageDto;
-      
-      // 验证会话存在且属于该用户
-      const session = await this.databaseService.chatSession.findFirst({
-        where: {
-          id: sessionId,
-          userId,
-          status: 'active'
-        },
+      // 获取会话信息
+      const session = await this.databaseService.chatSession.findUnique({
+        where: { id: sessionId },
         include: {
-          agent: true
-        }
+          messages: {
+            orderBy: { timestamp: 'asc' },
+            take: 50, // 限制消息数量
+          },
+        },
       });
 
       if (!session) {
-        throw new NotFoundException('会话不存在或已结束');
+        throw new Error(`Session not found: ${sessionId}`);
       }
 
       // 保存用户消息
-      const userMessageId = uuidv4();
       await this.databaseService.chatSessionMessage.create({
         data: {
-          id: userMessageId,
           sessionId,
-          role: 'user',
-          content: message,
-          timestamp: new Date(),
-        }
+          role,
+          content,
+          metadata: {},
+        },
       });
-      
-      // 获取会话历史
-      const history = await this.getSessionHistory(sessionId);
-      
-      // 获取代理图
-      const agent = await this.agentFactory.getAgentById(session.agentId);
-      
-      // 选择合适的工具
-      const tools = await this.getToolsForAgent(agent);
-      
-      // 准备提交到LangGraph的状态
-      const initialState = {
-        messages: history.map(msg => ({
-          role: msg.role,
-          content: msg.content
-        })),
-        tools,
-        agentId: agent.id
-      };
-      
-      // 执行代理工作流
-      const agentGraph = this.agentFactory.getAgentGraph(agent.id);
-      const result = await agentGraph.invoke(initialState);
-      
-      // 从结果中提取代理的回复
-      const assistantMessages = result.messages.filter(msg => msg.role === 'ai')
-        .slice(-1)[0]; // 取最后一条代理消息
-      
-      // 检查是否需要切换代理
-      let newAgentId = null;
-      if (result.suggestedAgent && result.suggestedAgent !== agent.id) {
-        newAgentId = result.suggestedAgent;
-        
-        // 保存系统消息，记录代理切换
-        const newAgent = await this.agentFactory.getAgentById(newAgentId);
-        await this.databaseService.chatSessionMessage.create({
-          data: {
-            id: uuidv4(),
-            sessionId,
-            role: 'system',
-            content: `切换到${newAgent.name}以更好地回答您的问题`,
-            timestamp: new Date(),
-            metadata: {
-              eventType: 'agent_switch',
-              previousAgentId: agent.id,
-              newAgentId,
-            }
-          }
-        });
-        
-        // 更新会话代理
-        await this.databaseService.chatSession.update({
-          where: { id: sessionId },
-          data: {
-            agentId: newAgentId,
-            updatedAt: new Date()
-          }
-        });
+
+      // 获取代理
+      const agentResult = await this.agentFactory.getAgent(session.agentId);
+      if (!agentResult) {
+        throw new Error(`Agent not found: ${session.agentId}`);
       }
-      
-      // 保存代理回复
-      const assistantMessageId = uuidv4();
-      await this.databaseService.chatSessionMessage.create({
+
+      const { agent, graph } = agentResult;
+
+      // 构建消息历史
+      const messageHistory = session.messages.map((msg) => ({
+        role: msg.role,
+        content: msg.content,
+      }));
+
+      // 调用代理图处理消息
+      const result = await graph.invoke(messageHistory, content);
+
+      // 提取AI回复
+      let aiResponse = '抱歉，我无法处理您的请求。';
+      if (result && result.messages) {
+        const lastMessage = result.messages[result.messages.length - 1];
+        if (lastMessage && lastMessage.role === 'ai') {
+          aiResponse = lastMessage.content;
+        }
+      }
+
+      // 保存AI回复
+      const aiMessage = await this.databaseService.chatSessionMessage.create({
         data: {
-          id: assistantMessageId,
           sessionId,
           role: 'assistant',
-          content: assistantMessages.content,
-          timestamp: new Date(),
-          metadata: {
-            toolsUsed: result.toolsUsed || [],
-            suggestedAgent: newAgentId
-          }
-        }
+          content: aiResponse,
+          metadata: result || {},
+        },
       });
-      
-      // 保存任何工具调用结果
-      if (result.toolResults) {
-        for (const [toolName, toolResult] of Object.entries(result.toolResults)) {
-          await this.databaseService.chatSessionMessage.create({
-            data: {
-              id: uuidv4(),
-              sessionId,
-              role: 'tool',
-              content: JSON.stringify(toolResult),
-              timestamp: new Date(),
-              metadata: {
-                toolName,
-                parentMessageId: assistantMessageId
-              }
-            }
-          });
-        }
-      }
-      
-      // 更新会话时间
-      await this.databaseService.chatSession.update({
-        where: { id: sessionId },
-        data: { updatedAt: new Date() }
-      });
-      
+
       return {
         sessionId,
-        messageId: assistantMessageId,
-        content: assistantMessages.content,
-        agentId: newAgentId || agent.id
+        userMessage: { role, content },
+        aiMessage: { role: 'assistant', content: aiResponse },
+        metadata: result,
       };
     } catch (error) {
-      this.logger.error(`Error sending message: ${error.message}`, error.stack);
+      this.logger.error(
+        `Error sending message: ${error.message}`,
+        error.stack,
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * 切换代理
+   */
+  async switchAgent(sessionId: string, newAgentId: string): Promise<any> {
+    try {
+      // 验证新代理存在
+      const agentResult = await this.agentFactory.getAgent(newAgentId);
+      if (!agentResult) {
+        throw new Error(`Agent not found: ${newAgentId}`);
+      }
+
+      // 更新会话的代理
+      const updatedSession = await this.databaseService.chatSession.update({
+        where: { id: sessionId },
+        data: { agentId: newAgentId },
+      });
+
+      // 添加系统消息通知切换
+      await this.databaseService.chatSessionMessage.create({
+        data: {
+          sessionId,
+          role: 'system',
+          content: `已切换到代理: ${agentResult.agent.name}`,
+          metadata: { agentSwitch: true, newAgentId },
+        },
+      });
+
+      return {
+        sessionId,
+        newAgent: agentResult.agent,
+        message: `已切换到代理: ${agentResult.agent.name}`,
+      };
+    } catch (error) {
+      this.logger.error(
+        `Error switching agent: ${error.message}`,
+        error.stack,
+      );
       throw error;
     }
   }
@@ -223,55 +190,165 @@ export class ChatService {
   /**
    * 获取会话详情
    */
-  async getSessionDetails(userId: number, sessionId: string) {
-    const session = await this.databaseService.chatSession.findFirst({
-      where: {
-        id: sessionId,
-        userId
-      },
-      include: {
-        agent: true,
-        messages: {
-          orderBy: {
-            timestamp: 'asc'
-          }
-        }
+  async getSessionDetails(sessionId: string): Promise<any> {
+    try {
+      const session = await this.databaseService.chatSession.findUnique({
+        where: { id: sessionId },
+        include: {
+          agent: true,
+          user: {
+            select: { userId: true, name: true, email: true },
+          },
+          messages: {
+            orderBy: { timestamp: 'desc' },
+            take: 1, // 只获取最新消息
+          },
+        },
+      });
+
+      if (!session) {
+        throw new Error(`Session not found: ${sessionId}`);
       }
-    });
-    
-    if (!session) {
-      throw new NotFoundException('会话不存在');
+
+      return {
+        id: session.id,
+        title: session.title,
+        status: session.status,
+        startTime: session.startTime,
+        endTime: session.endTime,
+        agent: {
+          id: session.agent.id,
+          name: session.agent.name,
+          type: session.agent.type,
+        },
+        user: session.user,
+        lastMessage: session.messages[0] || null,
+        metadata: session.metadata,
+      };
+    } catch (error) {
+      this.logger.error(
+        `Error getting session details: ${error.message}`,
+        error.stack,
+      );
+      throw error;
     }
-    
-    return session;
   }
 
   /**
-   * 获取用户的所有会话
+   * 获取会话消息历史
    */
-  async getUserSessions(userId: number) {
-    return this.databaseService.chatSession.findMany({
-      where: {
-        userId
-      },
-      orderBy: {
-        updatedAt: 'desc'
-      },
-      include: {
-        agent: {
-          select: {
-            name: true,
-            description: true,
-            type: true
-          }
+  async getSessionHistory(
+    sessionId: string,
+    limit: number = 50,
+    offset: number = 0,
+  ): Promise<any> {
+    try {
+      const messages = await this.databaseService.chatSessionMessage.findMany({
+        where: { sessionId },
+        orderBy: { timestamp: 'asc' },
+        skip: offset,
+        take: limit,
+      });
+
+      const totalCount = await this.databaseService.chatSessionMessage.count({
+        where: { sessionId },
+      });
+
+      return {
+        sessionId,
+        messages: messages.map((msg) => ({
+          id: msg.id,
+          role: msg.role,
+          content: msg.content,
+          timestamp: msg.timestamp,
+          metadata: msg.metadata,
+        })),
+        pagination: {
+          total: totalCount,
+          limit,
+          offset,
+          hasMore: offset + limit < totalCount,
         },
-        _count: {
-          select: {
-            messages: true
-          }
-        }
-      }
-    });
+      };
+    } catch (error) {
+      this.logger.error(
+        `Error getting session history: ${error.message}`,
+        error.stack,
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * 获取可用代理
+   */
+  async getAvailableAgents(): Promise<any> {
+    try {
+      const agents = await this.agentFactory.getAllAgents();
+      return agents;
+    } catch (error) {
+      this.logger.error(
+        `Error getting available agents: ${error.message}`,
+        error.stack,
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * 获取用户会话列表
+   */
+  async getUserSessions(
+    userId: number,
+    limit: number = 20,
+    offset: number = 0,
+  ): Promise<any> {
+    try {
+      const sessions = await this.databaseService.chatSession.findMany({
+        where: { userId },
+        include: {
+          agent: {
+            select: { id: true, name: true, type: true },
+          },
+          messages: {
+            orderBy: { timestamp: 'desc' },
+            take: 1, // 只获取最新消息
+          },
+        },
+        orderBy: { startTime: 'desc' },
+        skip: offset,
+        take: limit,
+      });
+
+      const totalCount = await this.databaseService.chatSession.count({
+        where: { userId },
+      });
+
+      return {
+        sessions: sessions.map((session) => ({
+          id: session.id,
+          title: session.title,
+          status: session.status,
+          startTime: session.startTime,
+          endTime: session.endTime,
+          agent: session.agent,
+          lastMessage: session.messages[0] || null,
+          metadata: session.metadata,
+        })),
+        pagination: {
+          total: totalCount,
+          limit,
+          offset,
+          hasMore: offset + limit < totalCount,
+        },
+      };
+    } catch (error) {
+      this.logger.error(
+        `Error getting user sessions: ${error.message}`,
+        error.stack,
+      );
+      throw error;
+    }
   }
 
   /**
@@ -299,57 +376,42 @@ export class ChatService {
   }
 
   /**
-   * 为消息选择最佳代理
+   * 智能选择代理
    */
-  private async selectBestAgentForMessage(message: string): Promise<any> {
+  private async selectAgentForQuery(query: string): Promise<any> {
     try {
-      // 生成消息的嵌入向量
-      const embedding = await this.ollamaService.generateEmbedding(message);
-      
-      // 获取所有代理
+      // 获取所有可用代理
       const agents = await this.agentFactory.getAllAgents();
+
+      // 简单的关键词匹配逻辑
+      const queryLower = query.toLowerCase();
       
-      // 分析消息内容，选择最适合的代理
-      // 简化版实现：基于关键词匹配
-      const keywords = {
-        [AgentType.PRODUCT]: ['产品', '商品', '购买', '价格', '规格', '特点'],
-        [AgentType.APPOINTMENT]: ['预约', '安排', '时间', '日期', '取消', '修改'],
-        [AgentType.CUSTOMER_SERVICE]: ['客服', '投诉', '退款', '问题', '售后', '服务']
-      };
-      
-      let bestAgentType = AgentType.GENERAL;
-      let maxMatches = 0;
-      
-      for (const [type, words] of Object.entries(keywords)) {
-        const matches = words.filter(word => message.includes(word)).length;
-        if (matches > maxMatches) {
-          maxMatches = matches;
-          bestAgentType = type as AgentType;
-        }
+      // 订单相关
+      if (queryLower.includes('订单') || queryLower.includes('order') || queryLower.includes('退款')) {
+        const matchingAgent = agents.find(agent => agent.type === 'customer_service');
+        return matchingAgent || agents[0];
       }
       
-      // 找到对应类型的代理
-      const matchingAgent = agents.find(agent => agent.type === bestAgentType);
+      // 技术支持相关
+      if (queryLower.includes('问题') || queryLower.includes('故障') || queryLower.includes('技术')) {
+        const matchingAgent = agents.find(agent => agent.type === 'technical_support');
+        return matchingAgent || agents[0];
+      }
       
-      return matchingAgent || await this.agentFactory.getDefaultAgent();
+      // 预约相关
+      if (queryLower.includes('预约') || queryLower.includes('约') || queryLower.includes('时间')) {
+        const matchingAgent = agents.find(agent => agent.type === 'appointment');
+        return matchingAgent || agents[0];
+      }
+
+      // 默认返回客服代理
+      const defaultAgent = agents.find(agent => agent.type === 'customer_service') || agents[0];
+      return defaultAgent;
     } catch (error) {
       this.logger.error(`Error selecting agent: ${error.message}`, error.stack);
-      return this.agentFactory.getDefaultAgent();
+      const agents = await this.agentFactory.getAllAgents();
+      return agents[0]; // 返回第一个可用代理
     }
-  }
-
-  /**
-   * 获取会话历史消息
-   */
-  private async getSessionHistory(sessionId: string) {
-    return this.databaseService.chatSessionMessage.findMany({
-      where: {
-        sessionId
-      },
-      orderBy: {
-        timestamp: 'asc'
-      }
-    });
   }
 
   /**
