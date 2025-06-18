@@ -597,6 +597,90 @@ curl -X POST "http://localhost:3001/wechat-summary/vector-search" \
 
 欢迎提交Issue和Pull Request来改进这个项目！
 
-## �� 许可证
+## 📄 许可证
 
 MIT License
+
+# Application Server
+
+这是一个基于NestJS框架的应用服务器，支持多种功能包括用户管理、订单处理、聊天机器人等。
+
+## 功能列表
+
+- 用户管理（注册、登录、个人信息管理）
+- 订单管理（创建、更新、查询）
+- 产品目录（产品信息、库存管理）
+- 购物车功能（添加、删除、更新）
+- 微信登录集成
+- 预约服务管理
+- 优惠券系统
+- 推荐系统（用户推荐与跟踪）
+- 聊天机器人系统（多代理智能对话）
+
+## 聊天机器人系统
+
+### LangGraph多代理集成
+
+该项目集成了基于LangGraph的多代理对话系统，主要特点包括：
+
+- **多代理协作**：根据用户问题智能切换不同专业领域的代理
+- **工具调用能力**：支持代理通过工具API获取实时信息
+- **上下文连续对话**：保持对话上下文，提供连贯的用户体验
+- **意图识别**：通过语义分析识别用户意图，选择合适的代理响应
+
+### MCP协议支持
+
+集成了Model Context Protocol (MCP)协议，使代理能够：
+
+- 通过标准协议与外部工具和服务通信
+- 支持多种传输方式（HTTP、stdio）
+- 动态发现和使用可用工具
+- 根据上下文选择最佳工具组合
+
+### 代理类型
+
+系统内置了多种专业代理：
+
+- 通用客服助手：处理一般性问题
+- 产品专家：提供详细产品信息和建议
+- 预约服务助手：处理与预约相关的请求和问题
+
+## 安装与运行
+
+```bash
+# 安装依赖
+pnpm install
+
+# 数据库迁移
+npx prisma migrate dev
+
+# 启动服务
+pnpm start:dev
+```
+
+## 环境变量
+
+创建一个`.env`文件，包含以下环境变量：
+
+```
+DATABASE_URL="postgresql://username:password@localhost:5432/mydatabase?schema=public"
+PORT=3001
+JWT_SECRET=your-jwt-secret
+JWT_EXPIRES_IN=30d
+
+# 微信配置
+WECHAT_APP_ID=your-app-id
+WECHAT_APP_SECRET=your-app-secret
+
+# MCP服务端点
+MCP_SEARCH_ENDPOINT=http://localhost:3100/mcp
+MCP_WEATHER_ENDPOINT=http://localhost:3200/mcp
+
+# LangGraph配置
+ENABLE_LANGGRAPH=true
+DEFAULT_LLM_MODEL=deepseek-r1
+```
+
+## API文档
+
+启动服务后，访问`http://localhost:3001/api-docs`查看完整API文档。

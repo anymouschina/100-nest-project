@@ -13,7 +13,6 @@ import { AppointmentModule } from './appointment/appointment.module';
 import { MicroservicesModule } from './microservices/microservices.module';
 import { WechatModule } from './wechat/wechat.module';
 import { LoggerModule } from './common/logger/logger.module';
-import { ChatModule } from './chat/chat.module';
 
 @Module({
   imports: [
@@ -29,7 +28,6 @@ import { ChatModule } from './chat/chat.module';
     AppointmentModule,
     MicroservicesModule,
     WechatModule,
-    ChatModule,
   ],
   controllers: [],
   providers: [

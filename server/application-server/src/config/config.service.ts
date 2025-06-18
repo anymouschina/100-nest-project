@@ -5,6 +5,11 @@ import { ConfigService as NestConfigService } from '@nestjs/config';
 export class AppConfigService {
   constructor(private configService: NestConfigService) {}
 
+  // 通用获取配置方法
+  get<T>(key: string): T {
+    return this.configService.get<T>(key);
+  }
+
   get port(): number {
     return this.configService.get<number>('port');
   }

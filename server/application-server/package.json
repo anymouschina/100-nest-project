@@ -20,7 +20,8 @@
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "db:init": "prisma db push",
     "db:seed": "ts-node prisma/seed.ts",
-    "start:all": "npm run db:init && npm run build && npm run db:seed && npm run start:dev"
+    "start:all": "npm run db:init && npm run build && npm run db:seed && npm run start:dev",
+    "generate-mcp-server": "ts-node scripts/generate-mcp-server.ts"
   },
   "dependencies": {
     "@langchain/community": "^0.3.46",
