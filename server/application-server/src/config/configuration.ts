@@ -11,6 +11,13 @@ export default () => ({
     secret: process.env.JWT_SECRET || 'super-secret',
     expiresIn: process.env.JWT_EXPIRES_IN || '30d',
   },
+  llm: {
+    ollamaBaseUrl: process.env.OLLAMA_BASE_URL || 'http://localhost:11434',
+    defaultModel: process.env.DEFAULT_LLM_MODEL || 'deepseek-r1',
+    temperature: parseFloat(process.env.LLM_TEMPERATURE) || 0.7,
+    maxTokens: parseInt(process.env.LLM_MAX_TOKENS, 10) || 2048,
+    streaming: process.env.LLM_STREAMING === 'true',
+  },
   mcp: {
     search: {
       endpoint: process.env.MCP_SEARCH_ENDPOINT || 'http://localhost:3100/mcp',
@@ -30,6 +37,7 @@ export default () => ({
   },
   langgraph: {
     enabled: process.env.ENABLE_LANGGRAPH === 'true',
-    defaultModel: process.env.DEFAULT_LLM_MODEL || 'deepseek-r1',
+    defaultAgentType: process.env.DEFAULT_AGENT_TYPE || 'general',
+    toolSelectionStrategy: process.env.TOOL_SELECTION_STRATEGY || 'auto',
   },
 }); 

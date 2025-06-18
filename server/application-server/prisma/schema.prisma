@@ -322,68 +322,49 @@ model EmbeddingCache {
   @@map("embedding_cache")
 }
 
-// 聊天Agent模型
+// 聊天代理模型
 model ChatAgent {
-  id            String    @id @default(cuid())
-  name          String    // Agent名称
-  description   String    // Agent描述
-  type          String    // Agent类型 (product, support, referral, etc.)
-  systemPrompt  String    @map("system_prompt") // Agent系统提示词
-  capabilities  String[]  // Agent能力列表
-  modelConfig   Json      @map("model_config") // 模型配置
-  active        Boolean   @default(true)
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
-  
-  // 关联的聊天会话
-  sessions      ChatSession[]
-  
-  @@index([type, active])
-  @@map("chat_agents")
+  id           String   @id @default(uuid())
+  name         String
+  description  String
+  type         String
+  systemPrompt String   @db.Text
+  capabilities String[] @default([])
+  modelConfig  Json?
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  sessions     ChatSession[]
 }
 
 // 聊天会话模型
 model ChatSession {
-  id            String    @id @default(cuid())
-  userId        Int       @map("user_id") // 关联用户ID
-  agentId       String    @map("agent_id") // 关联Agent ID
-  status        String    @default("active") // 会话状态 (active, ended)
-  startTime     DateTime  @default(now()) @map("start_time")
-  endTime       DateTime? @map("end_time") // 结束时间
-  title         String?   // 会话标题
-  summary       String?   // 会话摘要
-  metadata      Json?     // 元数据
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
+  id        String   @id @default(uuid())
+  userId    Int
+  agentId   String
+  title     String
+  status    String   @default("active") // 'active', 'ended'
+  startTime DateTime @default(now())
+  endTime   DateTime?
+  metadata  Json?    @default("{}")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
   
-  // 关联的用户
-  user          User      @relation(fields: [userId], references: [userId])
-  // 关联的Agent
-  agent         ChatAgent @relation(fields: [agentId], references: [id])
-  // 关联的消息
-  messages      ChatSessionMessage[]
-  
-  @@index([userId, status])
-  @@index([agentId, status])
-  @@map("chat_sessions")
+  agent     ChatAgent          @relation(fields: [agentId], references: [id])
+  user      User               @relation(fields: [userId], references: [userId])
+  messages  ChatSessionMessage[]
 }
 
-// 会话消息模型
+// 聊天消息模型
 model ChatSessionMessage {
-  id            String    @id @default(cuid())
-  sessionId     String    @map("session_id") // 关联会话ID
-  role          String    // 消息角色 (user, assistant, system)
-  content       String    // 消息内容
-  embedding     Unsupported("vector(1536)")? // 向量嵌入
-  timestamp     DateTime  @default(now())
-  metadata      Json?     // 元数据
+  id         String   @id @default(uuid())
+  sessionId  String
+  role       String   // 'user', 'assistant', 'system', 'tool'
+  content    String   @db.Text
+  timestamp  DateTime @default(now())
+  metadata   Json?    @default("{}")
   
-  // 关联的会话
-  session       ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  
-  @@index([sessionId, timestamp])
-  @@index([role, timestamp])
-  @@map("chat_session_messages")
+  session    ChatSession @relation(fields: [sessionId], references: [id])
 }
 
 // 语义意图模型

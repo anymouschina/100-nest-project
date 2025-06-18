@@ -243,6 +243,9 @@ export class WxUserController {
     description: 'User not found',
   })
   async getUserInfo(@CurrentUser() user: any) {
+    if (!user || !user.userId) {
+      throw new UnauthorizedException('User not authenticated or invalid token');
+    }
     return this.userService.getUserInfo(user.userId);
   }
 

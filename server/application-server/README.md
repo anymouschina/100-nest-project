@@ -617,33 +617,45 @@ MIT License
 - 推荐系统（用户推荐与跟踪）
 - 聊天机器人系统（多代理智能对话）
 
-## 聊天机器人系统
+## LangGraph多代理聊天机器人
 
-### LangGraph多代理集成
+该项目实现了基于LangGraph和LangChain的多代理对话系统，主要特点包括：
 
-该项目集成了基于LangGraph的多代理对话系统，主要特点包括：
+### 系统架构
 
 - **多代理协作**：根据用户问题智能切换不同专业领域的代理
 - **工具调用能力**：支持代理通过工具API获取实时信息
-- **上下文连续对话**：保持对话上下文，提供连贯的用户体验
-- **意图识别**：通过语义分析识别用户意图，选择合适的代理响应
-
-### MCP协议支持
-
-集成了Model Context Protocol (MCP)协议，使代理能够：
-
-- 通过标准协议与外部工具和服务通信
-- 支持多种传输方式（HTTP、stdio）
-- 动态发现和使用可用工具
-- 根据上下文选择最佳工具组合
+- **MCP协议支持**：通过Model Context Protocol与外部工具和服务通信
+- **Ollama集成**：使用本地Ollama运行deepseek-r1模型，提供低延迟响应
 
 ### 代理类型
 
 系统内置了多种专业代理：
 
-- 通用客服助手：处理一般性问题
-- 产品专家：提供详细产品信息和建议
-- 预约服务助手：处理与预约相关的请求和问题
+- **通用客服助手**：处理一般性问题
+- **产品专家**：提供详细产品信息和建议
+- **预约服务助手**：处理与预约相关的请求和问题
+- **客户服务代表**：处理投诉和售后服务问题
+
+### 简化版实现
+
+由于TypeScript与LangGraph的类型系统兼容性问题，我们提供了两个版本的实现：
+
+1. **完整版实现** - NestJS服务集成版，支持多代理和完整功能
+2. **简化版实现** - 命令行测试版，演示基本工具调用和对话功能
+
+简化版可以通过以下命令运行：
+
+```bash
+npx ts-node scripts/simple-chat.ts
+```
+
+这个简化版实现具有以下功能：
+
+- 使用Ollama的deepseek-r1模型
+- 支持基本工具调用(当前时间、计算器)
+- 完整对话历史管理
+- 流程化的工具执行和结果处理
 
 ## 安装与运行
 
@@ -656,6 +668,9 @@ npx prisma migrate dev
 
 # 启动服务
 pnpm start:dev
+
+# 测试聊天脚本(简化版)
+npx ts-node scripts/simple-chat.ts
 ```
 
 ## 环境变量
@@ -665,22 +680,66 @@ pnpm start:dev
 ```
 DATABASE_URL="postgresql://username:password@localhost:5432/mydatabase?schema=public"
 PORT=3001
-JWT_SECRET=your-jwt-secret
+JWT_SECRET=your-secret-key
 JWT_EXPIRES_IN=30d
-
-# 微信配置
-WECHAT_APP_ID=your-app-id
-WECHAT_APP_SECRET=your-app-secret
-
-# MCP服务端点
-MCP_SEARCH_ENDPOINT=http://localhost:3100/mcp
-MCP_WEATHER_ENDPOINT=http://localhost:3200/mcp
-
-# LangGraph配置
-ENABLE_LANGGRAPH=true
+WECHAT_APP_ID=your-wechat-app-id
+WECHAT_APP_SECRET=your-wechat-app-secret
+OLLAMA_BASE_URL=http://localhost:11434
 DEFAULT_LLM_MODEL=deepseek-r1
+ENABLE_LANGGRAPH=true
 ```
 
-## API文档
+## API接口
 
-启动服务后，访问`http://localhost:3001/api-docs`查看完整API文档。
+### 聊天接口
+
+- `POST /chat/sessions` - 创建新的聊天会话
+- `GET /chat/sessions` - 获取用户的所有会话
+- `GET /chat/sessions/:id` - 获取单个会话详情
+- `POST /chat/sessions/:id/messages` - 发送消息到会话
+- `PUT /chat/sessions/:id/end` - 结束会话
+
+## 已知问题和解决方案
+
+当前实现中存在以下已知问题：
+
+1. **TypeScript类型系统与LangGraph兼容性**：LangGraph的TypeScript类型定义与我们的实现存在兼容性问题，导致编译错误。为解决此问题，我们提供了简化版实现，稍后将完善类型定义。
+
+2. **工具调用格式**：当前工具调用依赖于文本模式匹配，未来将迁移到更结构化的工具调用格式。
+
+3. **MCP协议集成**：当前MCP协议支持处于模拟状态，将在后续版本中完善实际调用逻辑。
+
+## 开发指南
+
+### 添加新代理
+
+在`src/chat/services/agent-factory.service.ts`中的`initializeDefaultAgents`方法中添加新的代理定义：
+
+```typescript
+{
+  id: 'your-agent-id',
+  name: '代理名称',
+  description: '代理描述',
+  type: 'your_type',
+  systemPrompt: '系统提示...',
+  capabilities: ['capability1', 'capability2']
+}
+```
+
+### 添加新工具
+
+在`src/chat/services/tool-registry.service.ts`中的`registerBuiltInTools`方法中注册新工具：
+
+```typescript
+this.registerTool(
+  new DynamicTool({
+    name: 'tool_name',
+    description: '工具描述',
+    func: async (args) => {
+      // 工具实现
+      return result;
+    }
+  }),
+  'category'
+);
+```
