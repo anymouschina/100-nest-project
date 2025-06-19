@@ -6,7 +6,12 @@ import { AgentFactoryService } from './services/agent-factory.service';
 import { ToolRegistryService } from './services/tool-registry.service';
 import { ContextManagerService } from './services/context-manager.service';
 import { v4 as uuidv4 } from 'uuid';
-import { CreateSessionDto, MessageRole, SendMessageDto, AgentType } from './types';
+import {
+  CreateSessionDto,
+  MessageRole,
+  SendMessageDto,
+  AgentType,
+} from './types';
 import { StructuredTool } from '@langchain/core/tools';
 import { ChatSession } from '@prisma/client';
 
@@ -35,7 +40,9 @@ export class ChatService {
       // 如果没有指定代理，使用默认代理
       if (!agentId) {
         const agents = await this.agentFactory.getAllAgents();
-        const defaultAgent = agents.find(agent => agent.type === 'customer_service') || agents[0];
+        const defaultAgent =
+          agents.find((agent) => agent.type === 'customer_service') ||
+          agents[0];
         if (!defaultAgent) {
           throw new Error('No agents available');
         }
@@ -81,8 +88,6 @@ export class ChatService {
         throw new Error(`Session not found: ${sessionId}`);
       }
 
-   
-
       // 获取代理
       const agentResult = await this.agentFactory.getAgent(session.agentId);
       if (!agentResult) {
@@ -90,7 +95,7 @@ export class ChatService {
       }
 
       const { agent, graph } = agentResult;
-      
+
       // 获取会话消息历史（限制最近30条）
       const messages = await this.databaseService.chatSessionMessage.findMany({
         where: { sessionId },
@@ -104,18 +109,46 @@ export class ChatService {
         content: msg.content,
       }));
 
+      // 先保存用户消息
+      const userMessage = await this.databaseService.chatSessionMessage.create({
+        data: {
+          sessionId,
+          role,
+          content,
+          metadata: {},
+        },
+      });
+
       // 调用代理图处理消息
       const result = await graph.invoke(messageHistory, content);
 
       // 提取AI回复
       let aiResponse = '抱歉，我无法处理您的请求。';
       if (result && result.messages && Array.isArray(result.messages)) {
-        const lastMessage = result.messages[result.messages.length - 1];
-        if (lastMessage && lastMessage.role === 'ai') {
-          aiResponse = lastMessage.content;
+        this.logger.debug(
+          `Total messages in result: ${result.messages.length}`,
+        );
+
+        // 从后往前查找最后一条有内容的AI消息
+        for (let i = result.messages.length - 1; i >= 0; i--) {
+          const message = result.messages[i];
+          this.logger.debug(
+            `Message ${i}: role=${message?.role}, content length=${message?.content?.length || 0}`,
+          );
+
+          if (
+            message &&
+            message.role === 'ai' &&
+            message.content &&
+            message.content.trim()
+          ) {
+            aiResponse = message.content;
+            this.logger.debug(`Found AI response at index ${i}`);
+            break;
+          }
         }
       }
-      
+
       // 如果有错误，记录但继续处理
       if (result && result.error) {
         this.logger.warn(`Agent returned error: ${result.error}`);
@@ -130,15 +163,6 @@ export class ChatService {
           metadata: result || {},
         },
       });
-         // 保存用户消息
-        await this.databaseService.chatSessionMessage.create({
-        data: {
-          sessionId,
-          role,
-          content,
-          metadata: {},
-        },
-      });
       return {
         sessionId,
         userMessage: { role, content },
@@ -146,10 +170,7 @@ export class ChatService {
         metadata: result,
       };
     } catch (error) {
-      this.logger.error(
-        `Error sending message: ${error.message}`,
-        error.stack,
-      );
+      this.logger.error(`Error sending message: ${error.message}`, error.stack);
       throw error;
     }
   }
@@ -187,10 +208,7 @@ export class ChatService {
         message: `已切换到代理: ${agentResult.agent.name}`,
       };
     } catch (error) {
-      this.logger.error(
-        `Error switching agent: ${error.message}`,
-        error.stack,
-      );
+      this.logger.error(`Error switching agent: ${error.message}`, error.stack);
       throw error;
     }
   }
@@ -374,20 +392,20 @@ export class ChatService {
     const session = await this.databaseService.chatSession.findFirst({
       where: {
         id: sessionId,
-        userId
-      }
+        userId,
+      },
     });
-    
+
     if (!session) {
       throw new NotFoundException('会话不存在');
     }
-    
+
     return this.databaseService.chatSession.update({
       where: { id: sessionId },
       data: {
         status: 'ended',
-        updatedAt: new Date()
-      }
+        updatedAt: new Date(),
+      },
     });
   }
 
@@ -401,27 +419,46 @@ export class ChatService {
 
       // 简单的关键词匹配逻辑
       const queryLower = query.toLowerCase();
-      
+
       // 订单相关
-      if (queryLower.includes('订单') || queryLower.includes('order') || queryLower.includes('退款')) {
-        const matchingAgent = agents.find(agent => agent.type === 'customer_service');
+      if (
+        queryLower.includes('订单') ||
+        queryLower.includes('order') ||
+        queryLower.includes('退款')
+      ) {
+        const matchingAgent = agents.find(
+          (agent) => agent.type === 'customer_service',
+        );
         return matchingAgent || agents[0];
       }
-      
+
       // 技术支持相关
-      if (queryLower.includes('问题') || queryLower.includes('故障') || queryLower.includes('技术')) {
-        const matchingAgent = agents.find(agent => agent.type === 'technical_support');
+      if (
+        queryLower.includes('问题') ||
+        queryLower.includes('故障') ||
+        queryLower.includes('技术')
+      ) {
+        const matchingAgent = agents.find(
+          (agent) => agent.type === 'technical_support',
+        );
         return matchingAgent || agents[0];
       }
-      
+
       // 预约相关
-      if (queryLower.includes('预约') || queryLower.includes('约') || queryLower.includes('时间')) {
-        const matchingAgent = agents.find(agent => agent.type === 'appointment');
+      if (
+        queryLower.includes('预约') ||
+        queryLower.includes('约') ||
+        queryLower.includes('时间')
+      ) {
+        const matchingAgent = agents.find(
+          (agent) => agent.type === 'appointment',
+        );
         return matchingAgent || agents[0];
       }
 
       // 默认返回客服代理
-      const defaultAgent = agents.find(agent => agent.type === 'customer_service') || agents[0];
+      const defaultAgent =
+        agents.find((agent) => agent.type === 'customer_service') || agents[0];
       return defaultAgent;
     } catch (error) {
       this.logger.error(`Error selecting agent: ${error.message}`, error.stack);
@@ -444,40 +481,45 @@ export class ChatService {
    */
   async getAgentToolUsage(agentId: string) {
     // 使用findMany和普通查询替代problematic的groupBy
-    const toolMessages = await this.databaseService.chatSessionMessage.findMany({
-      where: {
-        role: 'tool',
-        session: {
-          agentId
-        }
+    const toolMessages = await this.databaseService.chatSessionMessage.findMany(
+      {
+        where: {
+          role: 'tool',
+          session: {
+            agentId,
+          },
+        },
+        select: {
+          id: true,
+          metadata: true,
+        },
       },
-      select: {
-        id: true,
-        metadata: true
-      }
-    });
-    
+    );
+
     // 手动聚合结果
-    const toolUsage = toolMessages.reduce((acc, message) => {
-      // 正确处理metadata的类型
-      const metadata = message.metadata as Record<string, any> | null;
-      const toolName = metadata?.toolName;
-      
-      if (toolName) {
-        if (!acc[toolName]) {
-          acc[toolName] = 0;
+    const toolUsage = toolMessages.reduce(
+      (acc, message) => {
+        // 正确处理metadata的类型
+        const metadata = message.metadata as Record<string, any> | null;
+        const toolName = metadata?.toolName;
+
+        if (toolName) {
+          if (!acc[toolName]) {
+            acc[toolName] = 0;
+          }
+          acc[toolName]++;
         }
-        acc[toolName]++;
-      }
-      return acc;
-    }, {} as Record<string, number>);
-    
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
+
     // 转换为数组并排序
     const result = Object.entries(toolUsage)
       .map(([toolName, count]) => ({ toolName, count: Number(count) }))
       .sort((a, b) => Number(b.count) - Number(a.count))
       .slice(0, 10);
-    
+
     return result;
   }
-} 
+}

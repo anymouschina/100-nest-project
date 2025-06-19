@@ -308,7 +308,7 @@ ${conversationText}
     ) {
       // 添加一个占位符用户消息，这将在实际调用时被替换
       optimizedMessages.push({
-        role: 'human',
+        role: 'user',
         content: '[PLACEHOLDER_USER_MESSAGE]',
         metadata: { placeholder: true },
       });

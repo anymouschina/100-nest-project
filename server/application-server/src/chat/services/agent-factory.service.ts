@@ -239,7 +239,7 @@ export class AgentFactoryService implements OnModuleInit {
     ) => {
       try {
         // 获取用户最新的消息
-        const userMessages = state.messages.filter(m => m.role === 'human');
+        const userMessages = state.messages.filter(m => m.role === 'user');
         if (userMessages.length === 0) {
           return {}; // 没有用户消息，不处理
         }
@@ -392,7 +392,7 @@ export class AgentFactoryService implements OnModuleInit {
           // 构建最终的消息列表
           const finalMessages = [
             ...recentMessages,
-            { role: 'human', content: userMessage }
+            { role: 'user', content: userMessage }
           ];
 
           logger.log(
