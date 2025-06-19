@@ -314,7 +314,9 @@ ${conversationText}
       });
     }
 
-    this.logger.log(`优化消息历史完成，最终消息数: ${optimizedMessages.length}`);
+    this.logger.log(
+      `优化消息历史完成，最终消息数: ${optimizedMessages.length}`,
+    );
 
     return optimizedMessages;
   }
@@ -341,4 +343,49 @@ ${conversationText}
       this.logger.error(`清理旧会话失败: ${error.message}`, error.stack);
     }
   }
-} 
+
+  /**
+   * RAG检索相关上下文
+   */
+  async retrieveRelevantContext(
+    query: string,
+    options: {
+      sessionId: string;
+      agentId: string;
+      maxDocuments?: number;
+      similarityThreshold?: number;
+    },
+  ): Promise<any[]> {
+    try {
+      const {
+        sessionId,
+        agentId,
+        maxDocuments = 5,
+        similarityThreshold = 0.7,
+      } = options;
+
+      // 这里可以集成向量数据库检索
+      // 目前先返回模拟的上下文检索结果
+      this.logger.debug(
+        `RAG检索查询: ${query}, 会话: ${sessionId}, 代理: ${agentId}`,
+      );
+
+      // 模拟检索结果 - 在实际项目中应该连接向量数据库
+      const mockRetrievedDocs = [
+        {
+          id: '1',
+          content: `关于"${query}"的相关信息`,
+          similarity: 0.85,
+          source: 'knowledge_base',
+        },
+      ];
+
+      return mockRetrievedDocs
+        .filter((doc) => doc.similarity >= similarityThreshold)
+        .slice(0, maxDocuments);
+    } catch (error) {
+      this.logger.error(`RAG检索失败: ${error.message}`, error.stack);
+      return [];
+    }
+  }
+}

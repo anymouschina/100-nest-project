@@ -71,7 +71,8 @@ export class ChatService {
   }
 
   /**
-   * 发送消息到聊天会话
+   * 发送消息到聊天会话 - 2025年优化版本
+   * 集成智能上下文压缩、RAG检索增强、消息修剪等最佳实践
    */
   async sendMessage(
     sessionId: string,
@@ -96,19 +97,6 @@ export class ChatService {
 
       const { agent, graph } = agentResult;
 
-      // 获取会话消息历史（限制最近30条）
-      const messages = await this.databaseService.chatSessionMessage.findMany({
-        where: { sessionId },
-        orderBy: { timestamp: 'asc' },
-        take: 30,
-      });
-
-      // 转换为LangGraph需要的格式
-      const messageHistory = messages.map((msg) => ({
-        role: msg.role,
-        content: msg.content,
-      }));
-
       // 先保存用户消息
       const userMessage = await this.databaseService.chatSessionMessage.create({
         data: {
@@ -119,10 +107,49 @@ export class ChatService {
         },
       });
 
-      // 调用代理图处理消息
-      const result = await graph.invoke(messageHistory, content);
+      // 获取会话消息历史（增加限制到50条以进行智能压缩）
+      const allMessages =
+        await this.databaseService.chatSessionMessage.findMany({
+          where: { sessionId },
+          orderBy: { timestamp: 'asc' },
+          take: 50, // 增加取样数量用于智能压缩
+        });
 
-      // 提取AI回复
+      // 智能消息压缩 - 基于LangGraphJS 2025最佳实践
+      const compressedMessages = await this.intelligentMessageCompression(
+        allMessages,
+        content,
+        agent,
+      );
+
+      // RAG检索增强 - 基于用户查询检索相关上下文
+      const retrievedContext = await this.performRAGRetrieval(
+        content,
+        sessionId,
+        agent,
+      );
+
+      // 构建增强的消息历史
+      const enhancedMessageHistory = this.buildEnhancedMessageHistory(
+        compressedMessages,
+        retrievedContext,
+        agent,
+      );
+
+      this.logger.debug(
+        `Enhanced message history: ${enhancedMessageHistory.length} messages`,
+      );
+
+      // 调用代理图处理消息，传入增强的上下文
+      const result = await graph.invoke(enhancedMessageHistory, content, {
+        configurable: {
+          sessionId,
+          userId: session.userId,
+          retrievedContext,
+        },
+      });
+
+      // 提取AI回复 - 改进的提取逻辑
       let aiResponse = '抱歉，我无法处理您的请求。';
       if (result && result.messages && Array.isArray(result.messages)) {
         this.logger.debug(
@@ -154,25 +181,276 @@ export class ChatService {
         this.logger.warn(`Agent returned error: ${result.error}`);
       }
 
-      // 保存AI回复
+      // 保存AI回复，包含检索到的上下文信息
       const aiMessage = await this.databaseService.chatSessionMessage.create({
         data: {
           sessionId,
           role: 'assistant',
           content: aiResponse,
-          metadata: result || {},
+          metadata: {
+            ...result,
+            retrievedContext: retrievedContext
+              ? {
+                  documentsCount: retrievedContext.documents?.length || 0,
+                  contextSummary: retrievedContext.summary,
+                }
+              : null,
+            compressionStats: {
+              originalMessageCount: allMessages.length,
+              compressedMessageCount: compressedMessages.length,
+            },
+          },
         },
       });
+
       return {
         sessionId,
         userMessage: { role, content },
         aiMessage: { role: 'assistant', content: aiResponse },
-        metadata: result,
+        metadata: {
+          ...result,
+          compressionApplied: allMessages.length > compressedMessages.length,
+          ragEnhanced: !!retrievedContext,
+          contextStats: {
+            originalMessages: allMessages.length,
+            compressedMessages: compressedMessages.length,
+            retrievedDocuments: retrievedContext?.documents?.length || 0,
+          },
+        },
       };
     } catch (error) {
       this.logger.error(`Error sending message: ${error.message}`, error.stack);
       throw error;
     }
+  }
+
+  /**
+   * 智能消息压缩 - 基于LangGraphJS 2025最佳实践
+   * 使用消息修剪和上下文重要性评估
+   */
+  private async intelligentMessageCompression(
+    messages: any[],
+    currentQuery: string,
+    agent: any,
+  ): Promise<any[]> {
+    try {
+      // 转换为LangChain消息格式
+      const langchainMessages = messages.map((msg) => ({
+        role: msg.role === 'assistant' ? 'ai' : msg.role,
+        content: msg.content,
+        id: msg.id,
+      }));
+
+      // 如果消息数量少于10条，直接返回
+      if (langchainMessages.length <= 10) {
+        return langchainMessages;
+      }
+
+      // 智能消息修剪策略
+      const maxMessages = this.calculateOptimalMessageCount(
+        agent,
+        currentQuery,
+      );
+
+      // 保留系统消息、最近的人类消息和AI回复
+      const systemMessages = langchainMessages.filter(
+        (msg) => msg.role === 'system',
+      );
+      const conversationMessages = langchainMessages.filter(
+        (msg) => msg.role !== 'system',
+      );
+
+      // 应用sliding window策略，保留最近的重要对话
+      const recentMessages = conversationMessages.slice(-maxMessages);
+
+      // 确保消息序列的完整性（人类-AI配对）
+      const balancedMessages =
+        this.ensureMessageSequenceIntegrity(recentMessages);
+
+      // 合并系统消息和平衡的对话消息
+      const compressedMessages = [...systemMessages, ...balancedMessages];
+
+      this.logger.debug(
+        `Message compression: ${langchainMessages.length} -> ${compressedMessages.length}`,
+      );
+
+      return compressedMessages;
+    } catch (error) {
+      this.logger.warn(`Message compression failed: ${error.message}`);
+      // 降级策略：返回最近的20条消息
+      return messages.slice(-20).map((msg) => ({
+        role: msg.role === 'assistant' ? 'ai' : msg.role,
+        content: msg.content,
+        id: msg.id,
+      }));
+    }
+  }
+
+  /**
+   * RAG检索增强 - 基于用户查询检索相关上下文
+   */
+  private async performRAGRetrieval(
+    query: string,
+    sessionId: string,
+    agent: any,
+  ): Promise<any> {
+    try {
+      // 检查代理是否支持RAG功能
+      if (
+        !agent.capabilities?.includes('rag') &&
+        !agent.capabilities?.includes('retrieval')
+      ) {
+        return null;
+      }
+
+      // 使用上下文管理器检索相关文档
+      const retrievedDocs = await this.contextManager.retrieveRelevantContext(
+        query,
+        {
+          sessionId,
+          agentId: agent.id,
+          maxDocuments: 5,
+          similarityThreshold: 0.7,
+        },
+      );
+
+      if (!retrievedDocs || retrievedDocs.length === 0) {
+        return null;
+      }
+
+      // 格式化检索到的上下文
+      const formattedContext = retrievedDocs
+        .map((doc, index) => `文档${index + 1}: ${doc.content}`)
+        .join('\n\n');
+
+      // 生成上下文摘要
+      const contextSummary = this.generateContextSummary(retrievedDocs);
+
+      return {
+        documents: retrievedDocs,
+        formattedContext,
+        summary: contextSummary,
+        retrievalQuery: query,
+      };
+    } catch (error) {
+      this.logger.warn(`RAG retrieval failed: ${error.message}`);
+      return null;
+    }
+  }
+
+  /**
+   * 构建增强的消息历史
+   */
+  private buildEnhancedMessageHistory(
+    compressedMessages: any[],
+    retrievedContext: any,
+    agent: any,
+  ): any[] {
+    const enhancedMessages = [...compressedMessages];
+
+    // 如果有检索到的上下文，添加到系统消息中
+    if (retrievedContext && retrievedContext.formattedContext) {
+      const contextSystemMessage = {
+        role: 'system',
+        content: `参考信息:\n${retrievedContext.formattedContext}\n\n请基于以上参考信息回答用户问题。`,
+      };
+
+      // 查找现有的系统消息并更新，或者在开头添加
+      const systemMessageIndex = enhancedMessages.findIndex(
+        (msg) => msg.role === 'system',
+      );
+      if (systemMessageIndex >= 0) {
+        enhancedMessages[systemMessageIndex] = {
+          ...enhancedMessages[systemMessageIndex],
+          content: `${enhancedMessages[systemMessageIndex].content}\n\n${contextSystemMessage.content}`,
+        };
+      } else {
+        enhancedMessages.unshift(contextSystemMessage);
+      }
+    }
+
+    return enhancedMessages;
+  }
+
+  /**
+   * 计算最优消息数量
+   */
+  private calculateOptimalMessageCount(agent: any, query: string): number {
+    // 基于代理类型和查询复杂度动态调整
+    let baseCount = 20;
+
+    // 技术支持代理需要更多上下文
+    if (agent.type === 'technical_support') {
+      baseCount = 30;
+    }
+
+    // 客服代理保持中等上下文
+    if (agent.type === 'customer_service') {
+      baseCount = 25;
+    }
+
+    // 预约代理需要较少上下文
+    if (agent.type === 'appointment') {
+      baseCount = 15;
+    }
+
+    // 基于查询长度调整
+    const queryComplexity = query.length > 100 ? 1.2 : 1.0;
+
+    return Math.floor(baseCount * queryComplexity);
+  }
+
+  /**
+   * 确保消息序列完整性
+   */
+  private ensureMessageSequenceIntegrity(messages: any[]): any[] {
+    if (messages.length === 0) return messages;
+
+    const result = [];
+    let i = 0;
+
+    while (i < messages.length) {
+      const currentMsg = messages[i];
+
+      // 如果是用户消息，尝试找到对应的AI回复
+      if (currentMsg.role === 'user' || currentMsg.role === 'human') {
+        result.push(currentMsg);
+
+        // 查找下一条AI消息
+        if (
+          i + 1 < messages.length &&
+          (messages[i + 1].role === 'assistant' ||
+            messages[i + 1].role === 'ai')
+        ) {
+          result.push(messages[i + 1]);
+          i += 2;
+        } else {
+          i += 1;
+        }
+      } else {
+        result.push(currentMsg);
+        i += 1;
+      }
+    }
+
+    return result;
+  }
+
+  /**
+   * 生成上下文摘要
+   */
+  private generateContextSummary(documents: any[]): string {
+    if (!documents || documents.length === 0) {
+      return '';
+    }
+
+    const totalLength = documents.reduce(
+      (sum, doc) => sum + (doc.content?.length || 0),
+      0,
+    );
+    const avgLength = Math.floor(totalLength / documents.length);
+
+    return `检索到${documents.length}个相关文档，平均长度${avgLength}字符`;
   }
 
   /**
