@@ -14,7 +14,7 @@ async function generateEmbeddings() {
 
   console.log(`找到 ${knowledgeItems.length} 个知识条目`);
 
-  const model = process.env.LLM_DEFAULT_MODEL || 'deepseek-r1:1.5b';
+  const model = process.env.LLM_DEFAULT_MODEL || 'deepseek-r1';
   let successCount = 0;
   let failCount = 0;
 

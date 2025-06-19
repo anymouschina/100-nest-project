@@ -295,13 +295,22 @@ export class ChatService {
     agent: any,
   ): Promise<any> {
     try {
+      this.logger.log(`=== 开始RAG检索 ===`);
+      this.logger.log(`查询: ${query}`);
+      this.logger.log(`会话ID: ${sessionId}`);
+      this.logger.log(`代理ID: ${agent.id}`);
+      this.logger.log(`代理能力: ${JSON.stringify(agent.capabilities)}`);
+
       // 检查代理是否支持RAG功能
       if (
         !agent.capabilities?.includes('rag') &&
         !agent.capabilities?.includes('retrieval')
       ) {
+        this.logger.log(`代理不支持RAG功能，跳过检索`);
         return null;
       }
+
+      this.logger.log(`代理支持RAG功能，开始检索相关文档...`);
 
       // 使用上下文管理器检索相关文档
       const retrievedDocs = await this.contextManager.retrieveRelevantContext(
@@ -314,9 +323,18 @@ export class ChatService {
         },
       );
 
+      this.logger.log(`检索完成，找到 ${retrievedDocs?.length || 0} 个文档`);
+
       if (!retrievedDocs || retrievedDocs.length === 0) {
+        this.logger.log(`没有找到相关文档，返回null`);
         return null;
       }
+
+      // 记录检索到的文档详情
+      retrievedDocs.forEach((doc, index) => {
+        this.logger.log(`文档${index + 1}: ${doc.title} (${doc.namespace}) - 相似度: ${doc.similarity}`);
+        this.logger.log(`内容预览: ${doc.content?.substring(0, 100)}...`);
+      });
 
       // 格式化检索到的上下文
       const formattedContext = retrievedDocs
@@ -326,6 +344,9 @@ export class ChatService {
       // 生成上下文摘要
       const contextSummary = this.generateContextSummary(retrievedDocs);
 
+      this.logger.log(`RAG检索成功完成，返回 ${retrievedDocs.length} 个文档`);
+      this.logger.log(`=== RAG检索结束 ===`);
+
       return {
         documents: retrievedDocs,
         formattedContext,
@@ -333,7 +354,7 @@ export class ChatService {
         retrievalQuery: query,
       };
     } catch (error) {
-      this.logger.warn(`RAG retrieval failed: ${error.message}`);
+      this.logger.error(`RAG检索失败: ${error.message}`, error.stack);
       return null;
     }
   }
@@ -346,10 +367,17 @@ export class ChatService {
     retrievedContext: any,
     agent: any,
   ): any[] {
+    this.logger.log(`=== 构建增强消息历史 ===`);
+    this.logger.log(`压缩消息数量: ${compressedMessages.length}`);
+    this.logger.log(`是否有检索上下文: ${!!retrievedContext}`);
+
     const enhancedMessages = [...compressedMessages];
 
     // 如果有检索到的上下文，添加到系统消息中
     if (retrievedContext && retrievedContext.formattedContext) {
+      this.logger.log(`添加检索上下文到系统消息...`);
+      this.logger.log(`格式化上下文长度: ${retrievedContext.formattedContext.length} 字符`);
+      
       const contextSystemMessage = {
         role: 'system',
         content: `参考信息:\n${retrievedContext.formattedContext}\n\n请基于以上参考信息回答用户问题。`,
@@ -360,14 +388,21 @@ export class ChatService {
         (msg) => msg.role === 'system',
       );
       if (systemMessageIndex >= 0) {
+        this.logger.log(`更新现有系统消息 (索引: ${systemMessageIndex})`);
         enhancedMessages[systemMessageIndex] = {
           ...enhancedMessages[systemMessageIndex],
           content: `${enhancedMessages[systemMessageIndex].content}\n\n${contextSystemMessage.content}`,
         };
       } else {
+        this.logger.log(`添加新的系统消息到开头`);
         enhancedMessages.unshift(contextSystemMessage);
       }
+    } else {
+      this.logger.log(`没有检索上下文，保持原始消息历史`);
     }
+
+    this.logger.log(`最终消息历史数量: ${enhancedMessages.length}`);
+    this.logger.log(`=== 消息历史构建完成 ===`);
 
     return enhancedMessages;
   }
