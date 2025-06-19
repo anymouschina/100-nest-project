@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { DatabaseService } from '../../database/database.service';
 import { OllamaService } from './ollama.service';
 import { ConfigService } from '@nestjs/config';
+import * as crypto from 'crypto';
 
 export interface MessageContext {
   role: string;
@@ -345,7 +346,7 @@ ${conversationText}
   }
 
   /**
-   * RAG检索相关上下文
+   * RAG检索相关上下文 - 使用PostgreSQL向量数据库
    */
   async retrieveRelevantContext(
     query: string,
@@ -364,28 +365,202 @@ ${conversationText}
         similarityThreshold = 0.7,
       } = options;
 
-      // 这里可以集成向量数据库检索
-      // 目前先返回模拟的上下文检索结果
       this.logger.debug(
         `RAG检索查询: ${query}, 会话: ${sessionId}, 代理: ${agentId}`,
       );
 
-      // 模拟检索结果 - 在实际项目中应该连接向量数据库
-      const mockRetrievedDocs = [
-        {
-          id: '1',
-          content: `关于"${query}"的相关信息`,
-          similarity: 0.85,
-          source: 'knowledge_base',
-        },
-      ];
+      // 1. 生成查询向量
+      const queryEmbedding = await this.generateEmbedding(query);
+      if (!queryEmbedding) {
+        this.logger.warn('Failed to generate query embedding');
+        return [];
+      }
 
-      return mockRetrievedDocs
-        .filter((doc) => doc.similarity >= similarityThreshold)
+      // 2. 从向量知识库检索相关文档
+      const knowledgeResults = await this.searchVectorKnowledge(
+        queryEmbedding,
+        maxDocuments,
+        similarityThreshold,
+        agentId,
+      );
+
+      // 3. 从聊天历史中检索相关上下文
+      const historyResults = await this.searchChatHistory(
+        queryEmbedding,
+        sessionId,
+        Math.ceil(maxDocuments / 2),
+        similarityThreshold,
+      );
+
+      // 4. 合并和排序结果
+      const allResults = [...knowledgeResults, ...historyResults];
+
+      // 按相似度排序并去重
+      const sortedResults = allResults
+        .sort((a, b) => b.similarity - a.similarity)
         .slice(0, maxDocuments);
+
+      this.logger.debug(
+        `RAG检索完成: 知识库${knowledgeResults.length}条, 历史${historyResults.length}条, 最终${sortedResults.length}条`,
+      );
+
+      return sortedResults;
     } catch (error) {
       this.logger.error(`RAG检索失败: ${error.message}`, error.stack);
       return [];
     }
+  }
+
+  /**
+   * 生成文本嵌入向量
+   */
+  private async generateEmbedding(text: string): Promise<number[] | null> {
+    try {
+      // 直接使用Ollama生成嵌入，暂时不使用缓存以避免类型问题
+      const embedding = await this.ollamaService.generateEmbedding(text);
+
+      if (embedding && embedding.length > 0) {
+        this.logger.debug(
+          `Generated embedding with ${embedding.length} dimensions`,
+        );
+        return embedding;
+      }
+
+      return null;
+    } catch (error) {
+      this.logger.error(`生成嵌入失败: ${error.message}`, error.stack);
+      return null;
+    }
+  }
+
+  /**
+   * 搜索向量知识库
+   */
+  private async searchVectorKnowledge(
+    queryEmbedding: number[],
+    limit: number,
+    threshold: number,
+    agentId: string,
+  ): Promise<any[]> {
+    try {
+      const embeddingStr = this.formatEmbeddingVector(queryEmbedding);
+
+      // 使用PostgreSQL的向量相似度搜索
+      const results = await this.databaseService.$queryRaw`
+        SELECT 
+          id,
+          title,
+          content,
+          namespace,
+          tags,
+          source,
+          importance,
+          1 - (embedding <=> ${embeddingStr}::vector) as similarity
+        FROM "vector_knowledge"
+        WHERE embedding IS NOT NULL
+          AND 1 - (embedding <=> ${embeddingStr}::vector) > ${threshold}
+        ORDER BY embedding <=> ${embeddingStr}::vector
+        LIMIT ${limit}
+      `;
+
+      return (results as any[]).map((row) => ({
+        id: row.id,
+        title: row.title,
+        content: row.content,
+        similarity: parseFloat(row.similarity),
+        source: 'knowledge_base',
+        namespace: row.namespace,
+        tags: row.tags,
+        importance: row.importance,
+      }));
+    } catch (error) {
+      this.logger.error(`向量知识库搜索失败: ${error.message}`, error.stack);
+      return [];
+    }
+  }
+
+  /**
+   * 搜索聊天历史
+   */
+  private async searchChatHistory(
+    queryEmbedding: number[],
+    sessionId: string,
+    limit: number,
+    threshold: number,
+  ): Promise<any[]> {
+    try {
+      const embeddingStr = this.formatEmbeddingVector(queryEmbedding);
+
+      // 搜索当前会话的历史消息
+      const results = await this.databaseService.$queryRaw`
+        SELECT 
+          cm.id,
+          cm.content,
+          cm.sender,
+          cm.timestamp,
+          cm.groupName,
+          1 - (cm.embedding <=> ${embeddingStr}::vector) as similarity
+        FROM "chat_messages" cm
+        WHERE cm.embedding IS NOT NULL
+          AND 1 - (cm.embedding <=> ${embeddingStr}::vector) > ${threshold}
+          AND cm."groupName" = ${sessionId}
+        ORDER BY cm.embedding <=> ${embeddingStr}::vector
+        LIMIT ${limit}
+      `;
+
+      return (results as any[]).map((row) => ({
+        id: row.id,
+        content: row.content,
+        similarity: parseFloat(row.similarity),
+        source: 'chat_history',
+        sender: row.sender,
+        timestamp: row.timestamp,
+        groupName: row.groupName,
+      }));
+    } catch (error) {
+      this.logger.error(`聊天历史搜索失败: ${error.message}`, error.stack);
+      return [];
+    }
+  }
+
+  /**
+   * 内容哈希
+   */
+  private hashContent(content: string): string {
+    return crypto.createHash('sha256').update(content).digest('hex');
+  }
+
+  /**
+   * 格式化嵌入向量为PostgreSQL向量格式
+   */
+  private formatEmbeddingVector(embedding: number[]): string {
+    return `[${embedding.join(',')}]`;
+  }
+
+  /**
+   * 解析PostgreSQL向量为数组
+   */
+  private parseEmbeddingVector(vectorStr: any): number[] {
+    if (typeof vectorStr === 'string') {
+      // 移除方括号并分割
+      return vectorStr
+        .replace(/^\[|\]$/g, '')
+        .split(',')
+        .map(Number);
+    }
+    return vectorStr;
+  }
+
+  /**
+   * 估算token数量
+   */
+  private estimateTokenCount(text: string): number {
+    // 简单估算：中文按字符数，英文按单词数 * 1.3
+    const chineseChars = (text.match(/[\u4e00-\u9fa5]/g) || []).length;
+    const englishWords = text
+      .replace(/[\u4e00-\u9fa5]/g, '')
+      .split(/\s+/)
+      .filter((word) => word.length > 0).length;
+    return Math.ceil(chineseChars + englishWords * 1.3);
   }
 }

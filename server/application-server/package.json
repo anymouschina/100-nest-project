@@ -21,7 +21,8 @@
     "db:init": "prisma db push",
     "db:seed": "ts-node prisma/seed.ts",
     "start:all": "npm run db:init && npm run build && npm run db:seed && npm run start:dev",
-    "generate-mcp-server": "ts-node scripts/generate-mcp-server.ts"
+    "generate-mcp-server": "ts-node scripts/generate-mcp-server.ts",
+    "generate-embeddings": "ts-node scripts/generate-embeddings.ts"
   },
   "dependencies": {
     "@langchain/community": "^0.3.46",

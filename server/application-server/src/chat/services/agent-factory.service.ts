@@ -390,10 +390,7 @@ export class AgentFactoryService implements OnModuleInit {
           const recentMessages = messageHistory.slice(-20);
           
           // 构建最终的消息列表
-          const finalMessages = [
-            ...recentMessages,
-            { role: 'user', content: userMessage }
-          ];
+          const finalMessages = recentMessages;
 
           logger.log(
             `Agent ${agent.name} processing ${finalMessages.length} messages`
