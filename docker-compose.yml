@@ -1,20 +1,21 @@
-version: '3.8'
 services:
   db:
-    image: postgres:15
+    image: docker-0.unsee.tech/pgvector/pgvector:pg16
     restart: always
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: order_management
+      POSTGRES_MULTIPLE_DATABASES: n8n
     ports:
       - '5432:5432'
     volumes:
       - db_data:/var/lib/postgresql/data
+      - ./init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
   adminer:
     image: docker-0.unsee.tech/adminer
     ports:
-      - 8080:8080
+      - 8081:8080
   redis:
     image: docker-0.unsee.tech/redis:6.2
     restart: always
@@ -23,7 +24,34 @@ services:
       - "6379:6379"
     volumes:
       - redis_data:/data
+  
+  n8n:
+    image: docker-0.unsee.tech/n8nio/n8n
+    restart: always
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=admin
+      - N8N_BASIC_AUTH_PASSWORD=password
+      - N8N_HOST=localhost
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - WEBHOOK_URL=http://localhost:5678/
+      - GENERIC_TIMEZONE=Asia/Shanghai
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=db
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_DATABASE=n8n
+      - DB_POSTGRESDB_USER=postgres
+      - DB_POSTGRESDB_PASSWORD=postgres
+    volumes:
+      - n8n_data:/home/node/.n8n
+    depends_on:
+      - db
+      - redis
 
 volumes:
   db_data:
   redis_data:
+  n8n_data:

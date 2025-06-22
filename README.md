@@ -13,7 +13,31 @@ yarn install 或者 pnpm install
 当前项目主要使用 nest + vue 构建了前后端，根据需求部分项目会使用 react 和 python
 admin目录主要存放后台管理系统
 server包含了后台管理的服务端，以及面向用户的服务端
-application 则是应用端, 
+application 则是应用端
+
+## Docker 服务
+项目包含以下 Docker 服务：
+- **PostgreSQL 16**: 主数据库 (端口: 5432)
+- **Redis 6.2**: 缓存服务 (端口: 6379)
+- **Adminer**: 数据库管理工具 (端口: 8081)
+- **n8n**: 工作流自动化平台 (端口: 5678)
+
+### 启动服务
+```bash
+# 启动所有服务
+docker-compose up -d
+
+# 启动特定服务
+docker-compose up -d n8n
+```
+
+### n8n 工作流平台
+- 访问地址: http://localhost:5678
+- 默认用户名: admin
+- 默认密码: password
+- 支持 PostgreSQL 数据持久化
+- 集成 Redis 缓存
+
 项目：
 2.微信聊天洞察
 

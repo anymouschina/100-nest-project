@@ -1,0 +1,236 @@
+{
+  "name": "新闻报通-错误处理增强版",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "chat-trigger-001",
+      "name": "Chat Trigger",
+      "type": "n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "# 新闻报通 - 智能AI助理\n\n你是\"新闻报通\"，专注于AI动态分析和日程管理的智能助理。\n\n## 可用工具\n1. **news** - 获取AI新闻列表\n2. **daily** - 获取日程安排（可能遇到权限99991672或配置190007错误）\n\n## 错误处理策略\n- 权限错误(99991672)：提示申请日历权限\n- 配置错误(190007)：提示配置机器人\n- 数据缺失：启用降级模式，提供通用建议\n\n## 执行原则\n1. 优先获取新闻数据\n2. 尝试获取日程，准备处理错误\n3. 无论数据是否完整，都提供有价值的分析\n4. 保持积极专业的语调\n\n请始终提供智能分析和个性化建议，即使在遇到技术问题时也要体现AI助理的价值。"
+        }
+      },
+      "id": "ai-agent-001",
+      "name": "AI Agent",
+      "type": "n8n-nodes-langchain.agent",
+      "typeVersion": 1,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "name": "news",
+        "description": "获取过去2天内最新的AI新闻列表，包含标题、发布日期、发布媒体、摘要和原文链接。此工具通常稳定可用。",
+        "workflowId": "{{ $('获取AI新闻工作流').item.json.id }}",
+        "fields": {
+          "values": [
+            {
+              "name": "days",
+              "value": "2"
+            },
+            {
+              "name": "category", 
+              "value": "AI"
+            }
+          ]
+        },
+        "options": {
+          "continueOnFail": true
+        }
+      },
+      "id": "news-tool-001",
+      "name": "获取新闻工具",
+      "type": "n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 1,
+      "position": [460, 180]
+    },
+    {
+      "parameters": {
+        "name": "daily",
+        "description": "查看未来7天的飞书日程安排，返回日期、时间和事件标题。注意：此工具可能遇到权限错误(99991672)或机器人配置错误(190007)，请准备处理这些错误。",
+        "workflowId": "{{ $('获取飞书日程工作流').item.json.id }}",
+        "fields": {
+          "values": [
+            {
+              "name": "days_ahead",
+              "value": "7"
+            }
+          ]
+        },
+        "options": {
+          "continueOnFail": true,
+          "timeout": 10000
+        }
+      },
+      "id": "calendar-tool-001", 
+      "name": "获取日程工具",
+      "type": "n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 1,
+      "position": [460, 420]
+    },
+    {
+      "parameters": {
+        "model": "gpt-4o-mini",
+        "options": {
+          "temperature": 0.7,
+          "maxTokens": 2000,
+          "presencePenalty": 0.1,
+          "frequencyPenalty": 0.1
+        }
+      },
+      "id": "openai-model-001",
+      "name": "OpenAI Chat Model",
+      "type": "n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [460, 80],
+      "credentials": {
+        "openAiApi": {
+          "id": "openai-credentials",
+          "name": "OpenAI API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "fromInput",
+        "contextWindowLength": 10
+      },
+      "id": "memory-001",
+      "name": "Buffer Memory",
+      "type": "n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1,
+      "position": [460, 520]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "operation": "exists"
+          }
+        },
+        "options": {}
+      },
+      "id": "error-detector-001",
+      "name": "错误检测",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "message": "=检测到工作流执行错误：{{ $json.error.message }}\n错误类型：{{ $json.error.code }}\n时间：{{ $now() }}\n建议：请检查飞书应用配置和权限设置",
+        "options": {
+          "includeBinaryData": false
+        }
+      },
+      "id": "error-logger-001",
+      "name": "错误日志",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [900, 400]
+    }
+  ],
+  "connections": {
+    "Chat Trigger": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "ai_tool": [
+        [
+          {
+            "node": "获取新闻工具",
+            "type": "ai_tool",
+            "index": 0
+          },
+          {
+            "node": "获取日程工具", 
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ],
+      "ai_model": [
+        [
+          {
+            "node": "OpenAI Chat Model",
+            "type": "ai_model",
+            "index": 0
+          }
+        ]
+      ],
+      "ai_memory": [
+        [
+          {
+            "node": "Buffer Memory",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ],
+      "main": [
+        [
+          {
+            "node": "错误检测",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "错误检测": {
+      "main": [
+        [
+          {
+            "node": "错误日志",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "saveExecutionProgress": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": {
+      "id": "error-handler-workflow"
+    },
+    "timezone": "Asia/Shanghai"
+  },
+  "staticData": {},
+  "tags": [
+    {
+      "id": "ai-assistant",
+      "name": "AI助理"
+    },
+    {
+      "id": "news-analysis", 
+      "name": "新闻分析"
+    },
+    {
+      "id": "error-handling",
+      "name": "错误处理"
+    }
+  ],
+  "meta": {
+    "templateId": "news-ai-assistant-robust",
+    "templateVersion": "2.0.0",
+    "description": "包含完整错误处理机制的新闻报通AI助理工作流"
+  }
+} 
