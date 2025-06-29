@@ -1,173 +1,106 @@
 {
-  "name": "新闻报通-AI助理工作流",
   "nodes": [
     {
       "parameters": {},
-      "id": "chat-trigger-001",
-      "name": "Chat Trigger",
-      "type": "n8n-nodes-langchain.chatTrigger",
+      "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
-      "position": [240, 300]
+      "position": [
+        0,
+        0
+      ],
+      "id": "e6e1cfe6-eff1-48bd-b21c-6ba83d4244d9",
+      "name": "When clicking ‘Execute workflow’"
     },
     {
       "parameters": {
-        "options": {
-          "systemMessage": "# 新闻报通 - 智能AI助理\n\n你是\"新闻报通\"，一个专注于AI动态分析和日程管理的智能助理。你的任务是分析最新AI新闻，结合用户日程，提供个性化建议，并生成适合飞书卡片展示的内容。\n\n## 可用工具\n1. **news** - 获取过去2天的AI新闻列表\n2. **daily** - 查看未来7天的日程安排（如遇权限错误，使用降级策略）\n\n## 执行策略\n1. 优先调用news工具获取新闻\n2. 尝试调用daily工具，如遇权限错误99991672，启用降级模式\n3. 基于可用数据生成智能分析报告\n\n## 错误处理\n- 权限错误：友好提示并提供通用建议\n- 数据缺失：启用备用方案\n- 保持积极专业的输出\n\n请始终提供有价值的分析，即使在数据不完整的情况下。"
-        }
+        "jsCode": "return [\n\t{\n\t\tjson: {\n\t\t\turl: 'https://medium.com/feed/n8n-io',\n\t\t}\n\t},\n\t{\n\t\tjson: {\n\t\t\turl: 'https://dev.to/feed/n8n',\n\t\t}\n\t}\n];"
       },
-      "id": "ai-agent-001",
-      "name": "AI Agent",
-      "type": "n8n-nodes-langchain.agent",
-      "typeVersion": 1,
-      "position": [460, 300]
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        0
+      ],
+      "id": "137f1128-45b6-4bc4-a9fb-8660baa652a9",
+      "name": "Code"
     },
     {
       "parameters": {
-        "name": "news",
-        "description": "获取过去2天内最新的AI新闻列表，包含标题、发布日期、发布媒体、摘要和原文链接",
-        "workflowId": "{{ $('获取AI新闻工作流').item.json.id }}",
-        "fields": {
-          "values": [
-            {
-              "name": "days",
-              "value": "2"
-            },
-            {
-              "name": "category", 
-              "value": "AI"
-            }
-          ]
-        }
+        "options": {}
       },
-      "id": "news-tool-001",
-      "name": "获取新闻工具",
-      "type": "n8n-nodes-langchain.toolWorkflow",
-      "typeVersion": 1,
-      "position": [460, 180]
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        440,
+        0
+      ],
+      "id": "3449a953-49c2-4a36-ba3d-cbc0573f3f6c",
+      "name": "Loop Over Items"
     },
     {
       "parameters": {
-        "name": "daily",
-        "description": "查看未来7天的飞书日程安排，返回日期、时间和事件标题。注意：此工具可能遇到权限问题",
-        "workflowId": "{{ $('获取飞书日程工作流').item.json.id }}",
-        "fields": {
-          "values": [
-            {
-              "name": "days_ahead",
-              "value": "7"
-            }
-          ]
-        },
-        "options": {
-          "continueOnFail": true
-        }
+        "url": "={{ $json.url }}",
+        "options": {}
       },
-      "id": "calendar-tool-001", 
-      "name": "获取日程工具",
-      "type": "n8n-nodes-langchain.toolWorkflow",
-      "typeVersion": 1,
-      "position": [460, 420]
-    },
-    {
-      "parameters": {
-        "model": "gpt-4o-mini",
-        "options": {
-          "temperature": 0.7,
-          "maxTokens": 2000
-        }
-      },
-      "id": "openai-model-001",
-      "name": "OpenAI Chat Model",
-      "type": "n8n-nodes-langchain.lmChatOpenAi",
-      "typeVersion": 1,
-      "position": [460, 80],
-      "credentials": {
-        "openAiApi": {
-          "id": "openai-credentials",
-          "name": "OpenAI API"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "sessionIdType": "fromInput",
-        "contextWindowLength": 10
-      },
-      "id": "memory-001",
-      "name": "Buffer Memory",
-      "type": "n8n-nodes-langchain.memoryBufferWindow",
-      "typeVersion": 1,
-      "position": [460, 520]
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.1,
+      "position": [
+        660,
+        100
+      ],
+      "id": "cc2e59d7-0a9b-4640-8052-d8f7f8d8c9fe",
+      "name": "RSS Read"
     }
   ],
   "connections": {
-    "Chat Trigger": {
+    "When clicking ‘Execute workflow’": {
       "main": [
         [
           {
-            "node": "AI Agent",
+            "node": "Code",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "AI Agent": {
-      "ai_tool": [
+    "Code": {
+      "main": [
         [
           {
-            "node": "获取新闻工具",
-            "type": "ai_tool",
-            "index": 0
-          },
-          {
-            "node": "获取日程工具", 
-            "type": "ai_tool",
+            "node": "Loop Over Items",
+            "type": "main",
             "index": 0
           }
         ]
-      ],
-      "ai_model": [
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [],
         [
           {
-            "node": "OpenAI Chat Model",
-            "type": "ai_model",
+            "node": "RSS Read",
+            "type": "main",
             "index": 0
           }
         ]
-      ],
-      "ai_memory": [
+      ]
+    },
+    "RSS Read": {
+      "main": [
         [
           {
-            "node": "Buffer Memory",
-            "type": "ai_memory",
+            "node": "Loop Over Items",
+            "type": "main",
             "index": 0
           }
         ]
       ]
     }
   },
-  "settings": {
-    "executionOrder": "v1",
-    "saveManualExecutions": true,
-    "callerPolicy": "workflowsFromSameOwner",
-    "errorWorkflow": {
-      "id": "error-handler-workflow"
-    }
-  },
-  "staticData": {},
-  "tags": [
-    {
-      "id": "ai-assistant",
-      "name": "AI助理"
-    },
-    {
-      "id": "news-analysis", 
-      "name": "新闻分析"
-    }
-  ],
+  "pinData": {},
   "meta": {
-    "templateId": "news-ai-assistant",
-    "templateVersion": "1.0.0"
+    "instanceId": "cb484ba7b742928a2048bf8829668bed5b5ad9787579adea888f05980292a4a7"
   }
-} 
+}

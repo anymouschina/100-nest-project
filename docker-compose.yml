@@ -11,7 +11,6 @@ services:
       - '5432:5432'
     volumes:
       - db_data:/var/lib/postgresql/data
-      - ./init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
   adminer:
     image: docker-0.unsee.tech/adminer
     ports:
@@ -31,14 +30,22 @@ services:
     ports:
       - "5678:5678"
     environment:
-      - N8N_BASIC_AUTH_ACTIVE=true
-      - N8N_BASIC_AUTH_USER=admin
-      - N8N_BASIC_AUTH_PASSWORD=password
       - N8N_HOST=localhost
       - N8N_PORT=5678
       - N8N_PROTOCOL=http
       - WEBHOOK_URL=http://localhost:5678/
       - GENERIC_TIMEZONE=Asia/Shanghai
+      - N8N_EMAIL_MODE=smtp
+      - N8N_SMTP_HOST=smtp.example.com
+      - N8N_SMTP_PORT=587
+      - N8N_SMTP_USER=user@example.com
+      - N8N_SMTP_PASS=password
+      - N8N_SMTP_SENDER=sender@example.com
+      - N8N_SMTP_SSL=true
+      - LANGS='zh-CN,en-US'
+      - N8N_USER_MANAGEMENT_DISABLED=false
+      - N8N_USER_EMAIL=admin@example.com
+      - N8N_USER_PASSWORD=password
       - DB_TYPE=postgresdb
       - DB_POSTGRESDB_HOST=db
       - DB_POSTGRESDB_PORT=5432
@@ -47,6 +54,7 @@ services:
       - DB_POSTGRESDB_PASSWORD=postgres
     volumes:
       - n8n_data:/home/node/.n8n
+      - ./server/n8n-workflows-main/workflows:/workflows
     depends_on:
       - db
       - redis
