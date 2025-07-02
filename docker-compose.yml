@@ -11,10 +11,14 @@ services:
       - '5432:5432'
     volumes:
       - db_data:/var/lib/postgresql/data
+    networks:
+      - n8n-network
   adminer:
     image: docker-0.unsee.tech/adminer
     ports:
       - 8081:8080
+    networks:
+      - n8n-network
   redis:
     image: docker-0.unsee.tech/redis:6.2
     restart: always
@@ -23,12 +27,22 @@ services:
       - "6379:6379"
     volumes:
       - redis_data:/data
+    networks:
+      - n8n-network
   
   n8n:
     image: docker-0.unsee.tech/n8nio/n8n
     restart: always
     ports:
       - "5678:5678"
+    networks:
+      - n8n-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    dns:
+      - 8.8.8.8
+      - 114.114.114.114
+      - 1.1.1.1
     environment:
       - N8N_HOST=localhost
       - N8N_PORT=5678
@@ -58,6 +72,13 @@ services:
     depends_on:
       - db
       - redis
+
+networks:
+  n8n-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.16.0.0/16
 
 volumes:
   db_data:
