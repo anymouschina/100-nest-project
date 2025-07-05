@@ -55,6 +55,8 @@ services:
       - N8N_SMTP_USER=user@example.com
       - N8N_SMTP_PASS=password
       - N8N_SMTP_SENDER=sender@example.com
+      - N8N_ENCRYPTION_KEY=123456
+      - N8N_REINSTALL_MISSING_PACKAGES=true
       - N8N_SMTP_SSL=true
       - LANGS='zh-CN,en-US'
       - N8N_USER_MANAGEMENT_DISABLED=false
@@ -67,7 +69,7 @@ services:
       - DB_POSTGRESDB_USER=postgres
       - DB_POSTGRESDB_PASSWORD=postgres
     volumes:
-      - n8n_data:/home/node/.n8n
+      - n8n_data_new1:/home/node/.n8n
       - ./server/n8n-workflows-main/workflows:/workflows
     depends_on:
       - db
@@ -83,4 +85,4 @@ networks:
 volumes:
   db_data:
   redis_data:
-  n8n_data:
+  n8n_data_new1:
