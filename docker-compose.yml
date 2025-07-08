@@ -67,7 +67,16 @@ services:
       - DB_POSTGRESDB_PORT=5432
       - DB_POSTGRESDB_DATABASE=n8n
       - DB_POSTGRESDB_USER=postgres
+      - N8N_LICENSE_TENANT_ID=1
+      - N8N_LICENSE_ACTIVATION_KEY=""
+      - NODE_ENV=development
+      - N8N_WORKFLOW_HISTORY_PRUNE_TIME=365
       - DB_POSTGRESDB_PASSWORD=postgres
+      - HTTP_PROXY=http://host.docker.internal:1087
+      - HTTPS_PROXY=http://host.docker.internal:1087
+      - http_proxy=http://host.docker.internal:1087
+      - https_proxy=http://host.docker.internal:1087
+      - NO_PROXY=localhost,127.0.0.1,db,redis
     volumes:
       - n8n_data_new1:/home/node/.n8n
       - ./server/n8n-workflows-main/workflows:/workflows
