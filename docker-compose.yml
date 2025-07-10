@@ -2,43 +2,32 @@ services:
   db:
     image: docker-0.unsee.tech/pgvector/pgvector:pg16
     restart: always
+    network_mode: "host"
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: order_management
       POSTGRES_MULTIPLE_DATABASES: n8n
-    ports:
-      - '5432:5432'
     volumes:
       - db_data:/var/lib/postgresql/data
-    networks:
-      - n8n-network
   adminer:
     image: docker-0.unsee.tech/adminer
-    ports:
-      - 8081:8080
-    networks:
-      - n8n-network
+    network_mode: "host"
   redis:
     image: docker-0.unsee.tech/redis:6.2
     restart: always
-    command: ["redis-server", "--requirepass", "123456"]
     ports:
       - "6379:6379"
-    volumes:
-      - redis_data:/data
     networks:
       - n8n-network
+    command: ["redis-server", "--requirepass", "123456"]
+    volumes:
+      - redis_data:/data
   
   n8n:
     image: docker-0.unsee.tech/n8nio/n8n
     restart: always
-    ports:
-      - "5678:5678"
-    networks:
-      - n8n-network
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+    network_mode: "host"
     dns:
       - 8.8.8.8
       - 114.114.114.114
@@ -63,7 +52,7 @@ services:
       - N8N_USER_EMAIL=admin@example.com
       - N8N_USER_PASSWORD=password
       - DB_TYPE=postgresdb
-      - DB_POSTGRESDB_HOST=db
+      - DB_POSTGRESDB_HOST=localhost
       - DB_POSTGRESDB_PORT=5432
       - DB_POSTGRESDB_DATABASE=n8n
       - DB_POSTGRESDB_USER=postgres
@@ -72,11 +61,7 @@ services:
       - NODE_ENV=development
       - N8N_WORKFLOW_HISTORY_PRUNE_TIME=365
       - DB_POSTGRESDB_PASSWORD=postgres
-      # - HTTP_PROXY=http://host.docker.internal:1087
-      # - HTTPS_PROXY=http://host.docker.internal:1087
-      # - http_proxy=http://host.docker.internal:1087
-      # - https_proxy=http://host.docker.internal:1087
-      - NO_PROXY=localhost,127.0.0.1,db,redis
+      - NO_PROXY=localhost,127.0.0.1
     volumes:
       - n8n_data_new1:/home/node/.n8n
       - ./server/n8n-workflows-main/workflows:/workflows
@@ -84,14 +69,46 @@ services:
       - db
       - redis
 
+  rsshub:
+    image: docker-0.unsee.tech/diygod/rsshub
+    restart: always
+    ports:
+      - "1200:1200"
+    networks:
+      - n8n-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      - NODE_ENV=production
+      - CACHE_TYPE=redis
+      - REDIS_URL=redis://:123456@redis:6379
+      - CACHE_EXPIRE=300
+      - LISTEN_INADDR_ANY=1
+      - REQUEST_RETRY=3
+      - REQUEST_TIMEOUT=30000
+      - UA=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36
+      - HOTLINK_TEMPLATE=https://images.weserv.nl/?url={url}
+      - ALLOW_ORIGIN=*
+      - LOGGER_LEVEL=info
+      - PUPPETEER_WS_ENDPOINT=
+      - HTTP_PROXY=http://host.docker.internal:1087
+      - HTTPS_PROXY=http://host.docker.internal:1087
+      - http_proxy=http://host.docker.internal:1087
+      - https_proxy=http://host.docker.internal:1087
+      - NODE_TLS_REJECT_UNAUTHORIZED=0
+      - PROXY_URI=http://host.docker.internal:1087
+      - NO_PROXY=localhost,127.0.0.1,redis
+    depends_on:
+      - redis
+    volumes:
+      - rsshub_data:/app/data
+
 networks:
   n8n-network:
     driver: bridge
-    ipam:
-      config:
-        - subnet: 172.16.0.0/16
 
 volumes:
   db_data:
   redis_data:
   n8n_data_new1:
+  rsshub_data:
