@@ -13,7 +13,25 @@
       "mcp__n8n-mcp-new__get_node_for_task",
       "Bash(ls:*)",
       "mcp__n8n-mcp-new__validate_workflow",
-      "mcp__n8n-mcp-new__get_template"
+      "mcp__n8n-mcp-new__get_template",
+      "mcp__n8n-mcp__n8n_health_check",
+      "mcp__n8n-mcp__get_database_statistics",
+      "mcp__n8n-mcp__search_nodes",
+      "mcp__n8n-mcp__n8n_create_workflow",
+      "mcp__n8n-mcp__n8n_validate_workflow",
+      "mcp__n8n-mcp__n8n_update_partial_workflow",
+      "mcp__n8n-mcp__n8n_get_workflow",
+      "Bash(env)",
+      "Bash(printenv:*)",
+      "Bash(cat:*)",
+      "Bash(launchctl:*)",
+      "Bash(export:*)",
+      "Bash(echo:*)",
+      "Bash(chmod:*)",
+      "Bash(source:*)",
+      "mcp__n8n-mcp__get_node_for_task",
+      "Bash(docker network:*)",
+      "Bash(docker-compose:*)"
     ],
     "deny": []
   }

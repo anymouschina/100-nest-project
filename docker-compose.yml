@@ -2,32 +2,43 @@ services:
   db:
     image: docker-0.unsee.tech/pgvector/pgvector:pg16
     restart: always
-    network_mode: "host"
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: order_management
       POSTGRES_MULTIPLE_DATABASES: n8n
+    ports:
+      - '5432:5432'
     volumes:
       - db_data:/var/lib/postgresql/data
+    networks:
+      - n8n-network
   adminer:
     image: docker-0.unsee.tech/adminer
-    network_mode: "host"
+    ports:
+      - 8081:8080
+    networks:
+      - n8n-network
   redis:
     image: docker-0.unsee.tech/redis:6.2
     restart: always
+    command: ["redis-server", "--requirepass", "123456"]
     ports:
       - "6379:6379"
-    networks:
-      - n8n-network
-    command: ["redis-server", "--requirepass", "123456"]
     volumes:
       - redis_data:/data
+    networks:
+      - n8n-network
   
   n8n:
     image: docker-0.unsee.tech/n8nio/n8n
     restart: always
-    network_mode: "host"
+    ports:
+      - "5678:5678"
+    networks:
+      - n8n-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     dns:
       - 8.8.8.8
       - 114.114.114.114
@@ -52,7 +63,7 @@ services:
       - N8N_USER_EMAIL=admin@example.com
       - N8N_USER_PASSWORD=password
       - DB_TYPE=postgresdb
-      - DB_POSTGRESDB_HOST=localhost
+      - DB_POSTGRESDB_HOST=db
       - DB_POSTGRESDB_PORT=5432
       - DB_POSTGRESDB_DATABASE=n8n
       - DB_POSTGRESDB_USER=postgres
@@ -61,14 +72,17 @@ services:
       - NODE_ENV=development
       - N8N_WORKFLOW_HISTORY_PRUNE_TIME=365
       - DB_POSTGRESDB_PASSWORD=postgres
-      - NO_PROXY=localhost,127.0.0.1
+      - HTTP_PROXY=http://host.docker.internal:1087
+      - HTTPS_PROXY=http://host.docker.internal:1087
+      - http_proxy=http://host.docker.internal:1087
+      - https_proxy=http://host.docker.internal:1087
+      - NO_PROXY=localhost,127.0.0.1,db,redis
     volumes:
       - n8n_data_new1:/home/node/.n8n
       - ./server/n8n-workflows-main/workflows:/workflows
     depends_on:
       - db
       - redis
-
   rsshub:
     image: docker-0.unsee.tech/diygod/rsshub
     restart: always
