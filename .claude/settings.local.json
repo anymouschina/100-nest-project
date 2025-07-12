@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(claude mcp add:*)",
+      "Bash(claude mcp:*)",
+      "mcp__n8n-mcp-new__get_database_statistics",
+      "mcp__n8n-mcp-new__list_tasks",
+      "Bash(curl:*)",
+      "mcp__n8n-mcp-new__list_nodes",
+      "mcp__n8n-mcp-new__list_ai_tools",
+      "Bash(docker exec:*)",
+      "mcp__n8n-mcp-new__get_templates_for_task",
+      "mcp__n8n-mcp-new__get_node_for_task",
+      "Bash(ls:*)",
+      "mcp__n8n-mcp-new__validate_workflow",
+      "mcp__n8n-mcp-new__get_template"
+    ],
+    "deny": []
+  }
+}

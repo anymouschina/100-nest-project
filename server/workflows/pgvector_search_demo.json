@@ -1,0 +1,289 @@
+{
+  "name": "PGVector 向量搜索演示",
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "// 模拟用户查询
+const queries = [
+  { text: "机器学习技术", type: "技术" },
+  { text: "健康生活", type: "健康" },
+  { text: "经济发展", type: "经济" },
+  { text: "人工智能应用", type: "技术" }
+];
+
+return queries.map(query => ({
+  json: {
+    search_query: query.text,
+    query_type: query.type
+  }
+}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "id": "generate-queries",
+      "name": "生成搜索查询"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- 检查向量表是否存在
+SELECT EXISTS (
+  SELECT FROM information_schema.tables 
+  WHERE table_schema = 'public' 
+  AND table_name = 'document_vectors'
+) as table_exists;"
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.1,
+      "position": [240, 0],
+      "id": "check-table",
+      "name": "检查向量表",
+      "credentials": {
+        "postgres": {
+          "host": "localhost",
+          "database": "n8n",
+          "user": "postgres",
+          "password": "postgres",
+          "port": 5432
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// 生成查询向量
+const query = $json.search_query;
+const apiKey = 'YOUR_OPENAI_API_KEY'; // 请替换为实际API密钥
+
+// 使用已存储的示例向量（实际环境中应调用OpenAI API）
+const queryVectors = {
+  '机器学习技术': JSON.stringify(Array(1536).fill(0).map(() => Math.random() * 0.1 - 0.05)),
+  '健康生活': JSON.stringify(Array(1536).fill(0).map(() => Math.random() * 0.1 - 0.05)),
+  '经济发展': JSON.stringify(Array(1536).fill(0).map(() => Math.random() * 0.1 - 0.05)),
+  '人工智能应用': JSON.stringify(Array(1536).fill(0).map(() => Math.random() * 0.1 - 0.05))
+};
+
+return {
+  ...$json,
+  query_embedding: queryVectors[query] || JSON.stringify(Array(1536).fill(0.01))
+};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 0],
+      "id": "create-query-vector",
+      "name": "创建查询向量"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- 插入示例向量数据（如果表为空）
+INSERT INTO document_vectors (content, category, embedding) 
+SELECT content, category, embedding::vector
+FROM (
+  VALUES 
+    ('人工智能正在改变我们生活的各个方面', '技术', (SELECT ('[' || string_agg((random()::text), ',') || ']')::vector FROM generate_series(1, 1536))),
+    ('机器学习是AI的一个子集，专注于算法学习', '技术', (SELECT ('[' || string_agg((random()::text), ',') || ']')::vector FROM generate_series(1, 1536))),
+    ('深度学习使用神经网络模拟人脑工作', '技术', (SELECT ('[' || string_agg((random()::text), ',') || ']')::vector FROM generate_series(1, 1536))),
+    ('自然语言处理让计算机理解人类语言', '技术', (SELECT ('[' || string_agg((random()::text), ',') || ']')::vector FROM generate_series(1, 1536))),
+    ('计算机视觉使机器能够看见和理解图像', '技术', (SELECT ('[' || string_agg((random()::text), ',') || ']')::vector FROM generate_series(1, 1536))),
+    ('健康饮食和定期锻炼是长寿的关键', '健康', (SELECT ('[' || string_agg((random()::text), ',') || ']')::vector FROM generate_series(1, 1536))),
+    ('心理健康与身体健康同等重要', '健康', (SELECT ('[' || string_agg((random()::text), ',') || ']')::vector FROM generate_series(1, 1536))),
+    ('充足的睡眠对认知功能至关重要', '健康', (SELECT ('[' || string_agg((random()::text), ',') || ']')::vector FROM generate_series(1, 1536))),
+    ('中国经济持续增长，成为全球第二大经济体', '经济', (SELECT ('[' || string_agg((random()::text), ',') || ']')::vector FROM generate_series(1, 1536))),
+    ('数字化转型正在重塑传统商业模式', '商业', (SELECT ('[' || string_agg((random()::text), ',') || ']')::vector FROM generate_series(1, 1536)))
+) AS t(content, category, embedding)
+WHERE NOT EXISTS (SELECT 1 FROM document_vectors LIMIT 1);"
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.1,
+      "position": [240, 220],
+      "id": "insert-sample-data",
+      "name": "插入示例数据",
+      "credentials": {
+        "postgres": {
+          "host": "localhost",
+          "database": "n8n",
+          "user": "postgres",
+          "password": "postgres",
+          "port": 5432
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- 向量相似度搜索（使用余弦相似度）
+WITH query_vector AS (
+  SELECT '{{$json.query_embedding}}'::vector as vec
+)
+SELECT 
+  id,
+  content,
+  category,
+  created_at,
+  1 - (embedding <=> (SELECT vec FROM query_vector)) as similarity_score
+FROM document_vectors
+WHERE 1 - (embedding <=> (SELECT vec FROM query_vector)) > 0.5
+ORDER BY similarity_score DESC
+LIMIT 3;"
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.1,
+      "position": [720, 0],
+      "id": "perform-vector-search",
+      "name": "执行向量搜索",
+      "credentials": {
+        "postgres": {
+          "host": "localhost",
+          "database": "n8n",
+          "user": "postgres",
+          "password": "postgres",
+          "port": 5432
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// 高级搜索功能：按类别过滤
+const query = $json.search_query;
+const category = $json.query_type;
+const similarity_threshold = 0.6;
+
+return {
+  ...$json,
+  category_filter: category,
+  threshold: similarity_threshold,
+  search_sql: `-- 按${category}类别搜索"${query}"
+SELECT 
+  id,
+  content,
+  category,
+  created_at,
+  similarity_score
+FROM document_vectors
+WHERE category = '${category}'
+  AND similarity_score > ${similarity_threshold}
+ORDER BY similarity_score DESC;`
+};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [960, 0],
+      "id": "advanced-filter",
+      "name": "高级过滤搜索"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 分析搜索结果
+const results = $json;
+const searchQuery = results[0]?.search_query || '未知查询';
+
+// 按类别分组结果
+const byCategory = results.reduce((acc, item) => {
+  const cat = item.category || '未分类';
+  if (!acc[cat]) acc[cat] = [];
+  acc[cat].push(item);
+  return acc;
+}, {});
+
+// 生成分析报告
+let report = `📊 PGVector 向量搜索结果分析\n`;
+report += `================================\n\n`;
+report += `🔍 搜索查询: "${searchQuery}"\n`;
+report += `📈 找到 ${results.length} 个相关文档\n\n`;
+
+Object.entries(byCategory).forEach(([category, items]) => {
+  report += `📂 ${category} (${items.length}个):\n`;
+  items.forEach((item, index) => {
+    report += `  ${index + 1}. ${item.content}\n`;
+    report += `     相似度: ${(item.similarity_score * 100).toFixed(1)}%\n`;
+  });
+  report += '\n';
+});
+
+return {
+  analysis_report: report,
+  result_count: results.length,
+  categories_found: Object.keys(byCategory).length
+};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1200, 0],
+      "id": "analyze-results",
+      "name": "分析搜索结果"
+    }
+  ],
+  "connections": {
+    "生成搜索查询": {
+      "main": [
+        [
+          {
+            "node": "检查向量表",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "检查向量表": {
+      "main": [
+        [
+          {
+            "node": "创建查询向量",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "创建查询向量": {
+      "main": [
+        [
+          {
+            "node": "插入示例数据",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "执行向量搜索",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "执行向量搜索": {
+      "main": [
+        [
+          {
+            "node": "高级过滤搜索",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "高级过滤搜索": {
+      "main": [
+        [
+          {
+            "node": "分析搜索结果",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1.0.0",
+  "meta": {
+    "instanceId": "cb484ba7b742928a2048bf8829668bed5b5ad9787579adea888f05980292a4a7"
+  },
+  "tags": ["pgvector", "vector-search", "similarity", "ai", "embeddings"]
+}

@@ -1,0 +1,351 @@
+{
+  "name": "PGVector 向量嵌入与搜索演示",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [0, 0],
+      "id": "manual-trigger",
+      "name": "手动触发"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 示例文本数据
+const documents = [
+  { text: "人工智能正在改变我们生活的各个方面", category: "技术" },
+  { text: "机器学习是AI的一个子集，专注于算法学习", category: "技术" },
+  { text: "深度学习使用神经网络模拟人脑工作", category: "技术" },
+  { text: "自然语言处理让计算机理解人类语言", category: "技术" },
+  { text: "计算机视觉使机器能够看见和理解图像", category: "技术" },
+  { text: "健康饮食和定期锻炼是长寿的关键", category: "健康" },
+  { text: "心理健康与身体健康同等重要", category: "健康" },
+  { text: "充足的睡眠对认知功能至关重要", category: "健康" },
+  { text": "中国经济持续增长，成为全球第二大经济体", category: "经济" },
+  { text: "数字化转型正在重塑传统商业模式", category: "商业" }
+];
+
+return documents.map((doc, index) => ({
+  json: {
+    id: index + 1,
+    content: doc.text,
+    category: doc.category
+  }
+}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [240, 0],
+      "id": "prepare-data",
+      "name": "准备示例数据"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 使用OpenAI生成文本嵌入向量
+const content = $json.content;
+const apiKey = 'YOUR_OPENAI_API_KEY'; // 请替换为实际API密钥
+
+const response = await fetch('https://api.openai.com/v1/embeddings', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${apiKey}`
+  },
+  body: JSON.stringify({
+    input: content,
+    model: 'text-embedding-ada-002'
+  })
+});
+
+const result = await response.json();
+const embedding = result.data[0].embedding;
+
+return {
+  ...$json,
+  embedding: JSON.stringify(embedding),
+  embedding_size: embedding.length
+};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 0],
+      "id": "generate-embedding",
+      "name": "生成向量嵌入"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- 创建向量存储表
+CREATE EXTENSION IF NOT EXISTS vector;
+
+CREATE TABLE IF NOT EXISTS document_vectors (
+  id SERIAL PRIMARY KEY,
+  content TEXT NOT NULL,
+  category VARCHAR(50),
+  embedding VECTOR(1536),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 创建向量索引
+CREATE INDEX IF NOT EXISTS document_vectors_embedding_idx 
+ON document_vectors USING ivfflat (embedding vector_cosine_ops);
+
+-- 清空旧数据
+TRUNCATE TABLE document_vectors;"
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.1,
+      "position": [720, 0],
+      "id": "setup-table",
+      "name": "初始化向量表",
+      "credentials": {
+        "postgres": {
+          "host": "localhost",
+          "database": "n8n",
+          "user": "postgres",
+          "password": "postgres",
+          "port": 5432
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "table": "document_vectors",
+        "columns": "content,category,embedding",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.1,
+      "position": [960, 0],
+      "id": "store-vectors",
+      "name": "存储向量数据",
+      "credentials": {
+        "postgres": {
+          "host": "localhost",
+          "database": "n8n",
+          "user": "postgres",
+          "password": "postgres",
+          "port": 5432
+        }
+      }
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "search_query",
+              "value": "机器学习技术"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.2,
+      "position": [240, 220],
+      "id": "search-query",
+      "name": "设置搜索查询"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 生成搜索查询的向量
+const query = $json.search_query;
+const apiKey = 'YOUR_OPENAI_API_KEY'; // 请替换为实际API密钥
+
+const response = await fetch('https://api.openai.com/v1/embeddings', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${apiKey}`
+  },
+  body: JSON.stringify({
+    input: query,
+    model: 'text-embedding-ada-002'
+  })
+});
+
+const result = await response.json();
+const queryEmbedding = result.data[0].embedding;
+
+return {
+  ...$json,
+  query_embedding: JSON.stringify(queryEmbedding)
+};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 220],
+      "id": "generate-query-vector",
+      "name": "生成查询向量"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- 相似度搜索
+SELECT 
+  id,
+  content,
+  category,
+  created_at,
+  1 - (embedding <=> '{{$json.query_embedding}}'::vector) as similarity
+FROM document_vectors
+WHERE 1 - (embedding <=> '{{$json.query_embedding}}'::vector) > 0.7
+ORDER BY similarity DESC
+LIMIT 5;"
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.1,
+      "position": [720, 220],
+      "id": "vector-search",
+      "name": "向量相似度搜索",
+      "credentials": {
+        "postgres": {
+          "host": "localhost",
+          "database": "n8n",
+          "user": "postgres",
+          "password": "postgres",
+          "port": 5432
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// 格式化搜索结果
+const results = $json;
+
+let output = `🔍 向量搜索查询: "${results[0]?.search_query || '未知'}"\n\n`;
+output += `📊 找到 ${results.length} 个相关结果:\n\n`;
+
+results.forEach((result, index) => {
+  output += `${index + 1}. **${result.content}**\n`;
+  output += `   📂 分类: ${result.category}\n`;
+  output += `   🔗 相似度: ${(result.similarity * 100).toFixed(1)}%\n`;
+  output += `   🕐 创建时间: ${result.created_at}\n\n`;
+});
+
+return {
+  search_summary: output
+};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [960, 220],
+      "id": "format-results",
+      "name": "格式化搜索结果"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- 统计信息
+SELECT 
+  COUNT(*) as total_documents,
+  COUNT(DISTINCT category) as categories,
+  AVG(embedding_size) as avg_embedding_size
+FROM document_vectors;"
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.1,
+      "position": [1200, 110],
+      "id": "get-stats",
+      "name": "获取统计信息",
+      "credentials": {
+        "postgres": {
+          "host": "localhost",
+          "database": "n8n",
+          "user": "postgres",
+          "password": "postgres",
+          "port": 5432
+        }
+      }
+    }
+  ],
+  "connections": {
+    "手动触发": {
+      "main": [
+        [
+          {
+            "node": "准备示例数据",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "准备示例数据": {
+      "main": [
+        [
+          {
+            "node": "生成向量嵌入",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "生成向量嵌入": {
+      "main": [
+        [
+          {
+            "node": "初始化向量表",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "初始化向量表": {
+      "main": [
+        [
+          {
+            "node": "存储向量数据",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "设置搜索查询": {
+      "main": [
+        [
+          {
+            "node": "生成查询向量",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "生成查询向量": {
+      "main": [
+        [
+          {
+            "node": "向量相似度搜索",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "向量相似度搜索": {
+      "main": [
+        [
+          {
+            "node": "格式化搜索结果",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1.0.0",
+  "meta": {
+    "instanceId": "cb484ba7b742928a2048bf8829668bed5b5ad9787579adea888f05980292a4a7"
+  },
+  "tags": ["pgvector", "embeddings", "similarity-search", "ai"]
+}
