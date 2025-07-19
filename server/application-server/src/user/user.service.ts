@@ -609,7 +609,7 @@ export class UserService {
     }
   }
 
-  async registerByEmail(email: string, password: string, name: string) {
+  async registerByEmail(email: string, password: string, name: string, referralCode?: string) {
     try {
       // 检查邮箱是否已注册
       const existingUser = await this.databaseService.user.findUnique({
@@ -621,13 +621,20 @@ export class UserService {
       }
 
       // 创建新用户
+      const userData: any = {
+        email,
+        password: await this.authService.hashPassword(password),
+        name,
+        createdAt: new Date(),
+      };
+
+      // 如果有推荐码，添加到用户记录
+      if (referralCode) {
+        userData.ref = referralCode;
+      }
+
       const user = await this.databaseService.user.create({
-        data: {
-          email,
-          password: await this.authService.hashPassword(password),
-          name,
-          createdAt: new Date(),
-        },
+        data: userData,
       });
 
       // 生成JWT token
@@ -661,6 +668,61 @@ export class UserService {
     try {
       const user = await this.databaseService.user.findUnique({
         where: { email }
+      });
+
+      if (!user) {
+        throw new NotFoundException('用户不存在');
+      }
+
+      if (!user.password) {
+        throw new BadRequestException('该用户未设置密码，请使用微信登录');
+      }
+
+      const isPasswordValid = await this.authService.validatePassword(
+        password,
+        user.password
+      );
+
+      if (!isPasswordValid) {
+        throw new UnauthorizedException('密码错误');
+      }
+
+      const token = await this.authService.generateToken(user.userId);
+
+      return {
+        success: true,
+        message: '登录成功',
+        data: {
+          user: {
+            userId: user.userId,
+            email: user.email,
+            name: user.name,
+            createdAt: user.createdAt,
+          },
+          token,
+        },
+      };
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        '登录失败: ' + error.message,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  async loginByUsernameOrEmail(usernameOrEmail: string, password: string) {
+    try {
+      // 判断是邮箱还是用户名
+      const isEmail = usernameOrEmail.includes('@');
+      
+      // 查询用户
+      const user = await this.databaseService.user.findFirst({
+        where: isEmail 
+          ? { email: usernameOrEmail }
+          : { name: usernameOrEmail }
       });
 
       if (!user) {

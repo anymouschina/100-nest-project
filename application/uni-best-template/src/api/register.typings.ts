@@ -7,6 +7,7 @@ export interface IEmailRegisterForm {
   username: string
   password: string
   confirmPassword: string
+  referralCode?: string
 }
 
 /**
@@ -20,10 +21,22 @@ export interface IEmailCodeRequest {
  * 邮箱注册响应数据
  */
 export interface IEmailRegisterResponse {
-  id: string
-  username: string
-  email: string
-  token: string
+  success?: boolean
+  message?: string
+  token?: string
+  user?: {
+    userId: number
+    email: string
+    name: string
+  }
+  data?: {
+    token: string
+    user: {
+      userId: number
+      email: string
+      name: string
+    }
+  }
 }
 
 /**

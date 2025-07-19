@@ -18,6 +18,7 @@ import { WxLoginDto } from './dto/wx-login.dto';
 import { ReferralDto } from './dto/referral.dto';
 import { CreateReferralCodeDto } from './dto/create-referral-code.dto';
 import { SendEmailCodeDto, EmailRegisterDto, EmailLoginDto } from './dto/email-register.dto';
+import { LoginDto } from './dto/login.dto';
 import { MailService } from 'src/mail/mail.service';
 import { EmailVerificationService } from './services/email-verification.service';
 import { Public } from '../auth/decorators/public.decorator';
@@ -496,18 +497,41 @@ export class EmailAuthController {
     }
 
     // 注册用户
-    return this.userService.registerByEmail(email, password, name || email.split('@')[0]);
+    return this.userService.registerByEmail(email, password, name || email.split('@')[0], referralCode);
+  }
+
+  /**
+   * POST /api/user/login
+   * 用户名/邮箱登录
+   * 
+   * @param loginDto - 登录信息（用户名或邮箱 + 密码）
+   * @returns 登录结果
+   */
+  @Public()
+  @Post('login')
+  @ApiOperation({ summary: '用户名/邮箱登录' })
+  @ApiResponse({
+    status: 200,
+    description: '登录成功',
+  })
+  @ApiResponse({
+    status: 401,
+    description: '登录失败',
+  })
+  async login(@Body() loginDto: LoginDto) {
+    const { usernameOrEmail, password } = loginDto;
+    return this.userService.loginByUsernameOrEmail(usernameOrEmail, password);
   }
 
   /**
    * POST /api/email/login
-   * 邮箱登录
+   * 邮箱登录（兼容旧接口）
    * 
    * @param emailLoginDto - 登录信息
    * @returns 登录结果
    */
   @Public()
-  @Post('login')
+  @Post('login/email')
   @ApiOperation({ summary: '邮箱登录' })
   @ApiResponse({
     status: 200,

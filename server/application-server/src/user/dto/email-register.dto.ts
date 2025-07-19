@@ -1,4 +1,4 @@
-import { IsEmail, IsString, MinLength, MaxLength, Matches } from 'class-validator';
+import { IsEmail, IsString, MinLength, MaxLength, Matches, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class SendEmailCodeDto {
@@ -59,5 +59,6 @@ export class EmailRegisterDto {
 
   @ApiProperty({ description: '推荐码', required: false })
   @IsString({ message: '推荐码格式不正确' })
+  @IsOptional()
   referralCode?: string;
 }

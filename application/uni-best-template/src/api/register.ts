@@ -1,4 +1,8 @@
-import type { IEmailRegisterForm, IEmailCodeRequest, IEmailRegisterResponse } from './register.typings'
+import type {
+  IEmailRegisterForm,
+  IEmailCodeRequest,
+  IEmailRegisterResponse,
+} from './register.typings'
 import { http } from '@/utils/http'
 
 /**
@@ -6,7 +10,7 @@ import { http } from '@/utils/http'
  * @param email 邮箱地址
  */
 export const sendEmailCode = (email: string) => {
-  return http.post<void>('/api/email/send-code', { email })
+  return http.post<void>('/email/send-code', { email })
 }
 
 /**
@@ -14,12 +18,19 @@ export const sendEmailCode = (email: string) => {
  * @param data 邮箱注册表单数据
  */
 export const emailRegister = (data: IEmailRegisterForm) => {
-  return http.post<IEmailRegisterResponse>('/api/auth/email-register', {
+  const payload: any = {
     email: data.email,
+    password: data.password,
+    name: data.username,
     code: data.emailCode,
-    username: data.username,
-    password: data.password
-  })
+  }
+
+  // 如果填写了推荐码，添加到请求中
+  if (data.referralCode) {
+    payload.referralCode = data.referralCode
+  }
+
+  return http.post<IEmailRegisterResponse>('/api/email/register', payload)
 }
 
 /**

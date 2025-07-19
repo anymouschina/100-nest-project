@@ -24,7 +24,7 @@ export const getCode = () => {
  * @param loginForm 登录表单
  */
 export const login = (loginForm: ILoginForm) => {
-  return http.post<IUserLogin>('/user/login', loginForm)
+  return http.post<IUserLogin>('/email/login', loginForm)
 }
 
 /**

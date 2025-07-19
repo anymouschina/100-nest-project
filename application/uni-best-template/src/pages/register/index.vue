@@ -17,11 +17,11 @@
       <image class="register-logo" :src="appLogo" mode="aspectFit"></image>
       <view class="register-title">{{ appTitle }}</view>
     </view>
-    
+
     <view class="register-form">
       <view class="welcome-text">欢迎注册</view>
       <view class="register-desc">请填写您的注册信息</view>
-      
+
       <view class="register-input-group">
         <!-- 邮箱输入 -->
         <view class="input-wrapper">
@@ -34,11 +34,11 @@
             :border="false"
             required
             type="email"
-            @blur="validateEmail"
+            @blur="handleEmailBlur"
           ></wd-input>
           <view class="input-bottom-line"></view>
         </view>
-        
+
         <!-- 邮箱验证码 -->
         <view class="input-wrapper captcha-wrapper">
           <wd-input
@@ -51,8 +51,8 @@
             required
           >
             <template #suffix>
-              <view 
-                class="email-code-btn" 
+              <view
+                class="email-code-btn"
                 :class="{ disabled: codeCountdown > 0 }"
                 @click="sendEmailCode"
               >
@@ -62,7 +62,7 @@
           </wd-input>
           <view class="input-bottom-line"></view>
         </view>
-        
+
         <!-- 用户名输入 -->
         <view class="input-wrapper">
           <wd-input
@@ -74,10 +74,11 @@
             :border="false"
             required
             maxlength="20"
+            @blur="checkUsernameExists"
           ></wd-input>
           <view class="input-bottom-line"></view>
         </view>
-        
+
         <!-- 密码输入 -->
         <view class="input-wrapper">
           <wd-input
@@ -85,7 +86,24 @@
             prefix-icon="lock-on"
             placeholder="请输入密码"
             clearable
-            show-password
+            show-password-on="click"
+            class="register-input"
+            :border="false"
+            required
+            type="password"
+            maxlength="20"
+          ></wd-input>
+          <view class="input-bottom-line"></view>
+        </view>
+
+        <!-- 确认密码 -->
+        <view class="input-wrapper">
+          <wd-input
+            v-model="registerForm.confirmPassword"
+            prefix-icon="lock-on"
+            placeholder="请确认密码"
+            clearable
+            show-password-on="click"
             class="register-input"
             :border="false"
             required
@@ -95,24 +113,21 @@
           <view class="input-bottom-line"></view>
         </view>
         
-        <!-- 确认密码 -->
+        <!-- 推荐码（选填） -->
         <view class="input-wrapper">
           <wd-input
-            v-model="registerForm.confirmPassword"
-            prefix-icon="lock-on"
-            placeholder="请确认密码"
+            v-model="registerForm.referralCode"
+            prefix-icon="gift"
+            placeholder="推荐码（选填）"
             clearable
-            show-password
             class="register-input"
             :border="false"
-            required
-            type="password"
             maxlength="20"
           ></wd-input>
           <view class="input-bottom-line"></view>
         </view>
       </view>
-      
+
       <!-- 注册按钮 -->
       <view class="register-buttons">
         <wd-button
@@ -125,13 +140,11 @@
         >
           注册
         </wd-button>
-        
-        <view class="login-link" @click="goToLogin">
-          已有账号？立即登录
-        </view>
+
+        <view class="login-link" @click="goToLogin">已有账号？立即登录</view>
       </view>
     </view>
-    
+
     <!-- 隐私协议勾选 -->
     <view class="privacy-agreement">
       <wd-checkbox
@@ -172,7 +185,8 @@ const registerForm = ref<IEmailRegisterForm>({
   emailCode: '',
   username: '',
   password: '',
-  confirmPassword: ''
+  confirmPassword: '',
+  referralCode: ''
 })
 
 // 验证码倒计时
@@ -181,6 +195,14 @@ const loading = ref(false)
 
 // 隐私协议勾选状态
 const agreePrivacy = ref(true)
+
+// 页面加载时获取URL参数中的推荐码
+onLoad((options: any) => {
+  if (options.ref) {
+    registerForm.value.referralCode = options.ref
+    console.log('自动填入推荐码:', options.ref)
+  }
+})
 
 // 邮箱验证
 const validateEmail = () => {
@@ -191,21 +213,96 @@ const validateEmail = () => {
   return true
 }
 
+// 密码强度验证
+const validatePasswordStrength = (password: string) => {
+  // 检查是否包含大小写字母和数字
+  const hasUpperCase = /[A-Z]/.test(password)
+  const hasLowerCase = /[a-z]/.test(password)
+  const hasNumber = /[0-9]/.test(password)
+  const hasSpace = /\s/.test(password)
+
+  if (hasSpace) {
+    toast.error('密码不能包含空格')
+    return false
+  }
+
+  if (!hasUpperCase) {
+    toast.error('密码必须包含大写字母')
+    return false
+  }
+
+  if (!hasLowerCase) {
+    toast.error('密码必须包含小写字母')
+    return false
+  }
+
+  if (!hasNumber) {
+    toast.error('密码必须包含数字')
+    return false
+  }
+
+  return true
+}
+
+// 处理邮箱失焦事件
+const handleEmailBlur = async () => {
+  if (!validateEmail()) return
+  await checkEmailRegistered()
+}
+
+// 检查邮箱是否已注册
+const checkEmailRegistered = async () => {
+  if (!registerForm.value.email || !validateEmail()) return
+
+  try {
+    const isExist = await checkEmailExist(registerForm.value.email)
+    if (isExist) {
+      toast.error('该邮箱已被注册')
+      return false
+    }
+    return true
+  } catch (error) {
+    console.error('检查邮箱失败:', error)
+    return true // 允许继续操作，避免阻塞用户体验
+  }
+}
+
+// 检查用户名是否已存在
+const checkUsernameExists = async () => {
+  if (!registerForm.value.username) return
+
+  try {
+    const isExist = await checkUsernameExist(registerForm.value.username)
+    if (isExist) {
+      toast.error('该用户名已被使用')
+      return false
+    }
+    return true
+  } catch (error) {
+    console.error('检查用户名失败:', error)
+    return true // 允许继续操作，避免阻塞用户体验
+  }
+}
+
 // 发送邮箱验证码
 const sendEmailCode = async () => {
   if (codeCountdown.value > 0) return
-  
+
   if (!registerForm.value.email) {
     toast.error('请输入邮箱地址')
     return
   }
-  
+
   if (!validateEmail()) return
-  
+
+  // 检查邮箱是否已注册
+  const emailValid = await checkEmailRegistered()
+  if (!emailValid) return
+
   try {
     await sendEmailCodeApi(registerForm.value.email)
     toast.success('验证码已发送到您的邮箱')
-    
+
     // 开始倒计时
     codeCountdown.value = 60
     const timer = setInterval(() => {
@@ -214,45 +311,75 @@ const sendEmailCode = async () => {
         clearInterval(timer)
       }
     }, 1000)
-  } catch (error) {
-    toast.error('发送验证码失败，请稍后重试')
+  } catch (error: any) {
+    console.error('发送验证码失败:', error)
+    const errorMessage = error?.data?.message || error?.data?.msg || '发送验证码失败，请稍后重试'
+    toast.error(errorMessage)
   }
 }
 
 // 表单验证
-const validateForm = () => {
+const validateForm = async () => {
   if (!registerForm.value.email) {
     toast.error('请输入邮箱地址')
     return false
   }
-  
+
   if (!validateEmail()) return false
-  
+
+  // 检查邮箱是否已注册
+  const emailValid = await checkEmailRegistered()
+  if (!emailValid) return false
+
   if (!registerForm.value.emailCode) {
     toast.error('请输入邮箱验证码')
     return false
   }
-  
+
   if (!registerForm.value.username) {
     toast.error('请输入用户名')
     return false
   }
-  
+
+  if (registerForm.value.username.length < 2) {
+    toast.error('用户名长度不能少于2位')
+    return false
+  }
+
+  if (registerForm.value.username.length > 20) {
+    toast.error('用户名长度不能超过20位')
+    return false
+  }
+
+  // 检查用户名是否已存在
+  const usernameValid = await checkUsernameExists()
+  if (!usernameValid) return false
+
   if (!registerForm.value.password) {
     toast.error('请输入密码')
     return false
   }
-  
+
   if (registerForm.value.password.length < 6) {
     toast.error('密码长度不能少于6位')
     return false
   }
-  
+
+  if (registerForm.value.password.length > 20) {
+    toast.error('密码长度不能超过20位')
+    return false
+  }
+
+  // 密码强度验证
+  if (!validatePasswordStrength(registerForm.value.password)) {
+    return false
+  }
+
   if (registerForm.value.password !== registerForm.value.confirmPassword) {
     toast.error('两次输入的密码不一致')
     return false
   }
-  
+
   return true
 }
 
@@ -262,22 +389,65 @@ const handleEmailRegister = async () => {
     toast.error('请阅读同意协议')
     return
   }
-  
-  if (!validateForm()) return
-  
+
+  const isFormValid = await validateForm()
+  if (!isFormValid) return
+
   loading.value = true
   try {
-    await emailRegister(registerForm.value)
-    toast.success('注册成功')
+    const response = await emailRegister(registerForm.value)
+    console.log('注册响应完整数据:', response)
     
-    // 注册成功后跳转到登录页
+    // 处理不同的响应格式
+    if (response.success === false) {
+      // 如果后端返回success=false，显示错误消息
+      const errorMsg = response.message || response.msg || '注册失败'
+      toast.error(errorMsg)
+      return
+    }
+    
+    // 成功处理 - 支持多种响应格式
+    let userData, token
+    
+    if (response.data) {
+      // 格式1: { success: true, data: { token, user } }
+      userData = response.data.user
+      token = response.data.token
+    } else if (response.user) {
+      // 格式2: { user, token }
+      userData = response.user
+      token = response.token
+    } else {
+      // 格式3: 直接返回用户数据
+      userData = response
+      token = response.token
+    }
+    
+    if (!userData || !token) {
+      console.warn('响应格式异常:', response)
+      toast.success('注册成功')
+    } else {
+      toast.success('注册成功')
+      
+      // 保存用户信息到store
+      userStore.setUserInfo({
+        id: userData.userId?.toString() || userData.id?.toString(),
+        username: userData.name || userData.username,
+        email: userData.email,
+        token: token,
+      })
+    }
+
+    // 注册成功后跳转到首页
     setTimeout(() => {
-      uni.navigateTo({
-        url: '/pages/login/index'
+      uni.switchTab({
+        url: '/pages/index/index',
       })
     }, 1500)
-  } catch (error) {
-    toast.error('注册失败，请稍后重试')
+  } catch (error: any) {
+    console.error('注册失败:', error)
+    const errorMessage = error?.data?.message || error?.data?.msg || '注册失败，请稍后重试'
+    toast.error(errorMessage)
   } finally {
     loading.value = false
   }
@@ -286,7 +456,7 @@ const handleEmailRegister = async () => {
 // 跳转到登录页
 const goToLogin = () => {
   uni.navigateTo({
-    url: '/pages/login/index'
+    url: '/pages/login/index',
   })
 }
 
@@ -501,6 +671,7 @@ const handleAgreement = (type: 'user' | 'privacy') => {
 
 .email-code-btn {
   padding: 0 20rpx;
+  display: inline-block;
   height: 60rpx;
   line-height: 60rpx;
   font-size: 24rpx;
@@ -508,6 +679,9 @@ const handleAgreement = (type: 'user' | 'privacy') => {
   background-color: rgba(25, 137, 250, 0.1);
   border-radius: 30rpx;
   transition: all 0.3s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin-left: 16rpx;
 
   &:active {
     background-color: rgba(25, 137, 250, 0.2);
