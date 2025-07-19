@@ -117,6 +117,9 @@
   "h5": {
     "router": {
       "base": "/"
+    },
+    "tabbar": {
+      "custom": true
     }
   }
 }

@@ -4,6 +4,9 @@ import 'abortcontroller-polyfill/dist/abortcontroller-polyfill-only'
 
 onLaunch(() => {
   console.log('App Launch')
+  // #ifdef H5
+  uni.hideTabBar()
+  // #endif
 })
 onShow(() => {
   console.log('App Show')

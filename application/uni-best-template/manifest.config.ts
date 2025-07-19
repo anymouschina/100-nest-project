@@ -25,6 +25,9 @@ export default defineManifestConfig({
     router: {
       base: VITE_APP_PUBLIC_BASE,
     },
+    tabbar: {
+      custom: true,
+    },
   },
   /* 5+App特有相关 */
   'app-plus': {
@@ -116,17 +119,12 @@ export default defineManifestConfig({
     },
     usingComponents: true,
     // __usePrivacyCheck__: true,
-    requiredPrivateInfos: [
-      "chooseAddress",
-      "chooseLocation",
-      "choosePoi",
-      "getLocation"
-    ],
+    requiredPrivateInfos: ['chooseAddress', 'chooseLocation', 'choosePoi', 'getLocation'],
     permission: {
-      "scope.userLocation": {
-        "desc": "您的位置信息将用于小程序选择服务地址"
-      }
-    }
+      'scope.userLocation': {
+        desc: '您的位置信息将用于小程序选择服务地址',
+      },
+    },
   },
   'mp-alipay': {
     usingComponents: true,

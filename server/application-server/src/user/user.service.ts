@@ -778,9 +778,6 @@ export class UserService {
       throw new NotFoundException('用户不存在');
     }
 
-    return {
-      success: true,
-      data: user,
-    };
+    return user;
   }
 }

@@ -30,7 +30,7 @@ export const emailRegister = (data: IEmailRegisterForm) => {
     payload.referralCode = data.referralCode
   }
 
-  return http.post<IEmailRegisterResponse>('/api/email/register', payload)
+  return http.post<IEmailRegisterResponse>('/email/register', payload)
 }
 
 /**

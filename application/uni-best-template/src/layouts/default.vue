@@ -1,25 +1,23 @@
 <route lang="json5">
-  {
-    style: {
-      navigationStyle: 'custom',
-    },
-  }
-  </route>
+{
+  style: {
+    navigationStyle: 'custom',
+  },
+}
+</route>
 <template>
   <wd-config-provider :themeVars="themeVars">
-    <scroll-view scroll-y style="height: 100vh;"
-     :style="customStyle"
-    >
-      <wd-navbar 
-          custom-style="background: transparent;" 
-          fixed 
-          placeholder 
-          :bordered="false" 
-          safeAreaInsetTop
-          :left-arrow="showBackArrow"
-          @click-left="handleBack"
-        ></wd-navbar>
-          <slot />
+    <scroll-view scroll-y style="height: 100vh" :style="customStyle">
+      <wd-navbar
+        custom-style="background: transparent;"
+        fixed
+        placeholder
+        :bordered="false"
+        safeAreaInsetTop
+        :left-arrow="showBackArrow"
+        @click-left="handleBack"
+      ></wd-navbar>
+      <slot />
     </scroll-view>
     <wd-toast />
     <wd-message-box />
@@ -54,24 +52,24 @@ const changeBg = (bgColor) => {
 const checkIsTabPage = () => {
   const pages = getCurrentPages()
   const currentPage = pages[pages.length - 1]
-  
+
   if (!currentPage) return false
-  
+
   // 获取当前页面路径
   const currentPath = `/${currentPage.route}`
-  
+
   // 主tab页面列表，这里需要根据实际的tabBar配置来设置
   const tabPages = [
     '/pages/index/index', // 首页
-    '/pages/mine/index' // 我的
+    '/pages/mine/index', // 我的
   ]
-  
+
   // 判断当前页面是否为tab页面
   const isTabPage = tabPages.includes(currentPath)
   // if(currentPath === '/pages/index/index'){
-    changeBg('linear-gradient(180deg, #f8fffe 0%, #f0f9f0 50%, #ffffff 100%)')
+  changeBg('linear-gradient(180deg, #f8fffe 0%, #f0f9f0 50%, #ffffff 100%)')
   // }else{
-    // changeBg('#f7f8fa')
+  // changeBg('#f7f8fa')
   // }
   // 如果不是tab页面，且不是首页，则显示返回箭头
   showBackArrow.value = !isTabPage && pages.length > 1
@@ -85,6 +83,9 @@ const handleBack = () => {
 // 页面加载和显示时检查
 onMounted(() => {
   checkIsTabPage()
+  // #ifdef H5
+  uni.hideTabBar()
+  // #endif
 })
 
 onShow(() => {
