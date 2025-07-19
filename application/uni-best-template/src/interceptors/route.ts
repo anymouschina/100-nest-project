@@ -12,7 +12,7 @@ const loginRoute = '/pages/login/index'
 
 const isLogined = () => {
   const userStore = useUserStore()
-  return !!userStore.userInfo.username
+  return !!userStore.userInfo.token
 }
 
 const isDev = import.meta.env.DEV
@@ -41,10 +41,12 @@ const navigateToInterceptor = {
       needLoginPages = _needLoginPages
     }
     const isNeedLogin = needLoginPages.includes(path)
+    console.log('isNeedLogin', isNeedLogin, path)
     if (!isNeedLogin) {
       return true
     }
     const hasLogin = isLogined()
+    console.log('hasLogin', hasLogin)
     if (hasLogin) {
       return true
     }

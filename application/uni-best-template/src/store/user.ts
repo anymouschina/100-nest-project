@@ -34,7 +34,7 @@ export const useUserStore = defineStore(
         val.avatar = 'https://oss.laf.run/ukw0y1-site/avatar.jpg?feige'
       }
       userInfo.value = val
-      if(!userInfo.value.token){
+      if (!userInfo.value.token) {
         userInfo.value.token = token.value
       }
     }
@@ -57,6 +57,9 @@ export const useUserStore = defineStore(
     }) => {
       const res = await _login(credentials)
       console.log('登录信息', res)
+      setUserInfo(res.data)
+      uni.setStorageSync('userInfo', res.data)
+      uni.setStorageSync('token', res.data.token)
       toast.success('登录成功')
       getUserInfo()
       return res
@@ -66,10 +69,12 @@ export const useUserStore = defineStore(
      */
     const getUserInfo = async () => {
       const res = await _getUserInfo()
-      const userInfo = res.data
-      setUserInfo(userInfo)
-      uni.setStorageSync('userInfo', userInfo)
-      uni.setStorageSync('token', userInfo.token)
+      const latestUserInfo = res.data
+      setUserInfo({
+        ...userInfo.value,
+        ...latestUserInfo,
+      })
+      uni.setStorageSync('userInfo', latestUserInfo)
       // TODO 这里可以增加获取用户路由的方法 根据用户的角色动态生成路由
       return res
     }
@@ -80,7 +85,7 @@ export const useUserStore = defineStore(
       _logout()
       removeUserInfo()
     }
-    
+
     /**
      * 获取微信用户信息（头像和昵称）
      */
@@ -96,28 +101,28 @@ export const useUserStore = defineStore(
             const { userInfo } = res
             resolve({
               avatarUrl: userInfo.avatarUrl,
-              nickName: userInfo.nickName
+              nickName: userInfo.nickName,
             })
           },
           fail: (err) => {
             console.error('获取微信用户信息失败', err)
             resolve({
               avatarUrl: '',
-              nickName: ''
+              nickName: '',
             })
-          }
+          },
         })
         // #endif
-        
+
         // #ifndef MP-WEIXIN
         resolve({
           avatarUrl: '',
-          nickName: ''
+          nickName: '',
         })
         // #endif
       })
     }
-    
+
     /**
      * 微信登录
      */
@@ -132,31 +137,31 @@ export const useUserStore = defineStore(
       try {
         const wxUserInfo = await getWxUserInfo()
         console.log('获取到微信用户信息', wxUserInfo)
-        
+
         // 如果有微信用户信息，则使用微信头像和昵称
         if (wxUserInfo.avatarUrl && res.data) {
           const updatedUserInfo = {
             ...res.data,
             avatar: wxUserInfo.avatarUrl,
-            username: wxUserInfo.nickName || res.data.username
+            username: wxUserInfo.nickName || res.data.username,
           } as any
-          
-          if(updatedUserInfo){
-            token.value = updatedUserInfo.token;
+
+          if (updatedUserInfo) {
+            token.value = updatedUserInfo.token
             setUserInfo(updatedUserInfo)
           }
-        } else if(res.data) {
-          token.value = res.data.token;
+        } else if (res.data) {
+          token.value = res.data.token
           setUserInfo(res.data as any)
         }
       } catch (error) {
         console.error('获取微信用户信息失败', error)
-        if(res.data){
-          token.value = res.data.token;
+        if (res.data) {
+          token.value = res.data.token
           setUserInfo(res.data as any)
         }
       }
-      
+
       getUserInfo()
       return res
     }

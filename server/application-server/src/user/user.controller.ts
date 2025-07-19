@@ -415,7 +415,7 @@ export class AdminReferralController {
 }
 
 @ApiTags('邮箱注册')
-@Controller('api/email')
+@Controller('email')
 export class EmailAuthController {
   constructor(
     private readonly userService: UserService,

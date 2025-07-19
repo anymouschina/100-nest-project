@@ -23,7 +23,7 @@
       <view class="login-input-group">
         <view class="input-wrapper">
           <wd-input
-            v-model="loginForm.username"
+            v-model="loginForm.usernameOrEmail"
             prefix-icon="user"
             placeholder="请输入用户名"
             clearable
@@ -84,9 +84,7 @@
           登录
         </wd-button>
         <!-- 邮件注册入口 -->
-        <view class="register-link" @click="goToRegister">
-          还没有账号？立即注册
-        </view>
+        <view class="register-link" @click="goToRegister">还没有账号？立即注册</view>
         <!-- 微信小程序一键登录按钮 -->
         <!-- #ifdef MP-WEIXIN -->
         <view class="divider">
@@ -152,10 +150,8 @@ const captcha = ref<ICaptcha>({
 })
 // 登录表单数据
 const loginForm = ref<ILoginForm>({
-  username: 'admin',
+  usernameOrEmail: 'admin',
   password: '123456',
-  code: '',
-  uuid: '',
 })
 // 隐私协议勾选状态
 const agreePrivacy = ref(true)
@@ -177,7 +173,7 @@ const handleAccountLogin = async () => {
     return
   }
   // 表单验证
-  if (!loginForm.value.username) {
+  if (!loginForm.value.usernameOrEmail) {
     toast.error('请输入用户名')
     return
   }
@@ -236,7 +232,7 @@ const refreshCaptcha = () => {
 // 跳转到注册页面
 const goToRegister = () => {
   uni.navigateTo({
-    url: '/pages/register/index'
+    url: '/pages/register/index',
   })
 }
 
@@ -534,7 +530,7 @@ const handleAgreement = (type: 'user' | 'privacy') => {
         transform: scale(0.98);
       }
     }
-    
+
     .register-link {
       text-align: center;
       font-size: 28rpx;

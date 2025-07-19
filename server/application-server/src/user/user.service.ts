@@ -744,18 +744,12 @@ export class UserService {
 
       const token = await this.authService.generateToken(user.userId);
 
-      return {
-        success: true,
-        message: '登录成功',
-        data: {
-          user: {
+      return { 
             userId: user.userId,
             email: user.email,
             name: user.name,
             createdAt: user.createdAt,
-          },
-          token,
-        },
+            token
       };
     } catch (error) {
       if (error instanceof HttpException) {
