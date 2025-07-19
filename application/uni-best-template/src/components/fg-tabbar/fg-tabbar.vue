@@ -12,9 +12,15 @@
     <wd-tabbar-item name="home" title="首页" icon="home"></wd-tabbar-item>
 
     <!-- 一键预约 - 中间突出按钮 -->
-    <wd-button round size="large" custom-class="appointment-btn" @click="handleAppointmentClick">
-      一键预约
-    </wd-button>
+    <view class="appointment-center-btn" @click="handleAppointmentClick">
+      <view class="btn-outer-ring">
+        <view class="btn-inner-circle">
+          <view class="btn-icon">
+            <wd-icon name="plus" size="32" color="#FFFFFF" />
+          </view>
+        </view>
+      </view>
+    </view>
 
     <!-- 我的 -->
     <wd-tabbar-item name="mine" title="我的" icon="user"></wd-tabbar-item>
@@ -142,44 +148,69 @@ onMounted(() => {
   }
 }
 
-.appointment-btn {
-  position: absolute !important;
-  box-sizing: content-box;
-  top: -15px !important;
-  left: 50% !important;
-  transform: translate(-50%, -28rpx);
-  width: 60px !important;
-  height: 60px !important;
-  border-radius: 50% !important;
-  background: linear-gradient(135deg, #2c722c 0%, #52c41a 100%) !important;
-  font-weight: 600 !important;
-  z-index: 10 !important;
-  line-height: 1.1 !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  text-align: center !important;
-  white-space: normal !important;
-  word-break: break-all !important;
-  padding: 10rpx !important;
-  color: #fff;
-  font-size: 44rpx;
+.appointment-center-btn {
+  position: absolute;
+  top: -40rpx;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 100;
+  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 
-  &::before {
-    content: '';
-    position: absolute;
-    top: -4px;
-    left: -4px;
-    right: -4px;
-    bottom: -4px;
+  .btn-outer-ring {
+    width: 100rpx;
+    height: 100rpx;
+    background: #ffffff;
     border-radius: 50%;
-    background: linear-gradient(135deg, rgba(44, 114, 44, 0.15), rgba(82, 196, 26, 0.15));
-    z-index: -1;
-    animation: pulse-ring 2.5s ease-in-out infinite;
+    box-shadow: 0 8rpx 32rpx rgba(0, 122, 255, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+
+    .btn-inner-circle {
+      width: 80rpx;
+      height: 80rpx;
+      background: linear-gradient(135deg, #007aff 0%, #5856d6 100%);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4rpx 16rpx rgba(0, 122, 255, 0.3);
+      transition: all 0.3s ease;
+
+      .btn-icon {
+        transition: all 0.3s ease;
+      }
+    }
+  }
+
+  .btn-label {
+    margin-top: 8rpx;
+    font-size: 24rpx;
+    color: #007aff;
+    font-weight: 600;
+    transition: all 0.3s ease;
   }
 
   &:active {
-    transform: translate(-50%, -28rpx) scale(0.95);
+    transform: translateX(-50%) scale(0.95);
+
+    .btn-outer-ring {
+      transform: scale(0.95);
+    }
+
+    .btn-inner-circle {
+      transform: scale(0.95);
+    }
+  }
+
+  &:hover {
+    .btn-outer-ring {
+      box-shadow: 0 12rpx 48rpx rgba(0, 122, 255, 0.3);
+    }
   }
 }
 
@@ -188,6 +219,46 @@ onMounted(() => {
   height: 0;
   visibility: hidden;
   position: absolute;
+}
+
+/* 过渡展示动画 */
+.appointment-center-btn {
+  animation: slideUpFade 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+  opacity: 0;
+  transform: translateX(-50%) translateY(20rpx);
+  animation-delay: 0.3s;
+
+  .btn-outer-ring {
+    animation: scaleIn 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+    animation-delay: 0.4s;
+    transform: scale(0);
+  }
+
+  .btn-inner-circle {
+    animation: scaleIn 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+    animation-delay: 0.5s;
+    transform: scale(0);
+  }
+}
+
+@keyframes slideUpFade {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(20rpx);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+@keyframes scaleIn {
+  0% {
+    transform: scale(0);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 @keyframes pulse-ring {
@@ -202,6 +273,29 @@ onMounted(() => {
   100% {
     transform: scale(1.2);
     opacity: 0;
+  }
+}
+
+/* 悬浮时的心跳动画 */
+.appointment-center-btn:hover .btn-outer-ring {
+  animation: heartbeat 1.5s ease-in-out infinite;
+}
+
+@keyframes heartbeat {
+  0% {
+    transform: scale(1);
+  }
+  14% {
+    transform: scale(1.05);
+  }
+  28% {
+    transform: scale(1);
+  }
+  42% {
+    transform: scale(1.05);
+  }
+  70% {
+    transform: scale(1);
   }
 }
 </style>

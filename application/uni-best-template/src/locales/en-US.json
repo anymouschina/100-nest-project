@@ -1,0 +1,75 @@
+{
+  "home": {
+    "greeting": "Good Morning",
+    "subtitle": "Let us serve you today",
+    "badge": {
+      "pro": "Pro"
+    },
+    "hero": {
+      "title": "Waterproof Expert",
+      "subtitle": "Professional leak solutions",
+      "action": "Learn More"
+    },
+    "services": {
+      "title": "Professional Services",
+      "subtitle": "One-stop solutions",
+      "waterproof": {
+        "title": "Waterproofing",
+        "description": "Professional technicians, free inspection"
+      },
+      "drain": {
+        "title": "Drain Cleaning",
+        "description": "High-pressure cleaning, professional equipment"
+      }
+    },
+    "features": {
+      "quick": "Quick Response",
+      "guaranteed": "Quality Guaranteed",
+      "24h": "24/7 Service",
+      "equipment": "Professional Equipment"
+    },
+    "stats": {
+      "customers": "Customers Served",
+      "satisfaction": "Satisfaction Rate",
+      "response": "Response Time"
+    },
+    "advantages": {
+      "title": "Advantages",
+      "certified": "Brand Certified",
+      "professional": "Professional Team",
+      "fast": "Fast Response"
+    },
+    "cta": {
+      "title": "Book Service Now",
+      "subtitle": "30-minute quick response",
+      "button": "Book Now"
+    }
+  },
+  "service": {
+    "location": "Select Location",
+    "searchPlaceholder": "Search services or products",
+    "categories": {
+      "repair": "Repair Service",
+      "install": "Installation Service",
+      "clean": "Cleaning Service", 
+      "maintain": "Maintenance Service",
+      "tools": "Tools & Equipment",
+      "materials": "Materials & Parts"
+    },
+    "hotServices": "Popular Services",
+    "hotServicesSubtitle": "Professional technicians, 30-minute arrival",
+    "featuredProducts": "Equipment Store",
+    "featuredProductsSubtitle": "Professional tools, quality guaranteed",
+    "promo": {
+      "newUser": "New User Exclusive",
+      "newUserSubtitle": "50 yuan off first order",
+      "coupon": "Get Now"
+    },
+    "trust": {
+      "guarantee": "Authentic Guarantee",
+      "fast": "Express Service",
+      "review": "Excellent Reviews"
+    },
+    "quickAppointment": "Book Now"
+  }
+}

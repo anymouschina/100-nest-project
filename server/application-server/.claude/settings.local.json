@@ -8,7 +8,9 @@
       "Bash(mv:*)",
       "Bash(grep:*)",
       "Bash(sed:*)",
-      "Bash(pnpm run build)"
+      "Bash(pnpm run build)",
+      "Bash(docker system prune:*)",
+      "Bash(docker system:*)"
     ],
     "deny": []
   }

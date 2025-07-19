@@ -1,0 +1,75 @@
+{
+  "home": {
+    "greeting": "早上好",
+    "subtitle": "今天让我们为您服务",
+    "badge": {
+      "pro": "专业版"
+    },
+    "hero": {
+      "title": "防水修缮专家",
+      "subtitle": "专业解决漏水问题",
+      "action": "了解更多"
+    },
+    "services": {
+      "title": "专业服务",
+      "subtitle": "一站式解决方案",
+      "waterproof": {
+        "title": "防水补漏",
+        "description": "专业师傅，免费上门检测"
+      },
+      "drain": {
+        "title": "管道疏通",
+        "description": "高压清洗，专业设备"
+      }
+    },
+    "features": {
+      "quick": "快速响应",
+      "guaranteed": "质量保证",
+      "24h": "24小时服务",
+      "equipment": "专业设备"
+    },
+    "stats": {
+      "customers": "服务客户",
+      "satisfaction": "满意度",
+      "response": "响应时间"
+    },
+    "advantages": {
+      "title": "专业优势",
+      "certified": "品牌认证",
+      "professional": "专业团队",
+      "fast": "快速响应"
+    },
+    "cta": {
+      "title": "立即预约服务",
+      "subtitle": "30分钟快速响应",
+      "button": "预约服务"
+    }
+  },
+  "service": {
+    "location": "选择位置",
+    "searchPlaceholder": "搜索服务或商品",
+    "categories": {
+      "repair": "维修服务",
+      "install": "安装服务", 
+      "clean": "清洁服务",
+      "maintain": "保养服务",
+      "tools": "工具器材",
+      "materials": "材料配件"
+    },
+    "hotServices": "热门服务",
+    "hotServicesSubtitle": "专业技师，30分钟上门",
+    "featuredProducts": "器材商城",
+    "featuredProductsSubtitle": "专业工具，品质保证",
+    "promo": {
+      "newUser": "新人专享",
+      "newUserSubtitle": "首次下单立减50元",
+      "coupon": "立即领取"
+    },
+    "trust": {
+      "guarantee": "正品保障",
+      "fast": "极速上门",
+      "review": "好评如潮"
+    },
+    "quickAppointment": "立即预约"
+  }
+}
