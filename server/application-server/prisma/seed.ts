@@ -10,17 +10,7 @@ async function main() {
   const userCount = await prisma.user.count();
   
   if (userCount === 0) {
-    // 创建测试用户
-    await prisma.user.create({
-      data: {
-        userId: 1,
-        name: 'Test User',
-        email: 'test@example.com',
-        password: 'password123',
-        address: '123 Test Street',
-      },
-    });
-    console.log('Created test user');
+    console.log('No existing users, will seed via user.seed.ts');
   } else {
     console.log(`Found ${userCount} existing users, skipping seed`);
   }

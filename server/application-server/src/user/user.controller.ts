@@ -17,6 +17,9 @@ import { ApiTags, ApiResponse, ApiOperation, ApiHeader, ApiBearerAuth, ApiQuery 
 import { WxLoginDto } from './dto/wx-login.dto';
 import { ReferralDto } from './dto/referral.dto';
 import { CreateReferralCodeDto } from './dto/create-referral-code.dto';
+import { SendEmailCodeDto, EmailRegisterDto, EmailLoginDto } from './dto/email-register.dto';
+import { MailService } from 'src/mail/mail.service';
+import { EmailVerificationService } from './services/email-verification.service';
 import { Public } from '../auth/decorators/public.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AuthService } from '../auth/auth.service';
@@ -407,5 +410,115 @@ export class AdminReferralController {
     @Body('isActive') isActive: boolean,
   ) {
     return this.userService.updateReferralCodeStatus(id, isActive);
+  }
+}
+
+@ApiTags('邮箱注册')
+@Controller('api/email')
+export class EmailAuthController {
+  constructor(
+    private readonly userService: UserService,
+    private readonly mailService: MailService,
+    private readonly emailVerificationService: EmailVerificationService,
+  ) {}
+
+  /**
+   * POST /api/email/send-code
+   * 发送邮箱验证码
+   * 
+   * @param sendEmailCodeDto - 邮箱地址
+   * @returns 发送结果
+   */
+  @Public()
+  @Post('send-code')
+  @ApiOperation({ summary: '发送邮箱验证码' })
+  @ApiResponse({
+    status: 200,
+    description: '验证码发送成功',
+  })
+  @ApiResponse({
+    status: 400,
+    description: '发送失败',
+  })
+  async sendVerificationCode(@Body() sendEmailCodeDto: SendEmailCodeDto) {
+    const { email } = sendEmailCodeDto;
+
+    // 检查是否最近已发送
+    const isSentRecently = await this.emailVerificationService.isCodeSentRecently(email);
+    if (isSentRecently) {
+      const remainingTime = await this.emailVerificationService.getRemainingTime(email);
+      throw new BadRequestException(`请${remainingTime}秒后再试`);
+    }
+
+    // 检查邮箱是否已注册
+    const existingUser = await this.userService['databaseService'].user.findUnique({
+      where: { email }
+    });
+    
+    if (existingUser) {
+      throw new BadRequestException('该邮箱已被注册');
+    }
+
+    // 生成并发送验证码
+    await this.emailVerificationService.sendVerificationCode(email);
+
+    return {
+      success: true,
+      message: '验证码已发送到您的邮箱',
+    };
+  }
+
+  /**
+   * POST /api/email/register
+   * 邮箱注册
+   * 
+   * @param emailRegisterDto - 注册信息
+   * @returns 注册结果
+   */
+  @Public()
+  @Post('register')
+  @ApiOperation({ summary: '邮箱注册' })
+  @ApiResponse({
+    status: 200,
+    description: '注册成功',
+  })
+  @ApiResponse({
+    status: 400,
+    description: '注册失败',
+  })
+  async registerByEmail(@Body() emailRegisterDto: EmailRegisterDto) {
+    const { email, code, password, name, referralCode } = emailRegisterDto;
+
+    // 验证验证码
+    const result = await this.emailVerificationService.verifyCode(email, code);
+    if (!result.success) {
+      throw new BadRequestException(result.message);
+    }
+
+    // 注册用户
+    return this.userService.registerByEmail(email, password, name || email.split('@')[0]);
+  }
+
+  /**
+   * POST /api/email/login
+   * 邮箱登录
+   * 
+   * @param emailLoginDto - 登录信息
+   * @returns 登录结果
+   */
+  @Public()
+  @Post('login')
+  @ApiOperation({ summary: '邮箱登录' })
+  @ApiResponse({
+    status: 200,
+    description: '登录成功',
+  })
+  @ApiResponse({
+    status: 401,
+    description: '登录失败',
+  })
+  async loginByEmail(@Body() emailLoginDto: EmailLoginDto) {
+    const { email, password } = emailLoginDto;
+    return this.userService.loginByEmail(email, password);
   }
 }

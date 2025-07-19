@@ -1,112 +1,137 @@
 <route lang="json5" type="page">
 {
   style: {
-    navigationBarTitleText: '登录',
+    navigationBarTitleText: '邮件注册',
     navigationStyle: 'custom',
   },
 }
 </route>
 <template>
-  <view class="login-container">
+  <view class="register-container">
     <!-- 背景装饰元素 -->
     <view class="bg-decoration bg-circle-1"></view>
     <view class="bg-decoration bg-circle-2"></view>
     <view class="bg-decoration bg-circle-3"></view>
 
-    <view class="login-header">
-      <image class="login-logo" :src="appLogo" mode="aspectFit"></image>
-      <view class="login-title">{{ appTitle }}</view>
+    <view class="register-header">
+      <image class="register-logo" :src="appLogo" mode="aspectFit"></image>
+      <view class="register-title">{{ appTitle }}</view>
     </view>
-    <view class="login-form">
-      <view class="welcome-text">欢迎登录</view>
-      <view class="login-desc">请输入您的账号和密码</view>
-      <view class="login-input-group">
+    
+    <view class="register-form">
+      <view class="welcome-text">欢迎注册</view>
+      <view class="register-desc">请填写您的注册信息</view>
+      
+      <view class="register-input-group">
+        <!-- 邮箱输入 -->
         <view class="input-wrapper">
           <wd-input
-            v-model="loginForm.username"
-            prefix-icon="user"
-            placeholder="请输入用户名"
+            v-model="registerForm.email"
+            prefix-icon="email"
+            placeholder="请输入邮箱地址"
             clearable
-            class="login-input"
+            class="register-input"
             :border="false"
             required
+            type="email"
+            @blur="validateEmail"
           ></wd-input>
           <view class="input-bottom-line"></view>
         </view>
-        <view class="input-wrapper">
-          <wd-input
-            v-model="loginForm.password"
-            prefix-icon="lock-on"
-            placeholder="请输入密码"
-            clearable
-            show-password
-            class="login-input"
-            :border="false"
-            required
-          ></wd-input>
-          <view class="input-bottom-line"></view>
-        </view>
-        <!-- 验证码区域 -->
+        
+        <!-- 邮箱验证码 -->
         <view class="input-wrapper captcha-wrapper">
           <wd-input
-            v-if="captcha.captchaEnabled"
-            v-model="loginForm.code"
+            v-model="registerForm.emailCode"
             prefix-icon="secured"
-            placeholder="请输入验证码"
+            placeholder="请输入邮箱验证码"
             clearable
-            class="login-input captcha-input"
+            class="register-input captcha-input"
             :border="false"
             required
           >
             <template #suffix>
-              <image
-                class="captcha-image"
-                :src="'data:image/gif;base64,' + captcha.image"
-                mode="aspectFit"
-                @click="refreshCaptcha"
-              ></image>
+              <view 
+                class="email-code-btn" 
+                :class="{ disabled: codeCountdown > 0 }"
+                @click="sendEmailCode"
+              >
+                {{ codeCountdown > 0 ? `${codeCountdown}s` : '获取验证码' }}
+              </view>
             </template>
           </wd-input>
           <view class="input-bottom-line"></view>
         </view>
+        
+        <!-- 用户名输入 -->
+        <view class="input-wrapper">
+          <wd-input
+            v-model="registerForm.username"
+            prefix-icon="user"
+            placeholder="请输入用户名"
+            clearable
+            class="register-input"
+            :border="false"
+            required
+            maxlength="20"
+          ></wd-input>
+          <view class="input-bottom-line"></view>
+        </view>
+        
+        <!-- 密码输入 -->
+        <view class="input-wrapper">
+          <wd-input
+            v-model="registerForm.password"
+            prefix-icon="lock-on"
+            placeholder="请输入密码"
+            clearable
+            show-password
+            class="register-input"
+            :border="false"
+            required
+            type="password"
+            maxlength="20"
+          ></wd-input>
+          <view class="input-bottom-line"></view>
+        </view>
+        
+        <!-- 确认密码 -->
+        <view class="input-wrapper">
+          <wd-input
+            v-model="registerForm.confirmPassword"
+            prefix-icon="lock-on"
+            placeholder="请确认密码"
+            clearable
+            show-password
+            class="register-input"
+            :border="false"
+            required
+            type="password"
+            maxlength="20"
+          ></wd-input>
+          <view class="input-bottom-line"></view>
+        </view>
       </view>
-      <!-- 登录按钮组 -->
-      <view class="login-buttons">
-        <!-- 账号密码登录按钮 -->
+      
+      <!-- 注册按钮 -->
+      <view class="register-buttons">
         <wd-button
           type="primary"
           size="large"
           block
-          @click="handleAccountLogin"
-          class="account-login-btn"
+          @click="handleEmailRegister"
+          class="register-btn"
+          :loading="loading"
         >
-          <wd-icon name="right" size="18px" class="login-icon"></wd-icon>
-          登录
+          注册
         </wd-button>
-        <!-- 邮件注册入口 -->
-        <view class="register-link" @click="goToRegister">
-          还没有账号？立即注册
+        
+        <view class="login-link" @click="goToLogin">
+          已有账号？立即登录
         </view>
-        <!-- 微信小程序一键登录按钮 -->
-        <!-- #ifdef MP-WEIXIN -->
-        <view class="divider">
-          <view class="divider-line"></view>
-          <view class="divider-text">或</view>
-          <view class="divider-line"></view>
-        </view>
-        <wd-button
-          type="info"
-          size="large"
-          block
-          plain
-          @click="handleWechatLogin"
-          class="wechat-login-btn"
-        >
-          微信一键登录
-        </wd-button>
-        <!-- #endif -->
       </view>
     </view>
+    
     <!-- 隐私协议勾选 -->
     <view class="privacy-agreement">
       <wd-checkbox
@@ -123,175 +148,160 @@
         </view>
       </wd-checkbox>
     </view>
-    <view class="login-footer"></view>
   </view>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useUserStore } from '@/store/user'
-import { isMpWeixin } from '@/utils/platform'
-import { getCode, ILoginForm } from '@/api/login'
 import { toast } from '@/utils/toast'
-import { isTableBar } from '@/utils/index'
-import { ICaptcha } from '@/api/login.typings'
-const redirectRoute = ref('')
+import { isEmail } from '@/utils/validate'
+import type { IEmailRegisterForm } from '@/api/register'
+import { sendEmailCode as sendEmailCodeApi, emailRegister } from '@/api/register'
 
 // 获取环境变量
-const appTitle = ref(import.meta.env.VITE_APP_TITLE || 'Unibest Login')
+const appTitle = ref(import.meta.env.VITE_APP_TITLE || 'Unibest Register')
 const appLogo = ref(import.meta.env.VITE_APP_LOGO || '/static/logo.svg')
 
 // 初始化store
 const userStore = useUserStore()
-// 路由位置
-// 验证码图片
-const captcha = ref<ICaptcha>({
-  captchaEnabled: false,
-  uuid: '',
-  image: '',
+
+// 注册表单数据
+const registerForm = ref<IEmailRegisterForm>({
+  email: '',
+  emailCode: '',
+  username: '',
+  password: '',
+  confirmPassword: ''
 })
-// 登录表单数据
-const loginForm = ref<ILoginForm>({
-  username: 'admin',
-  password: '123456',
-  code: '',
-  uuid: '',
-})
+
+// 验证码倒计时
+const codeCountdown = ref(0)
+const loading = ref(false)
+
 // 隐私协议勾选状态
 const agreePrivacy = ref(true)
 
-// 页面加载完毕时触发
-onLoad((option) => {
-  // 一进来就刷新验证码
-  captcha.value.captchaEnabled && refreshCaptcha()
-  // 获取跳转路由
-  if (option.redirect) {
-    redirectRoute.value = option.redirect
+// 邮箱验证
+const validateEmail = () => {
+  if (registerForm.value.email && !isEmail(registerForm.value.email)) {
+    toast.error('请输入正确的邮箱地址')
+    return false
   }
-})
+  return true
+}
 
-// 账号密码登录
-const handleAccountLogin = async () => {
+// 发送邮箱验证码
+const sendEmailCode = async () => {
+  if (codeCountdown.value > 0) return
+  
+  if (!registerForm.value.email) {
+    toast.error('请输入邮箱地址')
+    return
+  }
+  
+  if (!validateEmail()) return
+  
+  try {
+    await sendEmailCodeApi(registerForm.value.email)
+    toast.success('验证码已发送到您的邮箱')
+    
+    // 开始倒计时
+    codeCountdown.value = 60
+    const timer = setInterval(() => {
+      codeCountdown.value--
+      if (codeCountdown.value <= 0) {
+        clearInterval(timer)
+      }
+    }, 1000)
+  } catch (error) {
+    toast.error('发送验证码失败，请稍后重试')
+  }
+}
+
+// 表单验证
+const validateForm = () => {
+  if (!registerForm.value.email) {
+    toast.error('请输入邮箱地址')
+    return false
+  }
+  
+  if (!validateEmail()) return false
+  
+  if (!registerForm.value.emailCode) {
+    toast.error('请输入邮箱验证码')
+    return false
+  }
+  
+  if (!registerForm.value.username) {
+    toast.error('请输入用户名')
+    return false
+  }
+  
+  if (!registerForm.value.password) {
+    toast.error('请输入密码')
+    return false
+  }
+  
+  if (registerForm.value.password.length < 6) {
+    toast.error('密码长度不能少于6位')
+    return false
+  }
+  
+  if (registerForm.value.password !== registerForm.value.confirmPassword) {
+    toast.error('两次输入的密码不一致')
+    return false
+  }
+  
+  return true
+}
+
+// 邮箱注册
+const handleEmailRegister = async () => {
   if (!agreePrivacy.value) {
     toast.error('请阅读同意协议')
     return
   }
-  // 表单验证
-  if (!loginForm.value.username) {
-    toast.error('请输入用户名')
-    return
-  }
-  if (!loginForm.value.password) {
-    toast.error('请输入密码')
-    return
-  }
-  if (captcha.value.captchaEnabled && !loginForm.value.code) {
-    toast.error('请输入验证码')
-    return
-  }
-  // 执行登录
-  await userStore.login(loginForm.value)
-  // 跳转到首页或重定向页面
-  const targetUrl = redirectRoute.value || '/pages/index/index'
-  if (isTableBar(targetUrl)) {
-    uni.switchTab({ url: targetUrl })
-  } else {
-    uni.redirectTo({ url: targetUrl })
+  
+  if (!validateForm()) return
+  
+  loading.value = true
+  try {
+    await emailRegister(registerForm.value)
+    toast.success('注册成功')
+    
+    // 注册成功后跳转到登录页
+    setTimeout(() => {
+      uni.navigateTo({
+        url: '/pages/login/index'
+      })
+    }, 1500)
+  } catch (error) {
+    toast.error('注册失败，请稍后重试')
+  } finally {
+    loading.value = false
   }
 }
 
-// 微信登录
-const handleWechatLogin = async () => {
-  if (!isMpWeixin) {
-    toast.info('请在微信小程序中使用此功能')
-    return
-  }
-
-  // 验证是否同意隐私协议
-  if (!agreePrivacy.value) {
-    toast.error('请先阅读并同意用户协议和隐私政策')
-    return
-  }
-  // 微信登录
-  await userStore.wxLogin()
-  // 跳转到首页或重定向页面
-  const targetUrl = redirectRoute.value || '/pages/index/index'
-  if (isTableBar(targetUrl)) {
-    uni.switchTab({ url: targetUrl })
-  } else {
-    uni.redirectTo({ url: targetUrl })
-  }
-}
-
-// 刷新验证码
-const refreshCaptcha = () => {
-  // 获取验证码
-  getCode().then((res) => {
-    const { data } = res
-    loginForm.value.uuid = data.uuid
-    captcha.value = data
-  })
-}
-
-// 跳转到注册页面
-const goToRegister = () => {
+// 跳转到登录页
+const goToLogin = () => {
   uni.navigateTo({
-    url: '/pages/register/index'
+    url: '/pages/login/index'
   })
 }
 
 // 处理协议点击
 const handleAgreement = (type: 'user' | 'privacy') => {
   const title = type === 'user' ? '用户协议' : '隐私政策'
-  // showToast(`查看${title}`)
   // 实际项目中可以跳转到对应的协议页面
   // uni.navigateTo({
-  //   url: `/pages/agreement/${type}`
+  //   url: `/pages/mine/agreement/${type}`
   // })
 }
 </script>
 
 <style lang="scss" scoped>
-/* 验证码输入框样式 */
-.captcha-wrapper {
-  .captcha-input {
-    :deep(.wd-input__suffix) {
-      margin-right: 0;
-      padding-right: 0;
-    }
-  }
-
-  .captcha-image {
-    width: 100px;
-    height: 36px;
-    margin-left: 10px;
-    border-radius: 8px;
-    cursor: pointer;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    transition: all 0.3s ease;
-    position: relative;
-    overflow: hidden;
-
-    &::after {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: linear-gradient(to bottom, rgba(255, 255, 255, 0.1), transparent);
-      pointer-events: none;
-    }
-
-    &:active {
-      opacity: 0.8;
-      transform: scale(0.96);
-      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
-    }
-  }
-}
-
-.login-container {
+.register-container {
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
@@ -341,7 +351,7 @@ const handleAgreement = (type: 'user' | 'privacy') => {
   background: linear-gradient(135deg, rgba(7, 193, 96, 0.05), rgba(7, 193, 96, 0.1));
 }
 
-.login-header {
+.register-header {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -349,7 +359,7 @@ const handleAgreement = (type: 'user' | 'privacy') => {
   margin-top: 120rpx;
   animation: fadeInDown 0.8s ease-out;
 
-  .login-logo {
+  .register-logo {
     width: 200rpx;
     height: 200rpx;
     border-radius: 36rpx;
@@ -362,7 +372,7 @@ const handleAgreement = (type: 'user' | 'privacy') => {
     }
   }
 
-  .login-title {
+  .register-title {
     margin-top: 30rpx;
     font-size: 46rpx;
     font-weight: bold;
@@ -372,7 +382,7 @@ const handleAgreement = (type: 'user' | 'privacy') => {
   }
 }
 
-.login-form {
+.register-form {
   flex: 1;
   margin-top: 70rpx;
   animation: fadeIn 0.8s ease-out 0.2s both;
@@ -386,14 +396,14 @@ const handleAgreement = (type: 'user' | 'privacy') => {
     letter-spacing: 1rpx;
   }
 
-  .login-desc {
+  .register-desc {
     margin-bottom: 70rpx;
     font-size: 28rpx;
     color: #888888;
     text-align: center;
   }
 
-  .login-input-group {
+  .register-input-group {
     margin-bottom: 60rpx;
     position: relative;
     z-index: 1;
@@ -409,7 +419,7 @@ const handleAgreement = (type: 'user' | 'privacy') => {
         margin-bottom: 0;
       }
 
-      .login-input {
+      .register-input {
         padding: 12rpx 20rpx;
         background-color: rgba(245, 247, 250, 0.7);
         border-radius: 16rpx;
@@ -452,90 +462,30 @@ const handleAgreement = (type: 'user' | 'privacy') => {
       &:focus-within .input-bottom-line {
         transform: scaleX(1);
       }
-
-      .input-icon {
-        margin-right: 16rpx;
-        color: #666666;
-        transition: color 0.3s ease;
-      }
-
-      &:focus-within .input-icon {
-        color: var(--wot-color-theme, #1989fa);
-      }
     }
   }
 
-  .login-buttons {
+  .register-buttons {
     display: flex;
     flex-direction: column;
     gap: 36rpx;
 
-    .account-login-btn {
+    .register-btn {
       height: 96rpx;
-      margin-top: 20rpx;
       font-size: 32rpx;
       font-weight: 500;
       letter-spacing: 2rpx;
       border-radius: 48rpx;
       box-shadow: 0 10rpx 20rpx rgba(25, 137, 250, 0.25);
       transition: all 0.3s ease;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-
-      .login-icon {
-        margin-right: 8rpx;
-        opacity: 0.8;
-        transition: all 0.3s ease;
-      }
 
       &:active {
         box-shadow: 0 5rpx 10rpx rgba(25, 137, 250, 0.2);
         transform: scale(0.98);
-
-        .login-icon {
-          transform: translateX(3rpx);
-        }
       }
     }
 
-    .divider {
-      display: flex;
-      align-items: center;
-      margin: 24rpx 0;
-
-      .divider-line {
-        flex: 1;
-        height: 1px;
-        background-color: #eeeeee;
-      }
-
-      .divider-text {
-        padding: 0 24rpx;
-        font-size: 24rpx;
-        color: #999999;
-      }
-    }
-
-    .wechat-login-btn {
-      height: 96rpx;
-      font-size: 32rpx;
-      color: #07c160;
-      border-color: #07c160;
-      border-radius: 48rpx;
-      transition: all 0.3s ease;
-
-      .wechat-icon {
-        margin-right: 12rpx;
-      }
-
-      &:active {
-        background-color: rgba(7, 193, 96, 0.08);
-        transform: scale(0.98);
-      }
-    }
-    
-    .register-link {
+    .login-link {
       text-align: center;
       font-size: 28rpx;
       color: var(--wot-color-theme, #1989fa);
@@ -545,6 +495,32 @@ const handleAgreement = (type: 'user' | 'privacy') => {
         opacity: 0.8;
         transform: scale(0.98);
       }
+    }
+  }
+}
+
+.email-code-btn {
+  padding: 0 20rpx;
+  height: 60rpx;
+  line-height: 60rpx;
+  font-size: 24rpx;
+  color: var(--wot-color-theme, #1989fa);
+  background-color: rgba(25, 137, 250, 0.1);
+  border-radius: 30rpx;
+  transition: all 0.3s ease;
+
+  &:active {
+    background-color: rgba(25, 137, 250, 0.2);
+    transform: scale(0.95);
+  }
+
+  &.disabled {
+    color: #999999;
+    background-color: #f5f5f5;
+    cursor: not-allowed;
+
+    &:active {
+      transform: none;
     }
   }
 }
@@ -577,11 +553,6 @@ const handleAgreement = (type: 'user' | 'privacy') => {
       }
     }
   }
-}
-
-.login-footer {
-  padding: 50rpx 0;
-  margin-top: auto;
 }
 
 /* 添加动画效果 */

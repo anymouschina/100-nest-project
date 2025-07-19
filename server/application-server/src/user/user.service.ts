@@ -6,6 +6,8 @@ import { AppConfigService } from '../config/config.service';
 import { AuthService } from '../auth/auth.service';
 import { ReferralDto } from './dto/referral.dto';
 import { CreateReferralCodeDto } from './dto/create-referral-code.dto';
+import { EmailRegisterDto } from './dto/email-register.dto';
+import { EmailVerificationService } from './services/email-verification.service';
 import axios from 'axios';
 import { Prisma } from '@prisma/client';
 
@@ -16,6 +18,7 @@ export class UserService {
     private readonly orderService: OrderService,
     private readonly configService: AppConfigService,
     private readonly authService: AuthService,
+    private readonly emailVerificationService: EmailVerificationService,
   ) {}
 
   /**
@@ -159,42 +162,6 @@ export class UserService {
     }
   }
 
-  /**
-   * Get user information by user ID
-   * 
-   * @param userId - User ID
-   * @returns User profile information
-   */
-  async getUserInfo(userId: number) {
-    const user = await this.databaseService.user.findUnique({
-      where: { userId },
-    });
-    
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
-    
-    // Extract WeChat openId from email if it's a WeChat user
-    let openId = user.openId;
-    if (!openId && user.email?.startsWith('wx_') && user.email?.endsWith('@example.com')) {
-      openId = user.email.slice(3, -12); // Remove 'wx_' prefix and '@example.com' suffix
-    }
-    
-    return {
-      userId: user.userId,
-      name: user.name,
-      avatarUrl: user.avatarUrl, // Return avatar URL if available
-      wechatInfo: openId ? {
-        openId,
-        gender: user.gender,
-        country: user.country,
-        province: user.province,
-        city: user.city,
-      } : null,
-      // Add any other non-sensitive user information
-      joinedAt: user.createdAt,
-    };
-  }
 
   /**
    * 关联引荐用户
@@ -640,5 +607,124 @@ export class UserService {
         HttpStatus.INTERNAL_SERVER_ERROR
       );
     }
+  }
+
+  async registerByEmail(email: string, password: string, name: string) {
+    try {
+      // 检查邮箱是否已注册
+      const existingUser = await this.databaseService.user.findUnique({
+        where: { email }
+      });
+
+      if (existingUser) {
+        throw new BadRequestException('该邮箱已被注册');
+      }
+
+      // 创建新用户
+      const user = await this.databaseService.user.create({
+        data: {
+          email,
+          password: await this.authService.hashPassword(password),
+          name,
+          createdAt: new Date(),
+        },
+      });
+
+      // 生成JWT token
+      const token = await this.authService.generateToken(user.userId);
+
+      return {
+        success: true,
+        message: '注册成功',
+        data: {
+          user: {
+            userId: user.userId,
+            email: user.email,
+            name: user.name,
+            createdAt: user.createdAt,
+          },
+          token,
+        },
+      };
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        '注册失败: ' + error.message,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  async loginByEmail(email: string, password: string) {
+    try {
+      const user = await this.databaseService.user.findUnique({
+        where: { email }
+      });
+
+      if (!user) {
+        throw new NotFoundException('用户不存在');
+      }
+
+      if (!user.password) {
+        throw new BadRequestException('该用户未设置密码，请使用微信登录');
+      }
+
+      const isPasswordValid = await this.authService.validatePassword(
+        password,
+        user.password
+      );
+
+      if (!isPasswordValid) {
+        throw new UnauthorizedException('密码错误');
+      }
+
+      const token = await this.authService.generateToken(user.userId);
+
+      return {
+        success: true,
+        message: '登录成功',
+        data: {
+          user: {
+            userId: user.userId,
+            email: user.email,
+            name: user.name,
+            createdAt: user.createdAt,
+          },
+          token,
+        },
+      };
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        '登录失败: ' + error.message,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  async getUserInfo(userId: number) {
+    const user = await this.databaseService.user.findUnique({
+      where: { userId },
+      select: {
+        userId: true,
+        email: true,
+        name: true,
+        address: true,
+        createdAt: true,
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('用户不存在');
+    }
+
+    return {
+      success: true,
+      data: user,
+    };
   }
 }

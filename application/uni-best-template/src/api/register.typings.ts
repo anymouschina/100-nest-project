@@ -1,0 +1,41 @@
+/**
+ * 邮箱注册表单数据
+ */
+export interface IEmailRegisterForm {
+  email: string
+  emailCode: string
+  username: string
+  password: string
+  confirmPassword: string
+}
+
+/**
+ * 发送邮箱验证码请求参数
+ */
+export interface IEmailCodeRequest {
+  email: string
+}
+
+/**
+ * 邮箱注册响应数据
+ */
+export interface IEmailRegisterResponse {
+  id: string
+  username: string
+  email: string
+  token: string
+}
+
+/**
+ * 检查邮箱是否已存在响应
+ */
+export interface ICheckEmailResponse {
+  exist: boolean
+}
+
+/**
+ * 检查用户名是否已存在响应
+ */
+export interface ICheckUsernameResponse {
+  exist: boolean
+}

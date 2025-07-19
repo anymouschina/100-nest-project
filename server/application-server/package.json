@@ -23,6 +23,8 @@
     "start:all": "npm run db:init && npm run build && npm run db:seed && npm run start:dev"
   },
   "dependencies": {
+    "@alicloud/dm20151123": "^1.3.0",
+    "@nestjs-modules/ioredis": "^2.0.2",
     "@nestjs/axios": "^4.0.0",
     "@nestjs/common": "^10.0.0",
     "@nestjs/config": "^4.0.2",
@@ -35,6 +37,7 @@
     "@nestjs/schedule": "^6.0.0",
     "@nestjs/swagger": "^7.3.1",
     "@prisma/client": "^5.15.1",
+    "@types/nodemailer": "^6.4.17",
     "axios": "^1.9.0",
     "bcrypt": "^6.0.0",
     "class-transformer": "^0.5.1",
@@ -42,6 +45,7 @@
     "dotenv": "^16.4.5",
     "ioredis": "^5.6.1",
     "joi": "^17.13.3",
+    "nodemailer": "^7.0.5",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "prisma": "^5.15.1",

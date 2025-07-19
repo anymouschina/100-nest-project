@@ -22,7 +22,7 @@ services:
   redis:
     image: docker-0.unsee.tech/redis:6.2
     restart: always
-    command: ["redis-server", "--requirepass", "123456"]
+    command: ["redis-server"]
     ports:
       - "6379:6379"
     volumes:

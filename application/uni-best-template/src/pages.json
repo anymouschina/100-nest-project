@@ -105,6 +105,14 @@
       }
     },
     {
+      "path": "pages/register/index",
+      "type": "page",
+      "style": {
+        "navigationBarTitleText": "邮件注册",
+        "navigationStyle": "custom"
+      }
+    },
+    {
       "path": "pages/mine/about/index",
       "type": "page",
       "style": {

@@ -99,6 +99,28 @@ export class AuthService implements OnModuleInit {
   }
 
   /**
+   * Hash password using bcrypt
+   * @param password Plain text password
+   * @returns Hashed password
+   */
+  async hashPassword(password: string): Promise<string> {
+    const bcrypt = require('bcrypt');
+    const saltRounds = 10;
+    return bcrypt.hash(password, saltRounds);
+  }
+
+  /**
+   * Validate password against hash
+   * @param password Plain text password
+   * @param hash Hashed password
+   * @returns True if password matches, false otherwise
+   */
+  async validatePassword(password: string, hash: string): Promise<boolean> {
+    const bcrypt = require('bcrypt');
+    return bcrypt.compare(password, hash);
+  }
+
+  /**
    * Clean up expired blacklisted tokens
    * Runs every day at midnight
    */
