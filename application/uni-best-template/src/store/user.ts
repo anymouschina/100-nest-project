@@ -114,6 +114,21 @@ export const useUserStore = defineStore(
         })
         // #endif
 
+        // #ifdef H5
+        if (isWechatBrowser()) {
+          // H5微信浏览器环境
+          resolve({
+            avatarUrl: '',
+            nickName: '',
+          })
+        } else {
+          resolve({
+            avatarUrl: '',
+            nickName: '',
+          })
+        }
+        // #endif
+
         // #ifndef MP-WEIXIN
         resolve({
           avatarUrl: '',
@@ -121,6 +136,19 @@ export const useUserStore = defineStore(
         })
         // #endif
       })
+    }
+    
+    /**
+     * 判断是否为微信浏览器
+     */
+    const isWechatBrowser = (): boolean => {
+      // #ifdef H5
+      const ua = navigator.userAgent.toLowerCase()
+      return ua.indexOf('micromessenger') !== -1
+      // #endif
+      // #ifndef H5
+      return false
+      // #endif
     }
 
     /**

@@ -84,3 +84,41 @@ export const wxLogin = (data: { code: string }) => {
     errMsg: data?.errMsg || '',
   })
 }
+
+/**
+ * 微信公众号/H5微信登录
+ * @param code 微信授权code
+ * @returns Promise 包含登录结果
+ */
+export const wxWebLogin = (code: string) => {
+  return http.post<IUserLogin>('/user/wxWebLogin', { code })
+}
+
+/**
+ * 获取微信用户信息（通过access_token）
+ * @param accessToken 微信access_token
+ * @param openId 微信openId
+ * @returns Promise 包含微信用户信息
+ */
+export const getWxUserInfo = (accessToken: string, openId: string) => {
+  return http.get('/user/wxUserInfo', {
+    params: {
+      access_token: accessToken,
+      openid: openId,
+    },
+  })
+}
+
+/**
+ * 绑定微信账号
+ * @param data 绑定参数
+ * @returns Promise 包含绑定结果
+ */
+export const bindWxAccount = (data: {
+  openId: string
+  unionId?: string
+  nickname?: string
+  avatar?: string
+}) => {
+  return http.post('/user/bindWx', data)
+}

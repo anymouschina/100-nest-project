@@ -103,6 +103,37 @@
           微信一键登录
         </wd-button>
         <!-- #endif -->
+
+        <!-- H5环境微信登录 -->
+        <!-- #ifdef H5 -->
+        <!-- <view class="divider">
+          <view class="divider-line"></view>
+          <view class="divider-text">或</view>
+          <view class="divider-line"></view>
+        </view>
+        <wd-button
+          v-if="isWechatBrowser"
+          type="info"
+          size="large"
+          block
+          plain
+          @click="handleH5WechatLogin"
+          class="wechat-login-btn"
+        >
+          微信授权登录
+        </wd-button>
+        <wd-button
+          v-else
+          type="info"
+          size="large"
+          block
+          plain
+          @click="handleWechatQrLogin"
+          class="wechat-login-btn"
+        >
+          微信扫码登录
+        </wd-button> -->
+        <!-- #endif -->
       </view>
     </view>
     <!-- 隐私协议勾选 -->
@@ -126,9 +157,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useUserStore } from '@/store/user'
-import { isMpWeixin } from '@/utils/platform'
+import { isMpWeixin, isH5 } from '@/utils/platform'
 import { getCode, ILoginForm } from '@/api/login'
 import { toast } from '@/utils/toast'
 import { isTableBar } from '@/utils/index'
@@ -138,6 +169,13 @@ const redirectRoute = ref('')
 // 获取环境变量
 const appTitle = ref(import.meta.env.VITE_APP_TITLE || 'Unibest Login')
 const appLogo = ref(import.meta.env.VITE_APP_LOGO || '/static/logo.svg')
+
+// 判断是否在微信浏览器中
+const isWechatBrowser = computed(() => {
+  if (!isH5) return false
+  const ua = navigator.userAgent.toLowerCase()
+  return ua.indexOf('micromessenger') !== -1
+})
 
 // 初始化store
 const userStore = useUserStore()
@@ -233,6 +271,62 @@ const refreshCaptcha = () => {
 const goToRegister = () => {
   uni.navigateTo({
     url: '/pages/register/index',
+  })
+}
+
+// H5微信浏览器授权登录
+const handleH5WechatLogin = () => {
+  if (!agreePrivacy.value) {
+    toast.error('请先阅读并同意用户协议和隐私政策')
+    return
+  }
+
+  // 微信网页授权登录
+  const appId = import.meta.env.VITE_WECHAT_APP_ID
+  if (!appId) {
+    toast.error('微信配置错误，请联系管理员')
+    return
+  }
+
+  // 获取当前页面路径，用于授权后跳转回来
+  const redirectUri = encodeURIComponent(window.location.origin + '/pages/login/wx-callback')
+  const state = Math.random().toString(36).substring(2, 15)
+
+  // 存储state用于校验
+  uni.setStorageSync('wx_oauth_state', state)
+
+  // 跳转到微信授权页面
+  const oauthUrl = `https://open.weixin.qq.com/connect/oauth2/authorize?appid=${appId}&redirect_uri=${redirectUri}&response_type=code&scope=snsapi_userinfo&state=${state}#wechat_redirect`
+  window.location.href = oauthUrl
+}
+
+// 微信扫码登录
+const handleWechatQrLogin = () => {
+  if (!agreePrivacy.value) {
+    toast.error('请先阅读并同意用户协议和隐私政策')
+    return
+  }
+
+  // 显示微信扫码登录二维码
+  const appId = import.meta.env.VITE_WECHAT_APP_ID
+  if (!appId) {
+    toast.error('微信配置错误，请联系管理员')
+    return
+  }
+
+  // 跳转到微信扫码登录页面
+  const redirectUri = encodeURIComponent(window.location.origin + '/pages/login/wx-callback')
+  const state = Math.random().toString(36).substring(2, 15)
+
+  // 存储state用于校验
+  uni.setStorageSync('wx_qr_state', state)
+
+  // 生成二维码页面URL
+  const qrLoginUrl = `https://open.weixin.qq.com/connect/qrconnect?appid=${appId}&redirect_uri=${redirectUri}&response_type=code&scope=snsapi_login&state=${state}#wechat_redirect`
+
+  // 使用uni-app的web-view组件打开扫码页面
+  uni.navigateTo({
+    url: `/pages/login/wx-qr-login?url=${encodeURIComponent(qrLoginUrl)}`,
   })
 }
 
