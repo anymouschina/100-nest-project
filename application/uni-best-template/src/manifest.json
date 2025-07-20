@@ -120,6 +120,13 @@
     },
     "tabbar": {
       "custom": true
+    },
+    "sdkConfigs": {
+      "maps": {
+        "tencent": {
+          "key": "KLKBZ-SJBKJ-4YNFA-XNSOG-TDEW2-RZF7M"
+        }
+      }
     }
   }
 }

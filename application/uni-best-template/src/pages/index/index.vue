@@ -15,10 +15,9 @@
     <!-- 1️⃣ 顶部搜索+定位区域 -->
     <view class="header-section">
       <view class="location-search-bar">
-        <view class="location-cell" @click="selectLocation">
+        <view class="location-cell">
           <wd-icon name="location" size="20" color="#007AFF" />
           <text class="location-text">{{ currentLocation || '获取位置...' }}</text>
-          <wd-icon name="arrow-down" size="16" color="#8E8E93" />
         </view>
         <view class="search-cell" @click="goToSearch">
           <view class="search-input">
@@ -32,8 +31,8 @@
     <!-- 2️⃣ 服务分类快捷入口 -->
     <view class="categories-section">
       <view class="category-grid">
-        <view 
-          v-for="category in categories" 
+        <view
+          v-for="category in categories"
           :key="category.id"
           class="category-item"
           @click="navigateToCategory(category.id)"
@@ -70,8 +69,8 @@
       </view>
       <scroll-view class="services-scroll" scroll-x="true" :show-scrollbar="false">
         <view class="service-cards">
-          <view 
-            v-for="service in hotServices" 
+          <view
+            v-for="service in hotServices"
             :key="service.id"
             class="service-card"
             @click="bookService(service.id)"
@@ -95,8 +94,8 @@
         <text class="section-subtitle">专业工具，品质保证</text>
       </view>
       <view class="products-grid">
-        <view 
-          v-for="product in featuredProducts" 
+        <view
+          v-for="product in featuredProducts"
           :key="product.id"
           class="product-card"
           @click="viewProduct(product.id)"
@@ -177,41 +176,259 @@ defineOptions({
 })
 
 // 当前位置
-const currentLocation = ref('北京市朝阳区')
+const currentLocation = ref('定位中...')
+const longitude = ref(0)
+const latitude = ref(0)
 
 // 服务分类
 const categories = ref([
-  { id: 'repair', name: '维修服务', icon: 'setting', gradient: 'linear-gradient(135deg, #007AFF, #5856D6)' },
-  { id: 'install', name: '安装服务', icon: 'add-circle', gradient: 'linear-gradient(135deg, #34C759, #30D158)' },
-  { id: 'clean', name: '清洁服务', icon: 'brush', gradient: 'linear-gradient(135deg, #FF9500, #FF6B35)' },
-  { id: 'maintain', name: '保养服务', icon: 'time', gradient: 'linear-gradient(135deg, #AF52DE, #BF5AF2)' },
-  { id: 'tools', name: '工具器材', icon: 'tools', gradient: 'linear-gradient(135deg, #007AFF, #5856D6)' },
-  { id: 'materials', name: '材料配件', icon: 'box', gradient: 'linear-gradient(135deg, #FF3B30, #FF453A)' },
+  {
+    id: 'repair',
+    name: '维修服务',
+    icon: 'setting',
+    gradient: 'linear-gradient(135deg, #007AFF, #5856D6)',
+  },
+  {
+    id: 'install',
+    name: '安装服务',
+    icon: 'add-circle',
+    gradient: 'linear-gradient(135deg, #34C759, #30D158)',
+  },
+  {
+    id: 'clean',
+    name: '清洁服务',
+    icon: 'brush',
+    gradient: 'linear-gradient(135deg, #FF9500, #FF6B35)',
+  },
+  {
+    id: 'maintain',
+    name: '保养服务',
+    icon: 'time',
+    gradient: 'linear-gradient(135deg, #AF52DE, #BF5AF2)',
+  },
+  {
+    id: 'tools',
+    name: '工具器材',
+    icon: 'tools',
+    gradient: 'linear-gradient(135deg, #007AFF, #5856D6)',
+  },
+  {
+    id: 'materials',
+    name: '材料配件',
+    icon: 'box',
+    gradient: 'linear-gradient(135deg, #FF3B30, #FF453A)',
+  },
 ])
 
 // 热门服务
 const hotServices = ref([
-  { id: 1, title: '空调维修', price: 120, icon: 'setting', color: 'linear-gradient(135deg, #007AFF, #5856D6)' },
-  { id: 2, title: '水管疏通', price: 80, icon: 'filter', color: 'linear-gradient(135deg, #34C759, #30D158)' },
-  { id: 3, title: '电路检修', price: 150, icon: 'lightning', color: 'linear-gradient(135deg, #FF9500, #FF6B35)' },
-  { id: 4, title: '家具安装', price: 200, icon: 'add-circle', color: 'linear-gradient(135deg, #AF52DE, #BF5AF2)' },
+  {
+    id: 1,
+    title: '空调维修',
+    price: 120,
+    icon: 'setting',
+    color: 'linear-gradient(135deg, #007AFF, #5856D6)',
+  },
+  {
+    id: 2,
+    title: '水管疏通',
+    price: 80,
+    icon: 'filter',
+    color: 'linear-gradient(135deg, #34C759, #30D158)',
+  },
+  {
+    id: 3,
+    title: '电路检修',
+    price: 150,
+    icon: 'lightning',
+    color: 'linear-gradient(135deg, #FF9500, #FF6B35)',
+  },
+  {
+    id: 4,
+    title: '家具安装',
+    price: 200,
+    icon: 'add-circle',
+    color: 'linear-gradient(135deg, #AF52DE, #BF5AF2)',
+  },
 ])
 
 // 精选产品
 const featuredProducts = ref([
-  { id: 1, name: '专业工具箱', desc: '一站式维修套装', price: 299, original: 399, color: '#007AFF', badge: '热销' },
+  {
+    id: 1,
+    name: '专业工具箱',
+    desc: '一站式维修套装',
+    price: 299,
+    original: 399,
+    color: '#007AFF',
+    badge: '热销',
+  },
   { id: 2, name: '防水材料', desc: '卫生间防水专用', price: 89, color: '#34C759' },
   { id: 3, name: '电工胶布', desc: '绝缘防水耐用', price: 15, color: '#FF9500', badge: '特价' },
   { id: 4, name: '疏通工具', desc: '管道疏通神器', price: 45, color: '#AF52DE' },
 ])
 
 // 方法定义
-const selectLocation = () => {
-  uni.chooseLocation({
-    success: (res) => {
-      currentLocation.value = res.name
+const getCurrentLocation = () => {
+  return new Promise((resolve, reject) => {
+    if (typeof window !== 'undefined' && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude: lat, longitude: lng } = position.coords
+          latitude.value = lat
+          longitude.value = lng
+          resolve({ lat, lng })
+        },
+        (error) => {
+          reject(error)
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 300000,
+        },
+      )
+    } else {
+      reject(new Error('浏览器不支持地理位置'))
     }
   })
+}
+
+const reverseGeocode = async (lat, lng) => {
+  try {
+    // 使用免费的Nominatim API (OpenStreetMap)
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=zh-CN`,
+    )
+    const data = await response.json()
+
+    if (data.address) {
+      const { city, town, suburb, village, county } = data.address
+      // 优先返回城市+区县
+      const location = city || town || village || county || suburb || '定位成功'
+      return location.length > 8 ? location.substring(0, 8) + '...' : location
+    }
+    return '定位成功'
+  } catch (error) {
+    console.error('逆地理编码失败:', error)
+    return '北京市朝阳区'
+  }
+}
+
+const autoLocation = async () => {
+  try {
+    const { lat, lng } = await getCurrentLocation()
+    const address = await reverseGeocode(lat, lng)
+    currentLocation.value = address
+  } catch (error) {
+    console.error('自动定位失败:', error)
+    currentLocation.value = '北京市朝阳区'
+  }
+}
+
+const selectLocation = () => {
+  // H5免费手动选址：使用OpenStreetMap搜索 + 城市选择器
+  if (typeof window !== 'undefined') {
+    // 方案1：使用OpenStreetMap的Nominatim搜索
+    const searchAddress = () => {
+      const searchTerm = prompt('请输入地址或城市名称')
+      if (searchTerm) {
+        fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchTerm)}&accept-language=zh-CN&limit=5`,
+        )
+          .then((res) => res.json())
+          .then((data) => {
+            if (data && data.length > 0) {
+              // 显示搜索结果供选择
+              const options = data.map((item) => ({
+                name: item.display_name.split(',')[0],
+                lat: item.lat,
+                lng: item.lon,
+              }))
+
+              uni.showActionSheet({
+                itemList: options.map((opt) => opt.name),
+                success: (res) => {
+                  const selected = options[res.tapIndex]
+                  currentLocation.value = selected.name
+                  latitude.value = selected.lat
+                  longitude.value = selected.lng
+                },
+              })
+            } else {
+              uni.showToast({
+                title: '未找到相关地址',
+                icon: 'none',
+              })
+            }
+          })
+          .catch(() => {
+            // 搜索失败使用方案2
+            useCitySelector()
+          })
+      }
+    }
+
+    // 方案2：预设城市列表
+    const useCitySelector = () => {
+      uni.showActionSheet({
+        itemList: [
+          '北京市-海淀区',
+          '北京市-朝阳区',
+          '上海市-浦东新区',
+          '广州市-天河区',
+          '深圳市-南山区',
+          '杭州市-西湖区',
+          '成都市-武侯区',
+          '西安市-雁塔区',
+          '武汉市-洪山区',
+          '南京市-建邺区',
+        ],
+        success: (res) => {
+          const cities = [
+            '海淀区',
+            '朝阳区',
+            '浦东新区',
+            '天河区',
+            '南山区',
+            '西湖区',
+            '武侯区',
+            '雁塔区',
+            '洪山区',
+            '建邺区',
+          ]
+          currentLocation.value = cities[res.tapIndex]
+        },
+      })
+    }
+
+    // 提供多种选择
+    uni.showActionSheet({
+      itemList: ['🔍 搜索地址', '🏙️ 选择城市', '📍 重新定位'],
+      success: (res) => {
+        switch (res.tapIndex) {
+          case 0:
+            searchAddress()
+            break
+          case 1:
+            useCitySelector()
+            break
+          case 2:
+            autoLocation()
+            break
+        }
+      },
+    })
+  } else {
+    // 降级方案
+    uni.showActionSheet({
+      itemList: ['北京市', '上海市', '广州市', '深圳市', '杭州市'],
+      success: (res) => {
+        const cities = ['北京市', '上海市', '广州市', '深圳市', '杭州市']
+        currentLocation.value = cities[res.tapIndex]
+      },
+    })
+  }
 }
 
 const goToSearch = () => {
@@ -235,20 +452,15 @@ const quickAppointment = () => {
 }
 
 onLoad(() => {
-  // 获取用户位置
-  uni.getLocation({
-    type: 'gcj02',
-    success: (res) => {
-      // 这里可以调用逆地理编码API获取位置名称
-    }
-  })
+  // 页面加载时自动定位
+  autoLocation()
 })
 </script>
 
 <style lang="scss" scoped>
 .service-homepage {
   min-height: 100vh;
-  background: linear-gradient(180deg, #F2F2F7 0%, #FFFFFF 100%);
+  background: linear-gradient(180deg, #f2f2f7 0%, #ffffff 100%);
   padding-bottom: 200rpx;
 }
 
@@ -261,7 +473,7 @@ onLoad(() => {
 // 1️⃣ 顶部搜索+定位区域
 .header-section {
   padding: 32rpx 40rpx 24rpx;
-  background: #FFFFFF;
+  background: #ffffff;
   box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.05);
 
   .location-search-bar {
@@ -274,12 +486,12 @@ onLoad(() => {
       align-items: center;
       gap: 8rpx;
       padding: 16rpx 24rpx;
-      background: #F2F2F7;
+      background: #f2f2f7;
       border-radius: 20rpx;
 
       .location-text {
         font-size: 26rpx;
-        color: #007AFF;
+        color: #007aff;
         font-weight: 500;
         max-width: 200rpx;
         overflow: hidden;
@@ -296,12 +508,12 @@ onLoad(() => {
         align-items: center;
         gap: 12rpx;
         padding: 16rpx 24rpx;
-        background: #F2F2F7;
+        background: #f2f2f7;
         border-radius: 20rpx;
 
         .search-placeholder {
           font-size: 26rpx;
-          color: #8E8E93;
+          color: #8e8e93;
         }
       }
     }
@@ -340,7 +552,7 @@ onLoad(() => {
 
       .category-name {
         font-size: 26rpx;
-        color: #1D1D1F;
+        color: #1d1d1f;
         font-weight: 500;
       }
     }
@@ -354,7 +566,7 @@ onLoad(() => {
   .banner-container {
     .banner-card {
       height: 320rpx;
-      background: linear-gradient(135deg, #007AFF 0%, #5856D6 100%);
+      background: linear-gradient(135deg, #007aff 0%, #5856d6 100%);
       border-radius: 28rpx;
       position: relative;
       overflow: hidden;
@@ -364,7 +576,7 @@ onLoad(() => {
 
       .banner-content {
         flex: 1;
-        color: #FFFFFF;
+        color: #ffffff;
 
         .banner-title {
           font-size: 40rpx;
@@ -416,14 +628,14 @@ onLoad(() => {
     .section-title {
       font-size: 36rpx;
       font-weight: 700;
-      color: #1D1D1F;
+      color: #1d1d1f;
       display: block;
       margin-bottom: 8rpx;
     }
 
     .section-subtitle {
       font-size: 26rpx;
-      color: #8E8E93;
+      color: #8e8e93;
     }
   }
 
@@ -436,7 +648,7 @@ onLoad(() => {
       .service-card {
         flex-shrink: 0;
         width: 220rpx;
-        background: #FFFFFF;
+        background: #ffffff;
         border-radius: 24rpx;
         padding: 32rpx 24rpx;
         box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.08);
@@ -456,14 +668,14 @@ onLoad(() => {
           .service-title {
             font-size: 28rpx;
             font-weight: 600;
-            color: #1D1D1F;
+            color: #1d1d1f;
             display: block;
             margin-bottom: 8rpx;
           }
 
           .service-price {
             font-size: 24rpx;
-            color: #007AFF;
+            color: #007aff;
             font-weight: 600;
           }
         }
@@ -482,14 +694,14 @@ onLoad(() => {
     .section-title {
       font-size: 36rpx;
       font-weight: 700;
-      color: #1D1D1F;
+      color: #1d1d1f;
       display: block;
       margin-bottom: 8rpx;
     }
 
     .section-subtitle {
       font-size: 26rpx;
-      color: #8E8E93;
+      color: #8e8e93;
     }
   }
 
@@ -499,7 +711,7 @@ onLoad(() => {
     gap: 24rpx;
 
     .product-card {
-      background: #FFFFFF;
+      background: #ffffff;
       border-radius: 24rpx;
       overflow: hidden;
       box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.08);
@@ -513,8 +725,8 @@ onLoad(() => {
           top: 12rpx;
           right: 12rpx;
           padding: 4rpx 12rpx;
-          background: #FF3B30;
-          color: #FFFFFF;
+          background: #ff3b30;
+          color: #ffffff;
           font-size: 20rpx;
           border-radius: 12rpx;
           font-weight: 600;
@@ -527,7 +739,7 @@ onLoad(() => {
         .product-name {
           font-size: 28rpx;
           font-weight: 600;
-          color: #1D1D1F;
+          color: #1d1d1f;
           display: block;
           margin-bottom: 8rpx;
           line-height: 1.4;
@@ -535,7 +747,7 @@ onLoad(() => {
 
         .product-desc {
           font-size: 24rpx;
-          color: #8E8E93;
+          color: #8e8e93;
           display: block;
           margin-bottom: 16rpx;
           line-height: 1.3;
@@ -549,12 +761,12 @@ onLoad(() => {
           .product-price {
             font-size: 28rpx;
             font-weight: 700;
-            color: #007AFF;
+            color: #007aff;
           }
 
           .product-original {
             font-size: 22rpx;
-            color: #8E8E93;
+            color: #8e8e93;
             text-decoration: line-through;
           }
         }
@@ -569,7 +781,7 @@ onLoad(() => {
 
   .promo-card {
     height: 200rpx;
-    background: linear-gradient(135deg, #FF3B30 0%, #FF453A 100%);
+    background: linear-gradient(135deg, #ff3b30 0%, #ff453a 100%);
     border-radius: 24rpx;
     position: relative;
     overflow: hidden;
@@ -579,7 +791,7 @@ onLoad(() => {
 
     .promo-content {
       flex: 1;
-      color: #FFFFFF;
+      color: #ffffff;
 
       .promo-title {
         font-size: 36rpx;
@@ -627,7 +839,7 @@ onLoad(() => {
   .trust-grid {
     display: flex;
     justify-content: space-around;
-    background: #FFFFFF;
+    background: #ffffff;
     border-radius: 24rpx;
     padding: 40rpx 0;
     box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.08);
@@ -650,7 +862,7 @@ onLoad(() => {
 
       .trust-text {
         font-size: 24rpx;
-        color: #1D1D1F;
+        color: #1d1d1f;
         font-weight: 500;
       }
     }
@@ -669,10 +881,10 @@ onLoad(() => {
     align-items: center;
     gap: 12rpx;
     padding: 24rpx 40rpx;
-    background: linear-gradient(135deg, #007AFF 0%, #5856D6 100%);
+    background: linear-gradient(135deg, #007aff 0%, #5856d6 100%);
     border-radius: 50rpx;
     box-shadow: 0 8rpx 32rpx rgba(0, 122, 255, 0.4);
-    color: #FFFFFF;
+    color: #ffffff;
     font-weight: 600;
     font-size: 28rpx;
     transition: transform 0.2s ease;

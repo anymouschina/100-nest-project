@@ -104,8 +104,19 @@
           </template>
         </wd-input>
 
-        <!-- 小区位置 -->
+        <!-- 位置获取方式 -->
+        <wd-cell-group border>
+          <wd-cell title="位置获取方式" :border="false">
+            <wd-radio-group v-model="locationMethod" inline cell>
+              <wd-radio :value="'map'">地图选择</wd-radio>
+              <wd-radio :value="'manual'">手动输入</wd-radio>
+            </wd-radio-group>
+          </wd-cell>
+        </wd-cell-group>
+
+        <!-- 小区位置 - 地图选择 -->
         <wd-input
+          v-if="locationMethod === 'map'"
           label="小区位置"
           v-model="formData.location"
           prop="location"
@@ -117,6 +128,21 @@
         >
           <template #suffix>
             <wd-icon name="location" size="36rpx" color="#2c722c"></wd-icon>
+          </template>
+        </wd-input>
+
+        <!-- 小区位置 - 手动输入 -->
+        <wd-input
+          v-else
+          label="小区位置"
+          v-model="formData.location"
+          prop="location"
+          align-right
+          placeholder="请输入小区名称"
+          :rules="[{ required: true, message: '请输入小区位置' }]"
+        >
+          <template #suffix>
+            <wd-icon name="edit-outline" size="36rpx" color="#999"></wd-icon>
           </template>
         </wd-input>
 
@@ -180,7 +206,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, watch } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import {
   getServiceTypes,
@@ -232,6 +258,8 @@ const safeAreaBottom = ref(0)
 // 表单引用
 const appointmentForm = ref()
 const uploadImgs = ref([])
+// 位置选择方式
+const locationMethod = ref<'map' | 'manual'>('map')
 // 表单数据
 const formData = reactive<IAppointmentForm>({
   problemType: '',
@@ -407,75 +435,106 @@ onMounted(() => {
   })
 })
 
+// 监听位置选择方式变化
+watch(locationMethod, (newMethod) => {
+  if (newMethod === 'manual') {
+    // 切换到手动输入时，清除经纬度信息
+    formData.latitude = ''
+    formData.longitude = ''
+  }
+})
+
 // 选择位置
 const chooseLocation = () => {
-  // #ifdef MP-WEIXIN
-  // 先获取当前位置
-  uni.showLoading({
-    title: '定位中...',
-    mask: true,
-  })
-
-  // 打开位置选择器的方法
-  const openLocationChooser = (options = {}) => {
-    uni.chooseLocation({
-      ...options,
-      success: (locationRes) => {
-        console.log('选择位置成功', locationRes)
-        // 自动填充省市区和详细地址
-        formData.location = locationRes.name || locationRes.address
-        formData.region = locationRes.address.split(',')[0] || ''
-        // 保存经纬度信息
-        formData.latitude = locationRes.latitude.toString()
-        formData.longitude = locationRes.longitude.toString()
-        console.log('已保存位置信息，经度：', formData.longitude, '纬度：', formData.latitude)
-      },
-      fail: (err) => {
-        console.log('选择位置失败', err)
-        if (err.errMsg.includes('auth')) {
-          uni.showToast({
-            title: '请授权位置权限',
-            icon: 'none',
-          })
-        } else {
-          uni.showToast({
-            title: '选择位置失败',
-            icon: 'none',
-          })
-        }
-      },
-    })
-  }
-
-  // 获取当前位置，然后打开位置选择器
-  uni.getLocation({
-    type: 'gcj02', // 使用gcj02坐标系
-    success: (res) => {
-      uni.hideLoading()
-      console.log('获取当前位置成功', res)
-
-      // 使用当前位置打开位置选择器
-      openLocationChooser({
-        latitude: res.latitude,
-        longitude: res.longitude,
-      })
+  // 使用uni的chooseLocation
+  uni.chooseLocation({
+    success: (locationRes) => {
+      console.log('选择位置成功', locationRes)
+      formData.location = locationRes.name || locationRes.address
+      formData.address = locationRes.address
+      formData.latitude = locationRes.latitude.toString()
+      formData.longitude = locationRes.longitude.toString()
     },
     fail: (err) => {
-      uni.hideLoading()
-      console.log('获取当前位置失败', err)
-
-      // 如果获取当前位置失败，直接打开位置选择器
-      openLocationChooser()
-    },
+      console.log('选择位置失败', err)
+      uni.showToast({
+        title: '选择位置失败',
+        icon: 'none',
+      })
+    }
   })
-  // #endif
+}
 
-  // #ifndef MP-WEIXIN
-  uni.showToast({
-    title: '仅微信小程序支持此功能',
-    icon: 'none',
+// H5专用：获取当前位置
+const getCurrentLocation = async () => {
+  if (typeof window !== 'undefined' && navigator.geolocation) {
+    try {
+      const position = await new Promise((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 300000
+        })
+      })
+      
+      const { latitude, longitude } = position.coords
+      
+      // 使用逆地理编码获取地址
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&accept-language=zh-CN`
+      )
+      const data = await response.json()
+      
+      if (data.address) {
+        const { city, town, suburb, village } = data.address
+        const location = city || town || village || suburb || '当前位置'
+        
+        formData.location = location
+        formData.address = data.display_name
+        formData.latitude = latitude.toString()
+        formData.longitude = longitude.toString()
+      }
+    } catch (error) {
+      console.error('获取位置失败:', error)
+      useCitySelector()
+    }
+  } else {
+    useCitySelector()
+  }
+}
+
+// H5专用：城市选择器
+const useCitySelector = () => {
+  uni.showActionSheet({
+    itemList: [
+      '北京市-朝阳区',
+      '北京市-海淀区',
+      '上海市-浦东新区',
+      '广州市-天河区',
+      '深圳市-南山区',
+      '杭州市-西湖区',
+      '成都市-武侯区',
+      '西安市-雁塔区',
+      '武汉市-洪山区',
+      '南京市-建邺区'
+    ],
+    success: (res) => {
+      const cities = [
+        '朝阳区',
+        '海淀区',
+        '浦东新区',
+        '天河区',
+        '南山区',
+        '西湖区',
+        '武侯区',
+        '雁塔区',
+        '洪山区',
+        '建邺区'
+      ]
+      formData.location = cities[res.tapIndex]
+      formData.address = cities[res.tapIndex]
+    }
   })
-  // #endif
 }
 
 // 提交表单

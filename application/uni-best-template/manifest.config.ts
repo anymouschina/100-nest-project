@@ -28,6 +28,16 @@ export default defineManifestConfig({
     tabbar: {
       custom: true,
     },
+    sdkConfigs: {
+      // 使用地图或位置相关功能必须填写其一
+      maps: {
+        tencent: {
+          // HBuilderX 4.36及以上版本腾讯地图配置项
+          // 腾讯地图秘钥 https://lbs.qq.com/dev/console/key/manage
+          key: 'KLKBZ-SJBKJ-4YNFA-XNSOG-TDEW2-RZF7M',
+        },
+      },
+    },
   },
   /* 5+App特有相关 */
   'app-plus': {
