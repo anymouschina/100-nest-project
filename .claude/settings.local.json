@@ -31,7 +31,22 @@
       "Bash(source:*)",
       "mcp__n8n-mcp__get_node_for_task",
       "Bash(docker network:*)",
-      "Bash(docker-compose:*)"
+      "Bash(docker-compose:*)",
+      "Bash(find:*)",
+      "WebFetch(domain:github.com)",
+      "Bash(mkdir:*)",
+      "Bash(:3000)",
+      "Bash(-H 'Content-Type: application/json' )",
+      "Bash(-d '{\"\"username\"\":\"\"root\"\",\"\"password\"\":\"\"1234\"\"}' )",
+      "Bash(-v)",
+      "Bash(grep:*)",
+      "Bash(docker inspect:*)",
+      "Bash(.fastgpt-mongo fastgpt-minio fastgpt-sandbox fastgpt-mcp-server fastgpt-plugin)",
+      "Bash(.fastgpt-mongo fastgpt-minio fastgpt-sandbox fastgpt-mcp-server fastgpt-plugin fastgpt)",
+      "Bash(docker restart:*)",
+      "Bash(docker logs:*)",
+      "Bash(docker stop:*)",
+      "Bash(docker rm:*)"
     ],
     "deny": []
   }

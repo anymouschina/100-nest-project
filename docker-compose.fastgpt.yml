@@ -1,0 +1,143 @@
+
+services:
+
+  # FastGPT核心服务
+  fastgpt:
+    container_name: fastgpt
+    image: ghcr.io/labring/fastgpt:v4.11.0
+    ports:
+      - "3000:3000"
+    networks:
+      - 100-nest-project_n8n-network
+    depends_on:
+      - mongo
+    restart: always
+    environment:
+      # 使用现有数据库
+      - MONGODB_URI=mongodb://fastgpt:fastgpt123@mongo:27017/fastgpt?authSource=admin
+      - REDIS_URL=redis://:123456@redis:6379
+      - PG_URL=postgresql://postgres:postgres@db:5432/fastgpt
+      
+      # 基础配置
+      - DEFAULT_ROOT_PSW=1234
+      - TOKEN_KEY=fastgpt_token_key
+      - ROOT_KEY=fastgpt_root_key
+      - FILE_TOKEN_KEY=fastgpt_file_token
+      - AES256_SECRET_KEY=fastgpt_aes_key
+      
+      # 日志和性能
+      - LOG_LEVEL=info
+      - STORE_LOG_LEVEL=warn
+      - DB_MAX_LINK=30
+      - WORKFLOW_MAX_RUN_TIMES=1000
+      - WORKFLOW_MAX_LOOP_TIMES=100
+      - CHAT_FILE_EXPIRE_TIME=7
+    volumes:
+      - ./fastgpt/config.json:/app/data/config.json
+      - ./fastgpt/logs:/app/logs
+
+  # FastGPT专用MongoDB
+  mongo:
+    image: mongo:5.0.18
+    container_name: fastgpt-mongo
+    restart: always
+    networks:
+      - 100-nest-project_n8n-network
+    command: mongod --keyFile /data/mongodb.key --replSet rs0
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=fastgpt
+      - MONGO_INITDB_ROOT_PASSWORD=fastgpt123
+    volumes:
+      - mongo_data:/data/db
+    entrypoint:
+      - bash
+      - -c
+      - |
+        openssl rand -base64 128 > /data/mongodb.key
+        chmod 400 /data/mongodb.key
+        chown 999:999 /data/mongodb.key
+        echo 'const isInited = rs.status().ok === 1
+        if(!isInited){
+          rs.initiate({
+              _id: "rs0",
+              members: [
+                  { _id: 0, host: "mongo:27017" }
+              ]
+          })
+        }' > /data/initReplicaSet.js
+        exec docker-entrypoint.sh "$@" &
+        until mongo -u fastgpt -p fastgpt123 --authenticationDatabase admin --eval "print('waited for connection')"; do
+          sleep 2
+        done
+        mongo -u fastgpt -p fastgpt123 --authenticationDatabase admin /data/initReplicaSet.js
+        wait $!
+
+  # 对象存储
+  minio:
+    image: minio/minio:latest
+    container_name: fastgpt-minio
+    restart: always
+    networks:
+      - 100-nest-project_n8n-network
+    ports:
+      - '9000:9000'
+      - '9001:9001'
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  # Python沙箱
+  sandbox:
+    container_name: fastgpt-sandbox
+    image: ghcr.io/labring/fastgpt-sandbox:v4.10.1
+    networks:
+      - 100-nest-project_n8n-network
+    restart: always
+
+  # MCP服务器
+  fastgpt-mcp-server:
+    container_name: fastgpt-mcp-server
+    image: ghcr.io/labring/fastgpt-mcp_server:v4.10.1
+    ports:
+      - "3005:3000"
+    networks:
+      - 100-nest-project_n8n-network
+    restart: always
+    environment:
+      - FASTGPT_ENDPOINT=http://fastgpt:3000
+
+  # 插件服务
+  fastgpt-plugin:
+    image: ghcr.io/labring/fastgpt-plugin:v0.1.5
+    container_name: fastgpt-plugin
+    restart: always
+    networks:
+      - 100-nest-project_n8n-network
+    environment:
+      - AUTH_TOKEN=fastgpt_plugin_token
+      - MINIO_ENDPOINT=minio
+      - MINIO_PORT=9000
+      - MINIO_USE_SSL=false
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+      - MINIO_BUCKET=fastgpt-plugins
+    depends_on:
+      minio:
+        condition: service_healthy
+
+networks:
+  100-nest-project_n8n-network:
+    external: true
+
+volumes:
+  db_data:
+  mongo_data:
+  minio_data:

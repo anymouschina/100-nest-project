@@ -125,3 +125,5 @@ volumes:
   redis_data:
   n8n_data_new1:
   rsshub_data:
+  mongo_data:
+  minio_data:

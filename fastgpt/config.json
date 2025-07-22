@@ -1,0 +1,232 @@
+{
+  "SystemParams": {
+    "pluginBaseUrl": "",
+    "vectorMaxProcess": 15,
+    "qaMaxProcess": 15,
+    "pgIvfflatProbe": 10
+  },
+  "ChatModels": [
+    {
+      "model": "gpt-3.5-turbo",
+      "name": "GPT35",
+      "avatar": "/imgs/model/openai.svg",
+      "maxContext": 16000,
+      "maxResponse": 4000,
+      "quoteMaxToken": 13000,
+      "maxTemperature": 1.2,
+      "charsPointsPrice": 0,
+      "censor": false,
+      "vision": false,
+      "datasetUsable": true,
+      "usedInClassify": true,
+      "usedInExtractFields": true,
+      "usedInToolCall": true,
+      "usedInQueryExtension": true,
+      "toolChoice": true,
+      "functionCall": false,
+      "customCQPrompt": "",
+      "customExtractPrompt": "",
+      "defaultSystemChatPrompt": ""
+    },
+    {
+      "model": "gpt-4-turbo-preview",
+      "name": "GPT4-Turbo",
+      "avatar": "/imgs/model/openai.svg",
+      "maxContext": 128000,
+      "maxResponse": 4000,
+      "quoteMaxToken": 100000,
+      "maxTemperature": 1.2,
+      "charsPointsPrice": 0,
+      "censor": false,
+      "vision": false,
+      "datasetUsable": true,
+      "usedInClassify": true,
+      "usedInExtractFields": true,
+      "usedInToolCall": true,
+      "usedInQueryExtension": true,
+      "toolChoice": true,
+      "functionCall": false,
+      "customCQPrompt": "",
+      "customExtractPrompt": "",
+      "defaultSystemChatPrompt": ""
+    }
+  ],
+  "QAModels": [
+    {
+      "model": "gpt-3.5-turbo-16k",
+      "name": "GPT35-16k",
+      "maxContext": 16000,
+      "maxResponse": 16000,
+      "inputPrice": 0,
+      "outputPrice": 0
+    }
+  ],
+  "CQModels": [
+    {
+      "model": "gpt-3.5-turbo",
+      "name": "GPT35",
+      "maxContext": 4000,
+      "maxResponse": 4000,
+      "inputPrice": 0,
+      "outputPrice": 0,
+      "toolChoice": true,
+      "functionCall": false
+    }
+  ],
+  "ExtractModels": [
+    {
+      "model": "gpt-3.5-turbo",
+      "name": "GPT35",
+      "maxContext": 4000,
+      "maxResponse": 4000,
+      "inputPrice": 0,
+      "outputPrice": 0,
+      "toolChoice": true,
+      "functionCall": false
+    }
+  ],
+  "QGModels": [
+    {
+      "model": "gpt-3.5-turbo",
+      "name": "GPT35",
+      "maxContext": 4000,
+      "maxResponse": 4000,
+      "inputPrice": 0,
+      "outputPrice": 0
+    }
+  ],
+  "VectorModels": [
+    {
+      "model": "text-embedding-ada-002",
+      "name": "Embedding-2",
+      "inputPrice": 0,
+      "outputPrice": 0,
+      "defaultToken": 700,
+      "maxToken": 3000,
+      "weight": 100
+    }
+  ],
+  "ReRankModels": [
+    {
+      "model": "",
+      "name": "",
+      "inputPrice": 0,
+      "outputPrice": 0,
+      "requestUrl": "",
+      "requestAuth": "",
+      "requestBody": "",
+      "responsePath": "",
+      "defaultToken": 0,
+      "maxToken": 0
+    }
+  ],
+  "AudioSpeechModels": [
+    {
+      "model": "tts-1",
+      "name": "OpenAI TTS1",
+      "inputPrice": 0,
+      "outputPrice": 0,
+      "baseUrl": "",
+      "key": "",
+      "voices": [
+        {
+          "label": "Alloy",
+          "value": "alloy",
+          "bufferId": "openai-Alloy"
+        },
+        {
+          "label": "Echo",
+          "value": "echo",
+          "bufferId": "openai-Echo"
+        },
+        {
+          "label": "Fable",
+          "value": "fable",
+          "bufferId": "openai-Fable"
+        },
+        {
+          "label": "Onyx",
+          "value": "onyx",
+          "bufferId": "openai-Onyx"
+        },
+        {
+          "label": "Nova",
+          "value": "nova",
+          "bufferId": "openai-Nova"
+        },
+        {
+          "label": "Shimmer",
+          "value": "shimmer",
+          "bufferId": "openai-Shimmer"
+        }
+      ]
+    }
+  ],
+  "WhisperModel": {
+    "model": "whisper-1",
+    "name": "Whisper1",
+    "inputPrice": 0,
+    "outputPrice": 0,
+    "baseUrl": "",
+    "key": "",
+    "prompt": ""
+  },
+  "DatasetProcess": [
+    {
+      "provider": "fastgpt",
+      "url": ""
+    }
+  ],
+  "PluginModels": [
+    {
+      "provider": "fastgpt",
+      "url": ""
+    }
+  ],
+  "llmModels": [
+    {
+      "provider": "OpenAI",
+      "name": "GPT35",
+      "avatar": "/imgs/model/openai.svg",
+      "llm": {
+        "model": "gpt-3.5-turbo",
+        "temperature": 0.8,
+        "max_tokens": 4000,
+        "top_p": 1,
+        "frequency_penalty": 0,
+        "presence_penalty": 0,
+        "stream": true
+      },
+      "quoteMaxToken": 13000,
+      "maxTemperature": 1.2,
+      "censor": false,
+      "vision": false,
+      "datasetProcess": true,
+      "usedInClassify": true,
+      "usedInExtractFields": true,
+      "usedInToolCall": true,
+      "usedInQueryExtension": true,
+      "toolChoice": true,
+      "functionCall": false,
+      "customCQPrompt": "",
+      "customExtractPrompt": "",
+      "defaultSystemChatPrompt": ""
+    }
+  ],
+  "feConfigs": {
+    "lafEnv": "",
+    "show_emptyChat": true,
+    "show_contact": false,
+    "show_git": true,
+    "show_doc": true,
+    "systemTitle": "FastGPT",
+    "authorText": "Made by FastGPT Team",
+    "beianText": "",
+    "scripts": [],
+    "limit": {
+      "exportLimitMinutes": 0,
+      "websiteSyncLimitMinuted": 0,
+      "maxWebsiteSyncs": 0
+    }
+  }
+}
