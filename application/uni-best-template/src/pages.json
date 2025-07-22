@@ -121,11 +121,43 @@
       }
     },
     {
+      "path": "pages/products/detail",
+      "type": "page",
+      "style": {
+        "navigationBarTitleText": "商品详情",
+        "navigationStyle": "default"
+      }
+    },
+    {
+      "path": "pages/products/search",
+      "type": "page",
+      "style": {
+        "navigationBarTitleText": "商品搜索",
+        "navigationStyle": "default"
+      }
+    },
+    {
+      "path": "pages/products/select",
+      "type": "page",
+      "style": {
+        "navigationBarTitleText": "商品挑选",
+        "navigationStyle": "default"
+      }
+    },
+    {
       "path": "pages/register/index",
       "type": "page",
       "style": {
         "navigationBarTitleText": "邮件注册",
         "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/search/index",
+      "type": "page",
+      "style": {
+        "navigationBarTitleText": "商品搜索",
+        "navigationStyle": "default"
       }
     },
     {

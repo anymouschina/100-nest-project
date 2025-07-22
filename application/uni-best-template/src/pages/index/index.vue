@@ -90,8 +90,14 @@
     <!-- 5️⃣ 器材商城精选 -->
     <view class="products-section">
       <view class="section-header">
-        <text class="section-title">器材商城</text>
-        <text class="section-subtitle">专业工具，品质保证</text>
+        <view class="section-title-area">
+          <text class="section-title">器材商城</text>
+          <text class="section-subtitle">专业工具，品质保证</text>
+        </view>
+        <view class="more-action" @tap="goToProducts">
+          <text class="more-text">更多</text>
+          <wd-icon name="arrow-right" size="24rpx" color="#007AFF" />
+        </view>
       </view>
       <view class="products-grid">
         <view
@@ -317,12 +323,36 @@ const reverseGeocode = async (lat, lng) => {
 
 const autoLocation = async () => {
   try {
+    // 先从本地存储读取定位结果
+    const cachedLocation = uni.getStorageSync('cached_location')
+    if (cachedLocation) {
+      const { address, timestamp } = cachedLocation
+      const now = Date.now()
+      // 如果缓存时间在1小时内，直接使用缓存
+      if (now - timestamp < 60 * 60 * 1000) {
+        currentLocation.value = address
+        return
+      }
+    }
+
+    // 没有缓存或缓存过期，重新定位
     const { lat, lng } = await getCurrentLocation()
     const address = await reverseGeocode(lat, lng)
     currentLocation.value = address
+    
+    // 保存到本地存储
+    uni.setStorageSync('cached_location', {
+      address,
+      timestamp: Date.now()
+    })
   } catch (error) {
     console.error('自动定位失败:', error)
     currentLocation.value = '北京市朝阳区'
+    // 保存失败时的默认值
+    uni.setStorageSync('cached_location', {
+      address: '北京市朝阳区',
+      timestamp: Date.now()
+    })
   }
 }
 
@@ -353,6 +383,12 @@ const selectLocation = () => {
                   currentLocation.value = selected.name
                   latitude.value = selected.lat
                   longitude.value = selected.lng
+                  
+                  // 保存手动选择的位置
+                  uni.setStorageSync('cached_location', {
+                    address: selected.name,
+                    timestamp: Date.now()
+                  })
                 },
               })
             } else {
@@ -397,7 +433,14 @@ const selectLocation = () => {
             '洪山区',
             '建邺区',
           ]
-          currentLocation.value = cities[res.tapIndex]
+          const selectedCity = cities[res.tapIndex]
+          currentLocation.value = selectedCity
+          
+          // 保存手动选择的城市
+          uni.setStorageSync('cached_location', {
+            address: selectedCity,
+            timestamp: Date.now()
+          })
         },
       })
     }
@@ -414,6 +457,8 @@ const selectLocation = () => {
             useCitySelector()
             break
           case 2:
+            // 重新定位时清除缓存并重新获取
+            uni.removeStorageSync('cached_location')
             autoLocation()
             break
         }
@@ -425,7 +470,14 @@ const selectLocation = () => {
       itemList: ['北京市', '上海市', '广州市', '深圳市', '杭州市'],
       success: (res) => {
         const cities = ['北京市', '上海市', '广州市', '深圳市', '杭州市']
-        currentLocation.value = cities[res.tapIndex]
+        const selectedCity = cities[res.tapIndex]
+        currentLocation.value = selectedCity
+        
+        // 保存降级方案选择的城市
+        uni.setStorageSync('cached_location', {
+          address: selectedCity,
+          timestamp: Date.now()
+        })
       },
     })
   }
@@ -444,7 +496,11 @@ const bookService = (serviceId: number) => {
 }
 
 const viewProduct = (productId: number) => {
-  uni.navigateTo({ url: `/pages/product/index?id=${productId}` })
+  uni.navigateTo({ url: `/pages/products/detail?id=${productId}` })
+}
+
+const goToProducts = () => {
+  uni.navigateTo({ url: '/pages/products/select' })
 }
 
 const quickAppointment = () => {
@@ -689,19 +745,45 @@ onLoad(() => {
   padding: 40rpx 40rpx 0;
 
   .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     margin-bottom: 32rpx;
 
-    .section-title {
-      font-size: 36rpx;
-      font-weight: 700;
-      color: #1d1d1f;
-      display: block;
-      margin-bottom: 8rpx;
+    .section-title-area {
+      .section-title {
+        font-size: 36rpx;
+        font-weight: 700;
+        color: #1d1d1f;
+        display: block;
+        margin-bottom: 8rpx;
+      }
+
+      .section-subtitle {
+        font-size: 26rpx;
+        color: #8e8e93;
+      }
     }
 
-    .section-subtitle {
-      font-size: 26rpx;
-      color: #8e8e93;
+    .more-action {
+      display: flex;
+      align-items: center;
+      gap: 8rpx;
+      padding: 12rpx 20rpx;
+      background: rgba(0, 122, 255, 0.1);
+      border-radius: 20rpx;
+      transition: all 0.2s ease;
+
+      &:active {
+        transform: scale(0.95);
+        background: rgba(0, 122, 255, 0.2);
+      }
+
+      .more-text {
+        font-size: 26rpx;
+        font-weight: 600;
+        color: #007AFF;
+      }
     }
   }
 
