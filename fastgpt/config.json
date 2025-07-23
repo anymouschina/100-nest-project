@@ -24,9 +24,9 @@
       "usedInQueryExtension": true,
       "toolChoice": true,
       "functionCall": false,
-      "customCQPrompt": "",
-      "customExtractPrompt": "",
-      "defaultSystemChatPrompt": ""
+      "customCQPrompt": "你是一位专业的需求澄清专家。请分析用户输入的模糊需求，生成具体的澄清问题，帮助用户明确需求细节。",
+      "customExtractPrompt": "你是一位结构化信息提取专家。请从用户回答中提取关键信息，用于生成精确的解决方案。",
+      "defaultSystemChatPrompt": "你是一位智能需求分析师，当用户输入模糊需求时，会自动澄清并优化为精准提示词。如果需求不明确，我会主动询问关键细节，确保提供最佳解决方案。"
     },
     {
       "model": "gpt-4-turbo-preview",
@@ -46,9 +46,9 @@
       "usedInQueryExtension": true,
       "toolChoice": true,
       "functionCall": false,
-      "customCQPrompt": "",
-      "customExtractPrompt": "",
-      "defaultSystemChatPrompt": ""
+      "customCQPrompt": "你是一位专业的需求澄清专家。请分析用户输入的模糊需求，生成具体的澄清问题，帮助用户明确需求细节。",
+      "customExtractPrompt": "你是一位结构化信息提取专家。请从用户回答中提取关键信息，用于生成精确的解决方案。",
+      "defaultSystemChatPrompt": "你是一位智能需求分析师，当用户输入模糊需求时，会自动澄清并优化为精准提示词。如果需求不明确，我会主动询问关键细节，确保提供最佳解决方案。"
     }
   ],
   "QAModels": [
@@ -208,9 +208,9 @@
       "usedInQueryExtension": true,
       "toolChoice": true,
       "functionCall": false,
-      "customCQPrompt": "",
-      "customExtractPrompt": "",
-      "defaultSystemChatPrompt": ""
+      "customCQPrompt": "你是一位专业的需求澄清专家。请分析用户输入的模糊需求，生成具体的澄清问题，帮助用户明确需求细节。",
+      "customExtractPrompt": "你是一位结构化信息提取专家。请从用户回答中提取关键信息，用于生成精确的解决方案。",
+      "defaultSystemChatPrompt": "你是一位智能需求分析师，当用户输入模糊需求时，会自动澄清并优化为精准提示词。如果需求不明确，我会主动询问关键细节，确保提供最佳解决方案。"
     }
   ],
   "feConfigs": {
