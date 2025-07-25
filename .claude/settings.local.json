@@ -46,7 +46,17 @@
       "Bash(docker restart:*)",
       "Bash(docker logs:*)",
       "Bash(docker stop:*)",
-      "Bash(docker rm:*)"
+      "Bash(docker rm:*)",
+      "Bash(npm install:*)",
+      "Bash(npm search:*)",
+      "Bash(npx:*)",
+      "Bash(cp:*)",
+      "Bash(node:*)",
+      "Bash(npm config:*)",
+      "Bash(pnpm add:*)",
+      "Bash(. ~/.nvm/nvm.sh)",
+      "Bash(npm run build)",
+      "Bash(rm:*)"
     ],
     "deny": []
   }
