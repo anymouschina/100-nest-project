@@ -76,6 +76,7 @@ services:
       - HTTPS_PROXY=http://host.docker.internal:1087
       - http_proxy=http://host.docker.internal:1087
       - https_proxy=http://host.docker.internal:1087
+      - NO_PROXY=localhost,127.0.0.1,host.docker.internal,redis,db
     volumes:
       - n8n_data_new1:/home/node/.n8n
       - ./server/n8n-workflows-main/workflows:/workflows

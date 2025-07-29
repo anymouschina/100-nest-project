@@ -1,0 +1,287 @@
+{
+  "name": "大富翁无限流小说创作系统",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 24
+            }
+          ]
+        }
+      },
+      "id": "trigger_daily",
+      "name": "每日创作触发器",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1.1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:3000/api/core/dataset/search",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "body": "{\n  \"authorization\": \"Bearer fastgpt-iDOD4SsyD7lopobsBFP2Bdfa9PpPt6O9s32HuUS0DgbPhl9mqd83KUdMunwte5\",\n  \"datasetId\": \"world_setting\",\n  \"search\": \"获取最新世界观设定\",\n  \"limit\": 1\n}",
+        "headers": {
+          "Content-Type": "application/json"
+        }
+      },
+      "id": "get_world_knowledge",
+      "name": "获取世界观知识",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [450, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "FastGPT Auth",
+          "value": "fastgpt-iDOD4SsyD7lopobsBFP2Bdfa9PpPt6O9s32HuUS0DgbPhl9mqd83KUdMunwte5"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:3000/api/core/dataset/search",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "body": "{\n  \"authorization\": \"Bearer fastgpt-iDOD4SsyD7lopobsBFP2Bdfa9PpPt6O9s32HuUS0DgbPhl9mqd83KUdMunwte5\",\n  \"datasetId\": \"character_system\",\n  \"search\": \"获取角色状态\",\n  \"limit\": 1\n}",
+        "headers": {
+          "Content-Type": "application/json"
+        }
+      },
+      "id": "get_character_state",
+      "name": "获取角色状态",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [650, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "FastGPT Auth",
+          "value": "fastgpt-iDOD4SsyD7lopobsBFP2Bdfa9PpPt6O9s32HuUS0DgbPhl9mqd83KUdMunwte5"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// 作家Agent核心逻辑\nconst worldData = items[0].json;\nconst characterData = items[1].json;\n\n// 生成章节大纲\nfunction generateChapterOutline(chapterNum, characterState) {\n  const worldCategories = [\"动漫类世界\", \"电影类世界\", \"游戏类世界\", \"文学类世界\"];\n  const selectedCategory = worldCategories[Math.floor(Math.random() * worldCategories.length)];\n  \n  const diceRoll = Math.floor(Math.random() * 20) + 1;\n  let worldType, risk, reward;\n  \n  if (diceRoll \u003c= 5) {\n    worldType = \"安全区\"; risk = \"低\"; reward = \"一般\";\n  } else if (diceRoll \u003c= 10) {\n    worldType = \"挑战区\"; risk = \"中\"; reward = \"丰厚\";\n  } else if (diceRoll \u003c= 15) {\n    worldType = \"危险区\"; risk = \"高\"; reward = \"极高\";\n  } else if (diceRoll \u003c= 19) {\n    worldType = \"地狱区\"; risk = \"极高\"; reward = \"SS级\";\n  } else {\n    worldType = \"混沌面\"; risk = \"未知\"; reward = \"隐藏\";\n  }\n  \n  return {\n    chapter_num: chapterNum,\n    world_category: selectedCategory,\n    world_type: worldType,\n    dice_result: {\n      roll: diceRoll,\n      risk: risk,\n      reward: reward\n    },\n    character_arc: {\n      psychological_state: characterState.psychological_state || \"适应中\",\n      power_level: characterState.power_level || \"凡人级\",\n      relationships: characterState.relationships || []\n    },\n    generated_at: new Date().toISOString()\n  };\n}\n\nconst chapterNum = $node.trigger_daily.json.chapter_num || 1;\nconst outline = generateChapterOutline(chapterNum, characterData);\n\nreturn [outline];"
+      },
+      "id": "writer_agent_core",
+      "name": "作家Agent核心",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:3000/api/core/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "body": "{\n  \"authorization\": \"Bearer fastgpt-iDOD4SsyD7lopobsBFP2Bdfa9PpPt6O9s32HuUS0DgbPhl9mqd83KUdMunwte5\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"你是一个专业的小说作家，擅长创作黑暗风格的无限流小说。请根据提供的世界观设定和角色状态，创作一章引人入胜的小说内容。保持第一人称视角，营造紧张悬疑的氛围。\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"章节设定：{{$json.chapter_num}}章，世界类型：{{$json.world_type}}，骰子结果：{{$json.dice_result.roll}}，风险等级：{{$json.dice_result.risk}}\"\n    }\n  ],\n  \"model\": \"gpt-4\",\n  \"max_tokens\": 2000,\n  \"temperature\": 0.8\n}",
+        "headers": {
+          "Content-Type": "application/json"
+        }
+      },
+      "id": "generate_chapter_content",
+      "name": "生成章节内容",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1050, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "FastGPT Auth",
+          "value": "fastgpt-iDOD4SsyD7lopobsBFP2Bdfa9PpPt6O9s32HuUS0DgbPhl9mqd83KUdMunwte5"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:3000/api/core/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "body": "{\n  \"authorization\": \"Bearer fastgpt-iDOD4SsyD7lopobsBFP2Bdfa9PpPt6O9s32HuUS0DgbPhl9mqd83KUdMunwte5\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"你是一个严格的编辑，负责检查小说内容的逻辑一致性、战力平衡和角色发展。请检查以下内容是否有逻辑漏洞、战力崩坏或角色行为不一致的问题。\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"请检查以下小说内容：{{$json.choices[0].message.content}}\"\n    }\n  ],\n  \"model\": \"gpt-4\",\n  \"max_tokens\": 500,\n  \"temperature\": 0.3\n}",
+        "headers": {
+          "Content-Type": "application/json"
+        }
+      },
+      "id": "editor_review",
+      "name": "编辑审核",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1250, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "FastGPT Auth",
+          "value": "fastgpt-iDOD4SsyD7lopobsBFP2Bdfa9PpPt6O9s32HuUS0DgbPhl9mqd83KUdMunwte5"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:3000/api/core/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "body": "{\n  \"authorization\": \"Bearer fastgpt-iDOD4SsyD7lopobsBFP2Bdfa9PpPt6O9s32HuUS0DgbPhl9mqd83KUdMunwte5\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"你是一个专业的质检员，负责检测小说中的战力平衡问题。请分析当前章节的战力表现是否符合整体设定，是否有突然的战力提升或下降。\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"检查战力平衡：当前章节{{$json.chapter_num}}，世界类型{{$json.world_type}}，内容：{{$json.choices[0].message.content}}\"\n    }\n  ],\n  \"model\": \"gpt-4\",\n  \"max_tokens\": 300,\n  \"temperature\": 0.2\n}",
+        "headers": {
+          "Content-Type": "application/json"
+        }
+      },
+      "id": "quality_check",
+      "name": "质量检测",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1450, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "FastGPT Auth",
+          "value": "fastgpt-iDOD4SsyD7lopobsBFP2Bdfa9PpPt6O9s32HuUS0DgbPhl9mqd83KUdMunwte5"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "fileName": "/Users/libiqiang/Documents/workspace/100-nest-project/output/chapters/chapter_{{$json.chapter_num}}.md",
+        "text": "{{$json.final_content}}",
+        "options": {}
+      },
+      "id": "save_chapter",
+      "name": "保存章节",
+      "type": "n8n-nodes-base.writeBinaryFile",
+      "typeVersion": 1,
+      "position": [1650, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:3000/api/core/dataset/data/push",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "body": "{\n  \"authorization\": \"Bearer fastgpt-iDOD4SsyD7lopobsBFP2Bdfa9PpPt6O9s32HuUS0DgbPhl9mqd83KUdMunwte5\",\n  \"datasetId\": \"chapter_archive\",\n  \"data\": [\n    {\n      \"q\": \"第{{$json.chapter_num}}章内容\",\n      \"a\": \"{{$json.final_content}}\",\n      \"indexes\": [\n        {\n          \"dataId\": \"chapter_{{$json.chapter_num}}\",\n          \"type\": \"chapter\",\n          \"chapter\": {{$json.chapter_num}},\n          \"world_type\": \"{{$json.world_type}}\",\n          \"dice_result\": {{$json.dice_result.roll}}\n        }\n      ]\n    }\n  ]\n}",
+        "headers": {
+          "Content-Type": "application/json"
+        }
+      },
+      "id": "update_knowledge_base",
+      "name": "更新知识库",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1850, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "FastGPT Auth",
+          "value": "fastgpt-iDOD4SsyD7lopobsBFP2Bdfa9PpPt6O9s32HuUS0DgbPhl9mqd83KUdMunwte5"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "trigger_daily": {
+      "main": [
+        [
+          {
+            "node": "get_world_knowledge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get_world_knowledge": {
+      "main": [
+        [
+          {
+            "node": "get_character_state",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get_character_state": {
+      "main": [
+        [
+          {
+            "node": "writer_agent_core",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "writer_agent_core": {
+      "main": [
+        [
+          {
+            "node": "generate_chapter_content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "generate_chapter_content": {
+      "main": [
+        [
+          {
+            "node": "editor_review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "editor_review": {
+      "main": [
+        [
+          {
+            "node": "quality_check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "quality_check": {
+      "main": [
+        [
+          {
+            "node": "save_chapter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "save_chapter": {
+      "main": [
+        [
+          {
+            "node": "update_knowledge_base",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1.0.0",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

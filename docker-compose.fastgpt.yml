@@ -1,6 +1,5 @@
 
 services:
-
   # FastGPT核心服务
   fastgpt:
     container_name: fastgpt

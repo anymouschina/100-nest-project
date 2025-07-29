@@ -223,6 +223,7 @@
     "authorText": "Made by FastGPT Team",
     "beianText": "",
     "scripts": [],
+    "mcpServerProxyEndpoint": "http://localhost:3000",
     "limit": {
       "exportLimitMinutes": 0,
       "websiteSyncLimitMinuted": 0,

@@ -1,0 +1,214 @@
+{
+  "name": "魇塔续写引擎",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "yanta-continue",
+        "responseMode": "responseNode"
+      },
+      "id": "webhook",
+      "name": "Webhook触发",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:3000/api/core/dataset/data/searchData",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "headers": {
+          "Authorization": "Bearer fastgpt-iDOD4SsyD7lopobsBFP2Bdfa9PpPt6O9s32HuUS0DgbPhl9mqd83KUdMunwte5"
+        },
+        "options": {},
+        "body": {
+          "collectionId": "6884104d7a974555ab87363c",
+          "query": "魇塔 当前状态"
+        },
+        "method": "POST"
+      },
+      "id": "status-fetcher",
+      "name": "状态获取",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [450, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "fastgpt-cred",
+          "name": "FastGPT API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:3000/api/core/dataset/data/searchData",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "headers": {
+          "Authorization": "Bearer fastgpt-iDOD4SsyD7lopobsBFP2Bdfa9PpPt6O9s32HuUS0DgbPhl9mqd83KUdMunwte5"
+        },
+        "options": {},
+        "body": {
+          "collectionId": "6884104d7a974555ab87363c",
+          "query": "魇塔 第1层 世界设定"
+        },
+        "method": "POST"
+      },
+      "id": "world-fetcher",
+      "name": "世界设定",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [650, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "fastgpt-cred",
+          "name": "FastGPT API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:3000/api/core/dataset/data/searchData",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "headers": {
+          "Authorization": "Bearer fastgpt-iDOD4SsyD7lopobsBFP2Bdfa9PpPt6O9s32HuUS0DgbPhl9mqd83KUdMunwte5"
+        },
+        "options": {},
+        "body": {
+          "collectionId": "6884104d7a974555ab87363c",
+          "query": "魇塔 角色状态 林默 苏雨桐"
+        },
+        "method": "POST"
+      },
+      "id": "character-fetcher",
+      "name": "角色状态",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [850, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "fastgpt-cred",
+          "name": "FastGPT API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// 合并所有数据\nconst webhookData = $('Webhook触发').item.json;\nconst merged = {\n  layer: webhookData.layer || 1,\n  world: $json[0]?.data?.[0] || { name: \"未知世界\", type: \"混沌\", time_limit: 3, special_rule: \"未知规则\" },\n  characters: {\n    林默: $json[1]?.data?.[0] || { sanity: 80, abilities: [\"基础能力\"] },\n    苏雨桐: $json[2]?.data?.[0] || { trust: 50, status: \"敌对\" }\n  },\n  dice: Math.floor(Math.random() * 20) + 1,\n  power: { compression_ratio: 65, reward_points: 1000 + (webhookData.layer || 1) * 100 }\n};\n\nreturn merged;"
+      },
+      "id": "data-merger",
+      "name": "数据合并",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 2,
+      "position": [1050, 300]
+    },
+    {
+      "parameters": {
+        "prompt": "你作为魇塔官方AI作家，基于提供的数据生成章节。数据包含：层数、世界信息、骰子结果、角色状态、战力压缩、时间限制和特殊规则。请按照以下要求创作：开场300字描写骰子结果，冲突1000字展现主角能力对抗世界规则，转折800字刻画角色心理变化，高潮800字描述生死危机，结尾400字设置奖励和下一层伏笔。",
+        "options": {}
+      },
+      "id": "ai-generator",
+      "name": "AI章节生成",
+      "type": "n8n-nodes-base.aiTransform",
+      "typeVersion": 1,
+      "position": [1250, 300]
+    },
+    {
+      "parameters": {
+        "options": {
+          "responseCode": 200,
+          "responseData": "firstEntryJson"
+        }
+      },
+      "id": "response",
+      "name": "响应输出",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [1450, 300]
+    }
+  ],
+  "connections": {
+    "Webhook触发": {
+      "main": [
+        [
+          {
+            "node": "状态获取",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "状态获取": {
+      "main": [
+        [
+          {
+            "node": "世界设定",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "角色状态",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "世界设定": {
+      "main": [
+        [
+          {
+            "node": "数据合并",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "角色状态": {
+      "main": [
+        [
+          {
+            "node": "数据合并",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "数据合并": {
+      "main": [
+        [
+          {
+            "node": "AI章节生成",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI章节生成": {
+      "main": [
+        [
+          {
+            "node": "响应输出",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "saveDataSuccessExecution": "all",
+    "saveDataErrorExecution": "all"
+  }
+}
