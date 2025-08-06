@@ -1,6 +1,7 @@
+
 services:
   db:
-    image: docker-0.unsee.tech/pgvector/pgvector:pg16
+    image: pgvector/pgvector:pg16
     restart: always
     environment:
       POSTGRES_USER: postgres
@@ -13,14 +14,24 @@ services:
       - db_data:/var/lib/postgresql/data
     networks:
       - n8n-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   adminer:
-    image: docker-0.unsee.tech/adminer
+    image: adminer
     ports:
-      - 8081:8080
+      - 8082:8080
     networks:
       - n8n-network
+    depends_on:
+      db:
+        condition: service_healthy
+
   redis:
-    image: docker-0.unsee.tech/redis:6.2
+    image: redis:6.2
     restart: always
     command: ["redis-server"]
     ports:
@@ -29,9 +40,14 @@ services:
       - redis_data:/data
     networks:
       - n8n-network
-  
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
   n8n:
-    image: docker-0.unsee.tech/n8nio/n8n
+    image: n8nio/n8n
     restart: always
     ports:
       - "5678:5678"
@@ -73,6 +89,9 @@ services:
       - N8N_WORKFLOW_HISTORY_PRUNE_TIME=365
       - DB_POSTGRESDB_PASSWORD=postgres
       - HTTP_PROXY=http://host.docker.internal:1087
+      - N8N_PROXY_SERVER_URL=http://host.docker.internal:1087
+      - NODE_TLS_REJECT_UNAUTHORIZED=0  # 添加此行以忽略 SSL 证书验证
+      # 修改代理设置
       - HTTPS_PROXY=http://host.docker.internal:1087
       - http_proxy=http://host.docker.internal:1087
       - https_proxy=http://host.docker.internal:1087
@@ -81,10 +100,13 @@ services:
       - n8n_data_new1:/home/node/.n8n
       - ./server/n8n-workflows-main/workflows:/workflows
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
   rsshub:
-    image: docker-0.unsee.tech/diygod/rsshub
+    image: diygod/rsshub
     restart: always
     ports:
       - "1200:1200"
@@ -95,7 +117,7 @@ services:
     environment:
       - NODE_ENV=production
       - CACHE_TYPE=redis
-      - REDIS_URL=redis://:123456@redis:6379
+      - REDIS_URL=redis://redis:6379  # 修正Redis连接（原配置有密码错误）
       - CACHE_EXPIRE=300
       - LISTEN_INADDR_ANY=1
       - REQUEST_RETRY=3
@@ -111,11 +133,100 @@ services:
       - https_proxy=http://host.docker.internal:1087
       - NODE_TLS_REJECT_UNAUTHORIZED=0
       - PROXY_URI=http://host.docker.internal:1087
-      - NO_PROXY=localhost,127.0.0.1,redis
+      - NO_PROXY=localhost,127.0.0.1,redis,db
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
     volumes:
       - rsshub_data:/app/data
+
+  # 新增wechatpadpro服务
+  wechatpadpro:
+    image: wechatpadpro/wechatpadpro:${WECHAT_TAG:-latest}
+    container_name: wechatpadpro
+    restart: always
+    ports:
+      - "${WECHAT_PORT:-8081}:8080"  # 修改端口避免与adminer冲突
+      - "${PORT:-1238}:1238"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    env_file:
+      - .env
+    environment:
+      - DB_HOST=mysql
+      - REDIS_HOST=redis  # 复用现有redis服务
+      - TZ=${TZ}
+      - GH_WXID=${GH_WXID}
+      - ADMIN_KEY=${ADMIN_KEY}
+      - WORKER_POOL_SIZE=${WORKER_POOL_SIZE}
+      - MAX_WORKER_TASK_LEN=${MAX_WORKER_TASK_LEN}
+      - WEB_DOMAIN=${WEB_DOMAIN}
+      - WEB_TASK_NAME=${WEB_TASK_NAME}
+      - WEB_TASK_APP_NUMBER=${WEB_TASK_APP_NUMBER}
+      - NEWS_SYN_WXID=${NEWS_SYN_WXID}
+      - DT=${DT}
+      - TOPIC=${TOPIC}
+      - ROCKET_MQ_ENABLED=${ROCKET_MQ_ENABLED}
+      - ROCKET_MQ_HOST=${ROCKET_MQ_HOST}
+      - ROCKET_ACCESS_KEY=${ROCKET_ACCESS_KEY}
+      - ROCKET_SECRET_KEY=${ROCKET_SECRET_KEY}
+      - RABBIT_MQ_ENABLED=${RABBIT_MQ_ENABLED}
+      - RABBIT_MQ_URL=${RABBIT_MQ_URL}
+      - KAFKA_ENABLED=${KAFKA_ENABLED}
+      - KAFKA_URL=${KAFKA_URL}
+      - KAFKA_USERNAME=${KAFKA_USERNAME}
+      - KAFKA_PASSWORD=${KAFKA_PASSWORD}
+      - TASK_RETRY_COUNT=${TASK_RETRY_COUNT}
+      - TASK_RETRY_INTERVAL=${TASK_RETRY_INTERVAL}
+      - HEARTBEAT_INTERVAL=${HEARTBEAT_INTERVAL}
+      - AUTO_AUTH_INTERVAL=${AUTO_AUTH_INTERVAL}
+      - AUTO_SYNC_INTERVAL_MINUTES=${AUTO_SYNC_INTERVAL_MINUTES}
+      - TASK_EXEC_WAIT_TIMES=${TASK_EXEC_WAIT_TIMES}
+      - QUEUE_EXPIRE_TIME=${QUEUE_EXPIRE_TIME}
+      - WS_HANDSHAKE_TIMEOUT=${WS_HANDSHAKE_TIMEOUT}
+      - WS_READ_BUFFER_SIZE=${WS_READ_BUFFER_SIZE}
+      - WS_WRITE_BUFFER_SIZE=${WS_WRITE_BUFFER_SIZE}
+      - WS_READ_DEADLINE=${WS_READ_DEADLINE}
+      - WS_WRITE_DEADLINE=${WS_WRITE_DEADLINE}
+      - WS_PING_INTERVAL=${WS_PING_INTERVAL}
+      - WS_CONNECTION_CHECK_INTERVAL=${WS_CONNECTION_CHECK_INTERVAL}
+      - WS_MAX_MESSAGE_SIZE=${WS_MAX_MESSAGE_SIZE}
+      - CLUSTER_NAME=${CLUSTER_NAME}
+      - ZK_ADDR=${ZK_ADDR}
+      - ETCD_ADDR=${ETCD_ADDR}
+      - DISABLED_CMD_LIST=${DISABLED_CMD_LIST}
+      - MYSQL_CONNECT_STR=${MYSQL_CONNECT_STR}
+    volumes:
+      - ./.env:/app/.env
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - n8n-network  # 加入现有网络
+
+  # 新增mysql服务（wechatpadpro需要）
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root123456}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-weixin}
+      MYSQL_USER: ${MYSQL_USER:-weixin}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-weixin123}
+    ports:
+      - "${MYSQL_PORT:-3306}:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-root123456}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks:
+      - n8n-network  # 加入现有网络
 
 networks:
   n8n-network:
@@ -126,5 +237,6 @@ volumes:
   redis_data:
   n8n_data_new1:
   rsshub_data:
+  mysql_data:  # 新增mysql数据卷
   mongo_data:
   minio_data:
