@@ -1,0 +1,13 @@
+{
+  "name": "installed-nodes",
+  "private": true,
+  "dependencies": {
+    "n8n-nodes-feishu-lite": "0.3.7",
+    "n8n-nodes-custom-embed": "0.1.1",
+    "@n8n-zengchao/n8n-nodes-fastgpt": "1.1.3",
+    "n8n-nodes-wechat-offiaccount": "0.3.4",
+    "n8n-nodes-wechat-pad-pro": "0.4.1",
+    "n8n-nodes-wechat-work": "0.2.4",
+    "n8n-nodes-xiaohongshu": "1.0.1"
+  }
+}

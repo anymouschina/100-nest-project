@@ -11,7 +11,7 @@ services:
     ports:
       - '5432:5432'
     volumes:
-      - db_data:/var/lib/postgresql/data
+      - ./data/db_data:/var/lib/postgresql/data
     networks:
       - n8n-network
     healthcheck:
@@ -97,7 +97,7 @@ services:
       - https_proxy=http://host.docker.internal:1087
       - NO_PROXY=localhost,127.0.0.1,host.docker.internal,redis,db
     volumes:
-      - n8n_data_new1:/home/node/.n8n
+      - ./data/n8n_data:/home/node/.n8n
       - ./server/n8n-workflows-main/workflows:/workflows
     depends_on:
       db:
@@ -235,7 +235,7 @@ networks:
 volumes:
   db_data:
   redis_data:
-  n8n_data_new1:
+  
   rsshub_data:
   mysql_data:  # 新增mysql数据卷
   mongo_data:
