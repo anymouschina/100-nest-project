@@ -8,6 +8,7 @@
     "n8n-nodes-wechat-offiaccount": "0.3.4",
     "n8n-nodes-wechat-pad-pro": "0.4.1",
     "n8n-nodes-wechat-work": "0.2.4",
-    "n8n-nodes-xiaohongshu": "1.0.1"
+    "n8n-nodes-xiaohongshu": "1.0.1",
+    "n8n-nodes-jimeng": "1.0.2"
   }
 }
