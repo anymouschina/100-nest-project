@@ -9,6 +9,8 @@
     "n8n-nodes-wechat-pad-pro": "0.4.1",
     "n8n-nodes-wechat-work": "0.2.4",
     "n8n-nodes-xiaohongshu": "1.0.1",
-    "n8n-nodes-jimeng": "1.0.2"
+    "n8n-nodes-jimeng": "1.0.2",
+    "n8n-nodes-firecrawl": "0.3.0",
+    "@mendable/n8n-nodes-firecrawl": "1.0.4"
   }
 }

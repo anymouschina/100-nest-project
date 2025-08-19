@@ -90,11 +90,12 @@ services:
       - DB_POSTGRESDB_PASSWORD=postgres
       - HTTP_PROXY=http://host.docker.internal:1087
       - N8N_PROXY_SERVER_URL=http://host.docker.internal:1087
-      - NODE_TLS_REJECT_UNAUTHORIZED=0  # 添加此行以忽略 SSL 证书验证
+      # - NODE_TLS_REJECT_UNAUTHORIZED=0  # 添加此行以忽略 SSL 证书验证
       # 修改代理设置
       - HTTPS_PROXY=http://host.docker.internal:1087
       - http_proxy=http://host.docker.internal:1087
       - https_proxy=http://host.docker.internal:1087
+      - ALL_PROXY=socks5://host.docker.internal:1087 # 添加SOCKS5代理
       - NO_PROXY=localhost,127.0.0.1,host.docker.internal,redis,db
     volumes:
       - ./data/n8n_data:/home/node/.n8n

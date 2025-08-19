@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  crawlb:
+    build:
+      context: ./crawlb  # 假设您的 Dockerfile 在 crawlb 目录下
+      dockerfile: Dockerfile
+    container_name: crawlb_service
+    restart: always
+    volumes:
+      - ./crawlb:/app # 将本地代码挂载到容器中，方便开发
+    networks:
+      - n8n-network # 连接到外部网络
+    depends_on: # 声明依赖，确保这些服务先于 crawlb 启动
+      - db
+      - redis
+    environment:
+      # 在这里添加 crawlb 服务需要的环境变量
+      # 例如，数据库连接信息
+      DATABASE_URL: "postgresql://postgres:postgres@db:5432/order_management"
+      REDIS_URL: "redis://redis:6379"
+
+networks:
+  n8n-network:
+    external: true # 声明这是一个已经存在的外部网络
